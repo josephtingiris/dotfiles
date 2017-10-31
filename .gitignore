@@ -32,9 +32,10 @@
 !/.vim
 !/.vim/*
 .vim/.netrwhist
+.vim/bundle/
+.vim/indent/
 
 # except etc/profile.d directory
 !/etc
 /etc/*
-!/etc/profile.d
-etc/profile.d/jekyll.sh
+/etc/profile.d/git-pull-home.sh
