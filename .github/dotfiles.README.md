@@ -27,7 +27,7 @@
 Download to the project directory, add, and commit.  i.e.:
 
 ```sh
-cd ~
+cd
 if [ -d .git ]; then rm -rf .git; fi
 git init
 git remote add origin git@github.com:josephtingiris/dotfiles
@@ -35,7 +35,6 @@ git fetch
 git checkout -t origin/master -f
 git reset --hard
 git checkout -- .
-~
 ```
 
 ## Usage
