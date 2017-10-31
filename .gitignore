@@ -1,0 +1,40 @@
+# exculde everyting
+/*
+
+# except .bash* files
+!.bash_logout
+!.bash_profile
+!.bashrc
+
+# except some .config directories
+!/.config
+/.config/*
+!/.config/nvim
+/.config/nvim/plugged
+
+# except .github directory
+!/.github
+!/.github/*
+
+# except .gitignore
+!.gitignore
+
+# except .npmrc
+!.npmrc
+
+# except .tmux.conf
+!.tmux.conf
+
+# except .vimrc
+!.vimrc
+
+# except .vim directory
+!/.vim
+!/.vim/*
+.vim/.netrwhist
+
+# except etc/profile.d directory
+!/etc
+/etc/*
+!/etc/profile.d
+etc/profile.d/jekyll.sh
