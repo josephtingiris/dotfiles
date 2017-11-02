@@ -43,6 +43,14 @@ if [ -d /opt/rh ]; then
     Rhscl_Roots=$(find /opt/rh/ -type f -name enable 2> /dev/null | sort -V)
     for Rhscl_Enable in $Rhscl_Roots; do
         if [ -r "$Rhscl_Enable" ]; then
+            Unsets=$(cat "$Rhscl_Enable" | grep ^export 2> /dev/null | awk -F= '{print $1}' 2> /dev/null | awk '{print $2}' 2> /dev/null | grep -v ^PATH$ | sort -u)
+            for Unset in $Unsets; do
+                eval "unset $Unset"
+            done
+        fi
+    done
+    for Rhscl_Enable in $Rhscl_Roots; do
+        if [ -r "$Rhscl_Enable" ]; then
             . "$Rhscl_Enable"
         else
             continue
