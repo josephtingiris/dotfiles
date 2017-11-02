@@ -14,7 +14,34 @@ if has("autocmd")
     " https://github.com/tpope/vim-sensible
     Plug 'tpope/vim-sensible'
 
+    " https://github.com/2072/PHP-Indenting-for-VIm
+    Plug '2072/PHP-Indenting-for-VIm'
+
+    " https://github.com/suan/instant-markdown-d
+    " https://github.com/suan/vim-instant-markdown
+    "Plug 'suan/vim-instant-markdown'
+
+    " https://github.com/euclio/vim-markdown-composer
+    function! BuildComposer(info)
+        if a:info.status != 'unchanged' || a:info.force
+            if has('nvim')
+                !cargo build --release
+            else
+                !cargo build --release --no-default-features --features json-rpc
+            endif
+        endif
+    endfunction
+
+    Plug 'euclio/vim-markdown-composer', { 'do': function('BuildComposer') }
+
     call plug#end()
+
+
+    " https://github.com/suan/vim-instant-markdown
+    "let g:markdown_fenced_languages = ['html', 'python', 'bash=sh']
+    "let g:markdown_syntax_conceal = 0
+    "let g:markdown_minlines = 100
+    "let g:instant_markdown_autostart = 0    " Use :InstantMarkdownPreview to turn on
 
 endif " has("autocmd")
 
@@ -94,13 +121,3 @@ au BufNewFile,BufRead *.web set filetype=sh
 au BufNewFile,BufRead http* set filetype=xml syntax=apache
 au BufNewFile,BufRead named*.conf set filetype=named
 au BufNewFile,BufRead *.zone set filetype=bindzone
-
-" Markdown ftplugin settings
-" let g:markdown_fenced_languages = ['html', 'python', 'bash=sh']
-" let g:markdown_syntax_conceal = 0
-" let g:markdown_minlines = 100
-" https://github.com/suan/instant-markdown-d
-" https://github.com/suan/vim-instant-markdown
-"let g:instant_markdown_autostart = 0    " Use :InstantMarkdownPreview to turn on
-
-

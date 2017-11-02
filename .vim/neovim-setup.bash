@@ -17,6 +17,7 @@ rh-ruby24-ruby-devel
 python2-pip
 tmux
 xsel
+cargo
 )
 
 for Yum_Package in ${Yum_Packages[@]}; do
