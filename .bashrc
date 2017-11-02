@@ -11,7 +11,7 @@ if [ -f /etc/bashrc ]; then
 fi
 
 ##
-### set PATH automatically
+### set PATH automatically (first)
 ##
 
 Auto_Path="./:"
@@ -66,6 +66,50 @@ export PATH=$Auto_Path
 unset Auto_Path
 
 ##
+### functions
+##
+
+# add stuff to my .gitconfig
+function Git_Config() {
+
+    git config --global user.email "joseph.tingiris@gmail.com" &> /dev/null
+    git config --global user.name "$USER@$HOSTNAME" &> /dev/null
+    git config --global alias.st status &> /dev/null
+    git config --global alias.info 'remote -v' &> /dev/null
+    git config --global push.default simple &> /dev/null
+    git config --global color.ui auto &> /dev/null
+    git config --global color.branch auto &> /dev/null
+    git config --global color.status auto &> /dev/null
+
+}
+
+# keep my home directory dotfiles up to date
+function Git_Pull_Home() {
+
+    if [ -d ~/.git ]; then
+        local cwd=$(/usr/bin/pwd)
+
+        cd ~
+
+        local git_upstream=${1:-'@{u}'}
+        local git_local=$(git rev-parse @{0})
+        local git_base=$(git merge-base @{0} "$UPSTREAM")
+
+        if [ $git_local = $git_base ]; then
+            # need to pull
+            if [ "$PS1" != "" ]; then
+                git pull
+            else
+                git pull &> /dev/null
+            fi
+        fi
+
+        cd "$cwd"
+
+    fi
+}
+
+##
 ### who am i (really)
 ##
 
@@ -88,6 +132,10 @@ else
     fi
 fi
 
+if [ "${Who_Home}" == "" ]; then
+    Who_Home="~"
+fi
+
 export Apex_User=${Who}@$HOSTNAME
 export Base_User=$Apex_User
 
@@ -102,7 +150,7 @@ if [ "$SUDO_COMMAND" != "" ]; then
 fi
 
 ##
-### alias definitions
+### global alias definitions
 ##
 
 alias cl='cd;clear'
@@ -146,6 +194,22 @@ if [ "$TERM" == "ansi" ] || [[ "$TERM" == *"color" ]] || [[ "$TERM" == *"xterm" 
         export PS1="\[$(tput setaf 14)\][\u@\h \w]$PS \[$(tput sgr0)\]" # bright cyan
     fi
     unset PS
+fi
+
+##
+### get tmux info
+##
+
+unset Tmux_Info
+if [ $(which --skip-alias tmux 2> /dev/null) ]; then
+    if [ -r "${Who_Home}/.tmux.conf" ]; then
+        Tmux_Info+="[${Who_Home}/.tmux.conf]"
+        alias tmux="tmux -f ${Who_Home}/.tmux.conf"
+    fi
+fi
+
+if [ "$TMUX" != "" ]; then
+    Tmux_Info="[$TMUX]"
 fi
 
 ##
@@ -266,7 +330,10 @@ if [ -x /usr/bin/gnome-keyring-daemon ] && [ -r /etc/pam.d/kdm ]; then
     /usr/bin/gnome-keyring-daemon start 1> /dev/null
 fi
 
-# mimic /etc/profile.d in home etc/profile.d directory
+##
+### mimic /etc/profile.d in home etc/profile.d directory
+##
+
 if  [ "${HOME}" != "" ] && [ "${HOME}" != "/" ] && [ -d "${HOME}/etc/profile.d" ]; then
     SHELL=/bin/bash
     # Only display echos from profile.d scripts if this is not a login shell
@@ -287,7 +354,10 @@ if [ "$USER" != "root" ]; then
     umask u+rw,g-rwx,o-rwx
 fi
 
-# EDITOR
+##
+### set EDITOR
+##
+
 unset EDITOR
 Editors=(nvim vim vi)
 for Editor in ${Editors[@]}; do
@@ -299,37 +369,37 @@ for Editor in ${Editors[@]}; do
 done
 unset Editor Editors
 
-# git
+##
+### set git
+##
+
 if [ $(which --skip-alias git 2> /dev/null) ]; then
-    export GIT_EDITOR=$EDITOR
-    git config --global alias.st status
-    git config --global alias.info 'remote -v'
-    git config --global push.default simple
-    git config --global user.email "joseph.tingiris@gmail.com" &> /dev/null
-    git config --global user.name "$USER@$HOSTNAME" &> /dev/null
+        export GIT_EDITOR=$EDITOR
+        alias git-config=Git_Config
+        alias git-pull-home=Git_Pull_Home
 fi
 
-# svn
+##
+### set svn
+##
+
 if [ $(which --skip-alias svn 2> /dev/null) ]; then
     export SVN_EDITOR=$EDITOR
 fi
 
-# tmux
-unset Tmux_Info
-if [ $(which --skip-alias tmux 2> /dev/null) ]; then
-    if [ -r "${Who_Home}/.tmux.conf" ]; then
-        Tmux_Info+="[${Who_Home}/.tmux.conf]"
-        alias tmux="tmux -f ${Who_Home}/.tmux.conf"
-    fi
-fi
-
-if [ "$TMUX" != "" ]; then
-    Tmux_Info="[$TMUX]"
-fi
+##
+### display some useful information
+##
 
 if [ "$PS1" != "" ]; then
     echo
-    echo -n "~/.bashrc $Bashrc_Version"
+
+    if [ -r /etc/redhat-release ]; then
+        cat /etc/redhat-release
+        echo
+    fi
+
+    echo -n "${Who_Home}/.bashrc $Bashrc_Version"
     if [ "$Tmux_Info" ]; then
         echo -n " $Tmux_Info"
     fi
