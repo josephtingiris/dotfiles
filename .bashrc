@@ -94,13 +94,13 @@ function Git_Pull_Home() {
         git fetch &> /dev/null
 
         local git_local=$(git rev-parse @{0})
-        local git_upstream=$(git rev-parse @{u})
+        local git_remote=$(git rev-parse @{u})
 
-        if [ "$git_local" != "$git_upstream" ]; then
+        if [ "$git_local" != "$git_remote" ]; then
             # need to pull
 
             echo "git_local    = $git_local"
-            echo "git_upstream = $git_upstream"
+            echo "git_remote   = $git_remote"
             echo
 
             if [ "$PS1" != "" ]; then
