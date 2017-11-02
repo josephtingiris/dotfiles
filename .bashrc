@@ -1,11 +1,109 @@
 # .bashrc
 
-Bashrc_Version="20171031, joseph.tingiris@gmail.com"
+Bashrc_Version="20171102, joseph.tingiris@gmail.com"
 
-# Source global definitions
+##
+### source global definitions
+##
+
 if [ -f /etc/bashrc ]; then
     . /etc/bashrc
 fi
+
+##
+### set PATH automatically
+##
+
+Auto_Path="./:"
+
+# add custom paths, in the order given in ~/.Auto_Path, before automatically finding bin paths
+if [ -r ~/.Auto_Path ]; then
+    while read Auto_Path_Line; do
+        Find_Paths+=("$Auto_Path_Line")
+    done <<< "$(cat ~/.Auto_Path | grep -v ^\#)"
+fi
+
+# bin & sbin from the directories, in the following array, are automatically added in the order given
+Find_Paths=("$HOME" "/apex" "/base")
+
+for Find_Path in ${Find_Paths[@]}; do
+    if [ -d /${Find_Path} ] && [ -r /${Find_Path} ]; then
+        Find_Bins=$(find ${Find_Path}/ -maxdepth 2 -type d -name bin -printf "%d %p\n" -o -name sbin -printf "%d %p\n" 2> /dev/null | sort -n | awk '{print $NF}')
+        for Find_Bin in $Find_Bins; do
+            Auto_Path+="$Find_Bin:"
+        done
+        unset Find_Bin Find_Bins
+    fi
+done
+unset Find_Path Find_Paths
+
+# rhscl; see https://wiki.centos.org/SpecialInterestGroup/SCLo/CollectionsList
+# e.g. yum --enablerepo=extras install centos-release-scl && yum install rh-php56
+if [ -d /opt/rh ]; then
+    Rhscl_Roots=$(find /opt/rh/ -type f -name enable 2> /dev/null | sort -V)
+    for Rhscl_Enable in $Rhscl_Roots; do
+        if [ -r "$Rhscl_Enable" ]; then
+            . "$Rhscl_Enable"
+        else
+            continue
+        fi
+        Rhscl_Root="$(dirname "$Rhscl_Enable")/root"
+        Rhscl_Bins="usr/local/bin usr/local/sbin usr/bin usr/sbin bin sbin"
+        for Rhscl_Bin in $Rhscl_Bins; do
+            if [ -d "$Rhscl_Root/$Rhscl_Bin" ]; then
+                Auto_Path+="$Rhscl_Root/$Rhscl_Bin:"
+            fi
+        done
+        unset Rhscl_Bin Rhscl_Bins  Rhscl_Enable Rhscl_Root
+    done
+    unset Rhscl_Enable Rhscl_Roots
+fi
+
+Auto_Path+="/usr/local/bin:/usr/local/sbin:/usr/bin:/usr/sbin:/bin:/sbin"
+
+export PATH=$Auto_Path
+
+unset Auto_Path
+
+##
+### who am i (really)
+##
+
+if [ $(which --skip-alias logname 2> /dev/null) ]; then
+    export Whom=$(logname 2> /dev/null)
+else
+    if [ $(which --skip-alias who 2> /dev/null) ]; then
+        export Whom=$(who -m 2> /dev/null)
+    fi
+fi
+if [ "$Whom" != "" ]; then export Who="${Whom%% *}"; fi
+
+if [ "$Who" == "" ] && [ "$USER" != "" ]; then export Who=$USER; fi
+if [ "$Who" == "" ] && [ "$LOGNAME" != "" ]; then export Who=$LOGNAME; fi
+if [ "$Who" == "" ]; then
+    export Who=UNKNOWN
+else
+    if [ $(which --skip-alias getent 2> /dev/null) ]; then
+        Who_Home=$(getent passwd $Who | awk -F: '{print $6}')
+    fi
+fi
+
+export Apex_User=${Who}@$HOSTNAME
+export Base_User=$Apex_User
+
+export TZ='America/New_York'
+
+##
+### exit here to avoid interactive shell enhancements
+##
+
+if [ "$SUDO_COMMAND" != "" ]; then
+    exit
+fi
+
+##
+### alias definitions
+##
 
 alias cl='cd;clear'
 alias cp='cp -i'
@@ -18,12 +116,11 @@ alias rm='rm -i'
 alias s='source ~/.bashrc'
 alias sd='screen -S $(basename $(pwd))'
 
-# Uncomment the following line to disable systemctl auto-paging feature
-# export SYSTEMD_PAGER=
+##
+### custom, color prompt
+##
 
-export TZ='America/New_York'
-
-if [ "$TERM" == "xterm" ] || [ "$TERM" == "ansi" ] || [[ "$TERM" == *"color" ]]; then
+if [ "$TERM" == "ansi" ] || [[ "$TERM" == *"color" ]] || [[ "$TERM" == *"xterm" ]]; then
     #export PS1="\[$(tput setaf 0)\][\u@\h \w]$PS \[$(tput sgr0)\]" # black
     #export PS1="\[$(tput setaf 1)\][\u@\h \w]$PS \[$(tput sgr0)\]" # dark red
     #export PS1="\[$(tput setaf 2)\][\u@\h \w]$PS \[$(tput sgr0)\]" # dark green
@@ -51,9 +148,17 @@ if [ "$TERM" == "xterm" ] || [ "$TERM" == "ansi" ] || [[ "$TERM" == *"color" ]];
     unset PS
 fi
 
+##
+### if needed then create .inputrc (with preferences)
+##
+
 if [ ! -f ~/.inputrc ]; then
     echo "set bell-style none" > ~/.inputrc
 fi
+
+##
+### if needed then generate an ssh key
+##
 
 if [ ! -d ~/.ssh ]; then
     Ssh_Keygen=/usr/bin/ssh-keygen
@@ -62,6 +167,10 @@ if [ ! -d ~/.ssh ]; then
     fi
     unset Ssh_Keygen
 fi
+
+##
+### start/check ssh-agent & add all potential keys (if they're not already added)
+##
 
 if [ "${HOME}" != "" ] && [ -d "${HOME}/.ssh" ]; then
 
@@ -146,6 +255,10 @@ if [ "${HOME}" != "" ] && [ -d "${HOME}/.ssh" ]; then
 
 fi
 
+##
+### use the gnome keyring daemon (if it's available)
+##
+
 if [ -x /usr/bin/gnome-keyring-daemon ] && [ -r /etc/pam.d/kdm ]; then
     # http://tuxrocket.com/2013/01/03/getting-gnome-keyring-to-work-under-kde-and-kdm/
     # /etc/pam.d/kdm
@@ -170,87 +283,9 @@ if  [ "${HOME}" != "" ] && [ "${HOME}" != "/" ] && [ -d "${HOME}/etc/profile.d" 
     unset Home_Etc_Profile_D
 fi
 
-
-Auto_Path="./:"
-
-Find_Paths=("$HOME" "/apex" "/base")
-
-if [ -r ~/.Auto_Path ]; then
-    while read Auto_Path_Line; do
-        Find_Paths+=("$Auto_Path_Line")
-    done <<< "$(cat ~/.Auto_Path | grep -v ^\#)"
-fi
-
-for Find_Path in ${Find_Paths[@]}; do
-    if [ -d /${Find_Path} ] && [ -r /${Find_Path} ]; then
-        Find_Bins=$(find ${Find_Path}/ -maxdepth 2 -type d -name bin -printf "%d %p\n" -o -name sbin -printf "%d %p\n" 2> /dev/null | sort -n | awk '{print $NF}')
-        for Find_Bin in $Find_Bins; do
-            Auto_Path+="$Find_Bin:"
-        done
-        unset Find_Bin Find_Bins
-    fi
-done
-unset Find_Path Find_Paths
-
-# rhscl; see https://wiki.centos.org/SpecialInterestGroup/SCLo/CollectionsList
-# e.g. yum --enablerepo=extras install centos-release-scl && yum install rh-php56
-if [ -d /opt/rh ]; then
-    Rhscl_Roots=$(find /opt/rh/ -type f -name enable 2> /dev/null | sort -V)
-    for Rhscl_Enable in $Rhscl_Roots; do
-        if [ -r "$Rhscl_Enable" ]; then
-            . "$Rhscl_Enable"
-        else
-            continue
-        fi
-        Rhscl_Root="$(dirname "$Rhscl_Enable")/root"
-        Rhscl_Bins="usr/local/bin usr/local/sbin usr/bin usr/sbin bin sbin"
-        for Rhscl_Bin in $Rhscl_Bins; do
-            if [ -d "$Rhscl_Root/$Rhscl_Bin" ]; then
-                Auto_Path+="$Rhscl_Root/$Rhscl_Bin:"
-            fi
-        done
-        unset Rhscl_Bin Rhscl_Bins  Rhscl_Enable Rhscl_Root
-    done
-    unset Rhscl_Roots
-fi
-
-Auto_Path+="/usr/local/bin:/usr/local/sbin:/usr/bin:/usr/sbin:/bin:/sbin"
-
-export PATH=$Auto_Path
-
-unset Auto_Path
-
 if [ "$USER" != "root" ]; then
     umask u+rw,g-rwx,o-rwx
 fi
-
-##
-### everything past here depends on PATH
-##
-
-# who am i (really)
-if [ $(which --skip-alias logname 2> /dev/null) ]; then
-    export Whom=$(logname 2> /dev/null)
-else
-    if [ $(which --skip-alias who 2> /dev/null) ]; then
-        export Whom=$(who -m 2> /dev/null)
-    fi
-fi
-if [ "$Whom" != "" ]; then export Who="${Whom%% *}"; fi
-
-if [ "$Who" == "" ] && [ "$USER" != "" ]; then export Who=$USER; fi
-if [ "$Who" == "" ] && [ "$LOGNAME" != "" ]; then export Who=$LOGNAME; fi
-if [ "$Who" == "" ]; then
-    export Who=UNKNOWN
-else
-    if [ $(which --skip-alias getent 2> /dev/null) ]; then
-        Who_Home=$(getent passwd $Who | awk -F: '{print $6}')
-    fi
-fi
-
-##
-### everything past here depends on PATH and/or Who_Home
-##
 
 # EDITOR
 unset EDITOR
@@ -291,9 +326,6 @@ fi
 if [ "$TMUX" != "" ]; then
     Tmux_Info="[$TMUX]"
 fi
-
-export Apex_User=${Who}@$HOSTNAME
-export Base_User=$Apex_User
 
 if [ "$PS1" != "" ]; then
     echo
