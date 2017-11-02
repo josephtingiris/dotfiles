@@ -1,3 +1,23 @@
+if has("autocmd")
+
+    " https://github.com/junegunn/vim-pl
+
+    " auto-install vim-plug
+    if empty(glob('~/.vim/autoload/plug.vim'))
+        silent !curl -fLo ~/.vim/autoload/plug.vim --create-dirs https://raw.githubusercontent.com/junegunn/vim-plug/master/plug.vim
+        autocmd VimEnter * PlugInstall
+    endif
+
+    " autoload plugs
+    call plug#begin('~/.vim/plugged')
+
+    " https://github.com/tpope/vim-sensible
+    Plug 'tpope/vim-sensible'
+
+    call plug#end()
+
+endif " has("autocmd")
+
 " Function to restore cursor position, window position, and last search after running a command.
 function! Preserve(command)
     " Save the last search.
@@ -30,16 +50,15 @@ function! Indent()
     call Preserve('normal gg=G')
 endfunction
 
-" Keyboard mappings
+" Keyboard preferences
 noremap <F5> :call Indent()<CR>
 noremap <F7> :set nopaste<CR>
 noremap <F8> :set paste<CR>
 noremap <F10> <Esc>:setlocal spell spelllang=en_us<CR>
 noremap <F11> <Esc>:setlocal nospell<CR>
 noremap <F12> <Esc>:syntax sync fromstart<CR>
-noremap <C-q> <Esc>:s/\"/\\\"/g<CR>:s/'/\"/g<CR>
 
-" Basic Settings
+" setting preferences
 set autoindent                  " Copy indent from current line when starting a new line
 set backspace=indent,eol,start  " Allow backspace in insert mode
 set expandtab                   " Use spaces for tabs, not <Tab>
@@ -51,6 +70,7 @@ set linebreak                   " Only wrap at sensible places
 set list listchars=tab:▷\ ,trail:⋅,nbsp:⋅
 set nolist                      " list disables line break
 "set number                      " Line numbers
+set shiftwidth=0                " Return value for shiftwidth(); Zero sets it to the value of tabstop
 set smartindent                 " Smart autoindent when starting a new line
 "set spell                       " http://vimdoc.sourceforge.net/htmldoc/spell.html
 "set spelllang=en_us
@@ -60,14 +80,14 @@ set textwidth=0                 " prevent Vim from automatically inserting line 
 set wrap                        " Turn on word wrapping
 set wrapmargin=0
 
-" Color Scheme
+" color preferences
 colorscheme elflord
 set background=dark
 set t_Co=256
 syntax on
 syntax enable
 
-" ftplugin mappings
+" ftplugin preferences
 au BufNewFile,BufRead *.d set filetype=sh
 au BufNewFile,BufRead *.md set filetype=markdown
 au BufNewFile,BufRead *.web set filetype=sh
@@ -81,4 +101,6 @@ au BufNewFile,BufRead *.zone set filetype=bindzone
 " let g:markdown_minlines = 100
 " https://github.com/suan/instant-markdown-d
 " https://github.com/suan/vim-instant-markdown
-let g:instant_markdown_autostart = 0    " Use :InstantMarkdownPreview to turn on
+"let g:instant_markdown_autostart = 0    " Use :InstantMarkdownPreview to turn on
+
+

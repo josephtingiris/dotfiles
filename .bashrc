@@ -76,14 +76,18 @@ function Git_Config() {
         rm -f ~/.gitconfig.local &> /dev/null
     fi
 
-    git config --global user.email "joseph.tingiris@gmail.com" &> /dev/null
-    git config --global user.name "$USER@$HOSTNAME" &> /dev/null
-    git config --global alias.st status &> /dev/null
     git config --global alias.info 'remote -v' &> /dev/null
-    git config --global push.default simple &> /dev/null
+    git config --global alias.ls ls-files &> /dev/null
+    git config --global alias.st status &> /dev/null
+
     git config --global color.ui auto &> /dev/null
     git config --global color.branch auto &> /dev/null
     git config --global color.status auto &> /dev/null
+
+    git config --global push.default simple &> /dev/null
+
+    git config --global user.email "joseph.tingiris@gmail.com" &> /dev/null
+    git config --global user.name "$USER@$HOSTNAME" &> /dev/null
 
 }
 
@@ -382,7 +386,11 @@ Editors=(nvim vim vi)
 for Editor in ${Editors[@]}; do
     if [ $(which --skip-alias $Editor 2> /dev/null) ]; then
         export EDITOR="$(which --skip-alias $Editor 2> /dev/null)"
-        alias vi="$EDITOR"
+        if [ -r "${Who_Home}/.vimrc" ]; then
+                alias vi="$EDITOR -u ${Who_Home}/.vimrc"
+        else
+                alias vi="$EDITOR"
+        fi
         break
     fi
 done

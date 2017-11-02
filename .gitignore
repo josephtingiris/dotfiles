@@ -10,7 +10,7 @@
 !/.config
 /.config/*
 !/.config/nvim
-/.config/nvim/plugged
+#/.config/nvim/plugged
 
 # except .github directory
 !/.github
@@ -32,8 +32,8 @@
 !/.vim
 !/.vim/*
 .vim/.netrwhist
-.vim/bundle/
-.vim/indent/
+.vim/plugged/
+#.vim/indent/
 
 # except etc/profile.d directory
 !/etc
