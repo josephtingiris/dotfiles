@@ -91,12 +91,18 @@ function Git_Pull_Home() {
 
         cd ~
 
-        local git_upstream=${1:-'@{u}'}
-        local git_local=$(git rev-parse @{0})
-        local git_base=$(git merge-base @{0} "$UPSTREAM")
+        git fetch &> /dev/null
 
-        if [ $git_local = $git_base ]; then
+        local git_local=$(git rev-parse @{0})
+        local git_upstream=$(git rev-parse @{u})
+
+        if [ "$git_local" != "$git_upstream" ]; then
             # need to pull
+
+            echo "git_local    = $git_local"
+            echo "git_upstream = $git_upstream"
+            echo
+
             if [ "$PS1" != "" ]; then
                 git pull
             else
@@ -376,7 +382,9 @@ unset Editor Editors
 if [ $(which --skip-alias git 2> /dev/null) ]; then
         export GIT_EDITOR=$EDITOR
         alias git-config=Git_Config
+        alias gc=Git_Config
         alias git-pull-home=Git_Pull_Home
+        alias gph=Git_Pull_Home
 fi
 
 ##
