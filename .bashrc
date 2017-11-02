@@ -72,6 +72,10 @@ unset Auto_Path
 # add stuff to my .gitconfig
 function Git_Config() {
 
+    if [ -f ~/.gitconfig.lock  ]; then
+        rm -f ~/.gitconfig.local &> /dev/null
+    fi
+
     git config --global user.email "joseph.tingiris@gmail.com" &> /dev/null
     git config --global user.name "$USER@$HOSTNAME" &> /dev/null
     git config --global alias.st status &> /dev/null
@@ -84,23 +88,23 @@ function Git_Config() {
 }
 
 # keep my home directory dotfiles up to date
-function Git_Pull_Home() {
+function Git_Hub_Dotfiles() {
+
+    local cwd=$(/usr/bin/pwd)
+    cd ~
 
     if [ -d ~/.git ]; then
-        local cwd=$(/usr/bin/pwd)
-
-        cd ~
 
         git fetch &> /dev/null
 
-        local git_local=$(git rev-parse @{0})
-        local git_remote=$(git rev-parse @{u})
+        local git_head_upstream=$(git rev-parse HEAD@{u})
+        local git_head_working=$(git rev-parse HEAD)
 
-        if [ "$git_local" != "$git_remote" ]; then
+        if [ "$git_head_upstream" != "$git_head_working" ]; then
             # need to pull
 
-            echo "git_local    = $git_local"
-            echo "git_remote   = $git_remote"
+            echo "git_head_upstream   = $git_head_upstream"
+            echo "git_head_working    = $git_head_working"
             echo
 
             if [ "$PS1" != "" ]; then
@@ -110,9 +114,18 @@ function Git_Pull_Home() {
             fi
         fi
 
-        cd "$cwd"
+    else
+
+        git init
+        git remote add origin git@github.com:josephtingiris/dotfiles
+        git fetch
+        git checkout -t origin/master -f
+        git reset --hard
+        git checkout -- .
 
     fi
+
+    cd "$cwd"
 }
 
 ##
@@ -383,8 +396,8 @@ if [ $(which --skip-alias git 2> /dev/null) ]; then
         export GIT_EDITOR=$EDITOR
         alias git-config=Git_Config
         alias gc=Git_Config
-        alias git-pull-home=Git_Pull_Home
-        alias gph=Git_Pull_Home
+        alias git-hub-dotfiles=Git_Hub_Dotfiles
+        alias dotfiles=Git_Hub_Dotfiles
 fi
 
 ##
