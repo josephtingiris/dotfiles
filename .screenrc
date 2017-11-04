@@ -1,0 +1,7 @@
+activity ""
+defmonitor off
+monitor off
+vbell off
+bell_msg ""
+msgwait 900
+term xterm-256color
