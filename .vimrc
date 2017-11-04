@@ -1,4 +1,5 @@
 if (!exists("User_Dir"))
+        :exec ":source " . g:User_Dir . "/.vimrc"
     let User_Dir="~"
 endif
 
@@ -22,6 +23,13 @@ if has("autocmd")
 
     " https://github.com/scrooloose/nerdtree
     Plug 'scrooloose/nerdtree'
+    let NERDTreeShowHidden=1
+    autocmd StdinReadPre * let s:std_in=1
+    autocmd VimEnter * if argc() == 0 && !exists("s:std_in") | NERDTree | endif
+    map <Leader>f :NERDTreeToggle<CR>
+
+    " https://github.com/Xuyuanp/nerdtree-git-plugin
+    Plug 'Xuyuanp/nerdtree-git-plugin'
 
     " https://github.com/tpope/vim-fugitive
     Plug 'tpope/vim-fugitive'
@@ -117,8 +125,8 @@ noremap <F10> <Esc>:setlocal spell spelllang=en_us<CR>
 noremap <F11> <Esc>:setlocal nospell<CR>
 noremap <F12> <Esc>:syntax sync fromstart<CR>
 map <Leader>q :q<CR>
-map <Leader>f :NERDTreeToggle<CR>
 map <Leader>s :call Reconfigure()<CR>
+map <Leader>t gt
 
 " setting preferences
 set autoindent                  " Copy indent from current line when starting a new line
@@ -150,8 +158,6 @@ syntax on
 syntax enable
 
 " startup preferences
-autocmd StdinReadPre * let s:std_in=1
-autocmd VimEnter * if argc() == 0 && !exists("s:std_in") | NERDTree | endif
 autocmd VimEnter * "set term=$TERM"
 
 " ftplugin preferences
