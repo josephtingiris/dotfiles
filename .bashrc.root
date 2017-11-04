@@ -1,0 +1,48 @@
+# .bashrc
+
+# User specific aliases and functions
+
+alias rm='rm -i'
+alias cp='cp -i'
+alias mv='mv -i'
+
+# Don't allow direct root logins via ssh
+if [ "$SSH_TTY" != "" ]; then
+    echo "Don't log in as root; Log in as a user and use sudo"
+    echo
+    exit
+fi
+
+# Source global definitions
+if [ -f /etc/bashrc ]; then
+    . /etc/bashrc
+fi
+
+# Source true username definitions
+if [ -x /usr/bin/logname ]; then
+    UserName=$(/usr/bin/logname 2> /dev/null)
+else
+    if [ -x /usr/bin/who ]; then
+        UserName=$(/usr/bin/who am i 2> /dev/null | awk '{print $1}' 2> /dev/null)
+    fi
+fi
+
+if [ "$UserName" != "" ] && [ -r /home/$UserName/.bashrc ] ; then
+    . /home/$UserName/.bashrc
+fi
+
+# mimic /etc/profile.d for user specific environment
+if  [ "${HOME}" != "" ] && [ "${HOME}" != "/" ] && [ -d "${HOME}/etc/profile.d" ]; then
+    SHELL=/bin/bash
+    # Only display echos from profile.d scripts if this is not a login shell
+    # or is an interactive shell - otherwise just process them to set envvars
+    for i in ${HOME}/etc/profile.d/*.sh; do
+        if [ -r "$i" ]; then
+            if [ "$PS1" ]; then
+                . "$i"
+            else
+                . "$i" >/dev/null
+            fi
+        fi
+    done
+fi
