@@ -17,12 +17,16 @@ if has("autocmd")
 
     " vim & neovim compatible
 
-    " https://github.com/tpope/vim-sensible
-    Plug 'tpope/vim-sensible'
-
     " https://github.com/2072/PHP-Indenting-for-VIm
     Plug '2072/PHP-Indenting-for-VIm'
 
+    " https://github.com/tpope/vim-fugitive
+    Plug 'tpope/vim-fugitive'
+
+    " https://github.com/tpope/vim-sensible
+    Plug 'tpope/vim-sensible'
+
+    "
     if has('nvim')
         " neovim compatible, only
 
@@ -71,7 +75,7 @@ function! PreserveCursor(command)
     " Execute the command.
     execute a:command
 
-    " Restore the last search.
+   " Restore the last search.
     let @/ = search
 
     " Restore the previous window position.
