@@ -1,6 +1,6 @@
 # .bashrc
 
-Bashrc_Version="20171102, joseph.tingiris@gmail.com"
+Bashrc_Version="20171104, joseph.tingiris@gmail.com"
 
 ##
 ### source global definitions
@@ -86,6 +86,7 @@ function Git_Config() {
 
     git config --global alias.info 'remote -v' &> /dev/null
     git config --global alias.ls ls-files &> /dev/null
+    git config --global alias.rev-prase rev-parse &> /dev/null
     git config --global alias.st status &> /dev/null
 
     git config --global color.ui auto &> /dev/null
@@ -235,6 +236,8 @@ unset Tmux_Info
 if [ $(which --skip-alias tmux 2> /dev/null) ]; then
     if [ -r "${User_Dir}/.tmux.conf" ]; then
         Tmux_Info+="[${User_Dir}/.tmux.conf]"
+        alias tmu=tmux
+        alias tmus=tmux
         alias tmux="tmux -f ${User_Dir}/.tmux.conf"
     fi
 fi
@@ -395,9 +398,9 @@ for Editor in ${Editors[@]}; do
     if [ $(which --skip-alias $Editor 2> /dev/null) ]; then
         export EDITOR="$(which --skip-alias $Editor 2> /dev/null)"
         if [ -r "${User_Dir}/.vimrc" ]; then
-                alias vi="$EDITOR -u ${User_Dir}/.vimrc --cmd \"let User_Name='$User_Name'\" --cmd \"let User_Dir='$User_Dir'\""
+            alias vi="$EDITOR -u ${User_Dir}/.vimrc --cmd \"let User_Name='$User_Name'\" --cmd \"let User_Dir='$User_Dir'\""
         else
-                alias vi="$EDITOR"
+            alias vi="$EDITOR"
         fi
         break
     fi
@@ -409,11 +412,13 @@ unset Editor Editors
 ##
 
 if [ $(which --skip-alias git 2> /dev/null) ]; then
-        export GIT_EDITOR=$EDITOR
-        alias git-config=Git_Config
-        alias gc=Git_Config
-        alias git-hub-dotfiles=Git_Hub_Dotfiles
-        alias dotfiles=Git_Hub_Dotfiles
+    export GIT_EDITOR=$EDITOR
+    alias get=git
+    alias giit=git
+    alias git-config=Git_Config
+    alias gc=Git_Config
+    alias git-hub-dotfiles=Git_Hub_Dotfiles
+    alias dotfiles=Git_Hub_Dotfiles
 fi
 
 ##
