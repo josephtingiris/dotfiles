@@ -5,12 +5,12 @@
 !.bash_logout
 !.bash_profile
 !.bashrc
+!.bashrc.root
 
 # except some .config directories
 !/.config
 /.config/*
 !/.config/nvim
-#/.config/nvim/plugged
 
 # except .github directory
 !/.github
@@ -19,8 +19,18 @@
 # except .gitignore
 !.gitignore
 
+# except some .local directories
+!/.local
+/.local/*
+!/.local/share
+/.local/share/*
+!/.local/share/nvim
+
 # except .npmrc
 !.npmrc
+
+# except .screenrc
+!.screenrc
 
 # except .tmux.conf
 !.tmux.conf
@@ -32,8 +42,10 @@
 !/.vim
 !/.vim/*
 .vim/.netrwhist
-.vim/plugged/
-#.vim/indent/
+.vim/plug
+.vim/shada
+.vim/swap
+#.vim/indent
 
 # except etc/profile.d directory
 !/etc

@@ -1,15 +1,21 @@
+if (!exists("User_Dir"))
+    let User_Dir="~"
+endif
+
 if has("autocmd")
 
     " https://github.com/junegunn/vim-pl
 
     " auto-install vim-plug
-    if empty(glob('~/.vim/autoload/plug.vim'))
-        silent !curl -fLo ~/.vim/autoload/plug.vim --create-dirs https://raw.githubusercontent.com/junegunn/vim-plug/master/plug.vim
+    if empty(glob(User_Dir.'/.vim/autoload/plug.vim'))
+        silent !curl -fLo  $HOME/.vim/autoload/plug.vim --create-dirs https://raw.githubusercontent.com/junegunn/vim-plug/master/plug.vim
         autocmd VimEnter * PlugInstall
     endif
 
     " autoload plugs
-    call plug#begin('~/.vim/plugged')
+    call plug#begin(User_Dir.'/.vim/plug')
+
+    " vim & neovim compatible
 
     " https://github.com/tpope/vim-sensible
     Plug 'tpope/vim-sensible'
@@ -17,36 +23,40 @@ if has("autocmd")
     " https://github.com/2072/PHP-Indenting-for-VIm
     Plug '2072/PHP-Indenting-for-VIm'
 
-    " https://github.com/suan/instant-markdown-d
-    " https://github.com/suan/vim-instant-markdown
-    "Plug 'suan/vim-instant-markdown'
+    if has('nvim')
+        " neovim compatible, only
 
-    " https://github.com/euclio/vim-markdown-composer
-    function! BuildComposer(info)
-        if a:info.status != 'unchanged' || a:info.force
-            if has('nvim')
+        " https://github.com/euclio/vim-markdown-composer
+        function! BuildComposer(info)
+            if a:info.status != 'unchanged' || a:info.force
                 !cargo build --release
-            else
-                !cargo build --release --no-default-features --features json-rpc
             endif
-        endif
-    endfunction
+        endfunction
+        Plug 'euclio/vim-markdown-composer', { 'do': function('BuildComposer') }
 
-    Plug 'euclio/vim-markdown-composer', { 'do': function('BuildComposer') }
+    else
+        " vim compatible, only
+
+        " https://github.com/suan/instant-markdown-d
+        " https://github.com/suan/vim-instant-markdown
+        Plug 'suan/vim-instant-markdown'
+        let g:markdown_fenced_languages = ['html', 'python', 'bash=sh']
+        let g:markdown_syntax_conceal = 0
+        let g:markdown_minlines = 100
+        let g:instant_markdown_autostart = 0    " Use :InstantMarkdownPreview to turn on
+
+    endif " has('nvim')
 
     call plug#end()
 
-
-    " https://github.com/suan/vim-instant-markdown
-    "let g:markdown_fenced_languages = ['html', 'python', 'bash=sh']
-    "let g:markdown_syntax_conceal = 0
-    "let g:markdown_minlines = 100
-    "let g:instant_markdown_autostart = 0    " Use :InstantMarkdownPreview to turn on
-
 endif " has("autocmd")
 
-" Function to restore cursor position, window position, and last search after running a command.
-function! Preserve(command)
+"
+" embedded functions that work with vi (compatible), vim, and neovim
+" 
+
+" restore cursor position, window position, and last search after running a command
+function! PreserveCursor(command)
     " Save the last search.
     let search = @/
 
@@ -72,13 +82,17 @@ function! Preserve(command)
     call setpos('.', cursor_position)
 endfunction
 
-" Function to re-indent the whole buffer.
-function! Indent()
-    call Preserve('normal gg=G')
+" preserve cursor et al and indent the whole buffer
+function! IndentBuffer()
+    call PreserveCursor('normal gg=G')
 endfunction
 
-" Keyboard preferences
-noremap <F5> :call Indent()<CR>
+"
+" preferences
+"
+
+" keyboard preferences
+noremap <F5> :call IndentBuffer()<CR>
 noremap <F7> :set nopaste<CR>
 noremap <F8> :set paste<CR>
 noremap <F10> <Esc>:setlocal spell spelllang=en_us<CR>
@@ -114,10 +128,12 @@ set t_Co=256
 syntax on
 syntax enable
 
+autocmd VimEnter * "set term=$TERM"
+
 " ftplugin preferences
-au BufNewFile,BufRead *.d set filetype=sh
-au BufNewFile,BufRead *.md set filetype=markdown
-au BufNewFile,BufRead *.web set filetype=sh
-au BufNewFile,BufRead http* set filetype=xml syntax=apache
-au BufNewFile,BufRead named*.conf set filetype=named
-au BufNewFile,BufRead *.zone set filetype=bindzone
+autocmd BufNewFile,BufRead *.d set filetype=sh
+autocmd BufNewFile,BufRead *.md set filetype=markdown
+autocmd BufNewFile,BufRead *.web set filetype=sh
+autocmd BufNewFile,BufRead http* set filetype=xml syntax=apache
+autocmd BufNewFile,BufRead named*.conf set filetype=named
+autocmd BufNewFile,BufRead *.zone set filetype=bindzone
