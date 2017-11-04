@@ -414,6 +414,7 @@ unset Editor Editors
 if [ $(which --skip-alias git 2> /dev/null) ]; then
     export GIT_EDITOR=$EDITOR
     alias get=git
+    alias gi=git
     alias giit=git
     alias git-config=Git_Config
     alias gc=Git_Config
