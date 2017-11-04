@@ -7,10 +7,12 @@ alias cp='cp -i'
 alias mv='mv -i'
 
 # Don't allow direct root logins via ssh
-if [ "$SSH_TTY" != "" ]; then
-    echo "Don't log in as root; Log in as a user and use sudo"
-    echo
-    exit
+if [ "$USER" == "root" ] || [ "$LOGNAME" == "root" ]; then
+    if [ "$SSH_TTY" != "" ]; then
+        echo "Don't log in as root; Log in as a user and use sudo"
+        echo
+        exit
+    fi
 fi
 
 # Source global definitions
@@ -18,7 +20,7 @@ if [ -f /etc/bashrc ]; then
     . /etc/bashrc
 fi
 
-# Source true username definitions
+# Source shared username definitions
 if [ -x /usr/bin/logname ]; then
     UserName=$(/usr/bin/logname 2> /dev/null)
 else
