@@ -1,5 +1,4 @@
 if (!exists("User_Dir"))
-        :exec ":source " . g:User_Dir . "/.vimrc"
     let User_Dir="~"
 endif
 
