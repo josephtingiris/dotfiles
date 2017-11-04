@@ -17,6 +17,11 @@ if has("autocmd")
 
     " vim & neovim compatible
 
+    " https://github.com/Raimondi/delimitMate
+    Plug 'Raimondi/delimitMate'
+    let delimitMate_matchpairs = "(:),[:],{:},<:>"
+    au FileType vim,html let b:delimitMate_matchpairs = "(:),[:],{:},<:>"
+
     " https://github.com/2072/PHP-Indenting-for-VIm
     Plug '2072/PHP-Indenting-for-VIm'
 
