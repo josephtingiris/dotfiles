@@ -20,6 +20,9 @@ if has("autocmd")
     " https://github.com/2072/PHP-Indenting-for-VIm
     Plug '2072/PHP-Indenting-for-VIm'
 
+    " https://github.com/scrooloose/nerdtree
+    Plug 'scrooloose/nerdtree'
+
     " https://github.com/tpope/vim-fugitive
     Plug 'tpope/vim-fugitive'
 
@@ -59,6 +62,11 @@ endif " has("autocmd")
 " embedded functions that work with vi (compatible), vim, and neovim
 " 
 
+" preserve cursor et al and indent the whole buffer
+function! IndentBuffer()
+    call PreserveCursor('normal gg=G')
+endfunction
+
 " restore cursor position, window position, and last search after running a command
 function! PreserveCursor(command)
     " Save the last search.
@@ -75,7 +83,7 @@ function! PreserveCursor(command)
     " Execute the command.
     execute a:command
 
-   " Restore the last search.
+    " Restore the last search.
     let @/ = search
 
     " Restore the previous window position.
@@ -86,10 +94,16 @@ function! PreserveCursor(command)
     call setpos('.', cursor_position)
 endfunction
 
-" preserve cursor et al and indent the whole buffer
-function! IndentBuffer()
-    call PreserveCursor('normal gg=G')
-endfunction
+" reconfigure (source) .vimrc
+if !exists("*Reconfigure")
+    function Reconfigure()
+        :exec ":source " . g:User_Dir . "/.vimrc"
+        if has("gui_running")
+            :exec ":source " . g:User_Dir . "/.gvimrc"
+        endif
+    endfunction
+    command! Reconfigure call Reconfigure()
+endif
 
 "
 " preferences
@@ -102,6 +116,9 @@ noremap <F8> :set paste<CR>
 noremap <F10> <Esc>:setlocal spell spelllang=en_us<CR>
 noremap <F11> <Esc>:setlocal nospell<CR>
 noremap <F12> <Esc>:syntax sync fromstart<CR>
+map <Leader>q :q<CR>
+map <Leader>f :NERDTreeToggle<CR>
+map <Leader>s :call Reconfigure()<CR>
 
 " setting preferences
 set autoindent                  " Copy indent from current line when starting a new line
@@ -132,6 +149,9 @@ set t_Co=256
 syntax on
 syntax enable
 
+" startup preferences
+autocmd StdinReadPre * let s:std_in=1
+autocmd VimEnter * if argc() == 0 && !exists("s:std_in") | NERDTree | endif
 autocmd VimEnter * "set term=$TERM"
 
 " ftplugin preferences
