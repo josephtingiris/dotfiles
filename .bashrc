@@ -102,7 +102,7 @@ function Git_Config() {
 # keep my home directory dotfiles up to date
 function Git_Hub_Dotfiles() {
 
-    local cwd=$(/usr/bin/pwd)
+    local cwd=$(/usr/bin/pwd 2> /dev/null)
     cd ~
 
     if [ -d ~/.git ]; then
@@ -141,17 +141,17 @@ function Git_Hub_Dotfiles() {
 }
 
 ##
-### who am i (really)
+### determine true username
 ##
 
 if [ $(which --skip-alias logname 2> /dev/null) ]; then
-    export Whom=$(logname 2> /dev/null)
+    export User_Name=$(logname 2> /dev/null)
 else
     if [ $(which --skip-alias who 2> /dev/null) ]; then
-        export Whom=$(who -m 2> /dev/null)
+        export User_Name=$(who -m 2> /dev/null)
     fi
 fi
-if [ "$Whom" != "" ]; then export Who="${Whom%% *}"; fi
+if [ "$User_Name" != "" ]; then export Who="${User_Name%% *}"; fi
 
 if [ "$Who" == "" ] && [ "$USER" != "" ]; then export Who=$USER; fi
 if [ "$Who" == "" ] && [ "$LOGNAME" != "" ]; then export Who=$LOGNAME; fi
@@ -159,12 +159,12 @@ if [ "$Who" == "" ]; then
     export Who=UNKNOWN
 else
     if [ $(which --skip-alias getent 2> /dev/null) ]; then
-        Who_Home=$(getent passwd $Who | awk -F: '{print $6}')
+        User_Dir=$(getent passwd $Who | awk -F: '{print $6}')
     fi
 fi
 
-if [ "${Who_Home}" == "" ]; then
-    Who_Home="~"
+if [ "${User_Dir}" == "" ]; then
+    User_Dir="~"
 fi
 
 export Apex_User=${Who}@$HOSTNAME
@@ -233,9 +233,9 @@ fi
 
 unset Tmux_Info
 if [ $(which --skip-alias tmux 2> /dev/null) ]; then
-    if [ -r "${Who_Home}/.tmux.conf" ]; then
-        Tmux_Info+="[${Who_Home}/.tmux.conf]"
-        alias tmux="tmux -f ${Who_Home}/.tmux.conf"
+    if [ -r "${User_Dir}/.tmux.conf" ]; then
+        Tmux_Info+="[${User_Dir}/.tmux.conf]"
+        alias tmux="tmux -f ${User_Dir}/.tmux.conf"
     fi
 fi
 
@@ -394,8 +394,8 @@ Editors=(nvim vim vi)
 for Editor in ${Editors[@]}; do
     if [ $(which --skip-alias $Editor 2> /dev/null) ]; then
         export EDITOR="$(which --skip-alias $Editor 2> /dev/null)"
-        if [ -r "${Who_Home}/.vimrc" ]; then
-                alias vi="$EDITOR -u ${Who_Home}/.vimrc"
+        if [ -r "${User_Dir}/.vimrc" ]; then
+                alias vi="$EDITOR -u ${User_Dir}/.vimrc --cmd \"let User_Name='$User_Name'\" --cmd \"let User_Dir='$User_Dir'\""
         else
                 alias vi="$EDITOR"
         fi
@@ -436,7 +436,7 @@ if [ "$PS1" != "" ]; then
         echo
     fi
 
-    echo -n "${Who_Home}/.bashrc $Bashrc_Version"
+    echo -n "${User_Dir}/.bashrc $Bashrc_Version"
     if [ "$Tmux_Info" ]; then
         echo -n " $Tmux_Info"
     fi
