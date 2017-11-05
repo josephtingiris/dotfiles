@@ -398,7 +398,7 @@ for Editor in ${Editors[@]}; do
     if [ $(which --skip-alias $Editor 2> /dev/null) ]; then
         export EDITOR="$(which --skip-alias $Editor 2> /dev/null)"
         if [ -r "${User_Dir}/.vimrc" ]; then
-            alias vi="$EDITOR -u ${User_Dir}/.vimrc --cmd \"let User_Name='$User_Name'\" --cmd \"let User_Dir='$User_Dir'\""
+            alias vi="HOME=\"${User_Dir}\" $EDITOR -u ${User_Dir}/.vimrc --cmd \"let User_Name='$User_Name'\" --cmd \"let User_Dir='$User_Dir'\""
         else
             alias vi="$EDITOR"
         fi
