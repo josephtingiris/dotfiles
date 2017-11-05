@@ -16,15 +16,15 @@ fi
 
 Auto_Path="./:"
 
+# bin & sbin from the directories, in the following array, are automatically added in the order given
+Find_Paths=("$HOME" "/apex" "/base")
+
 # add custom paths, in the order given in ~/.Auto_Path, before automatically finding bin paths
 if [ -r ~/.Auto_Path ]; then
     while read Auto_Path_Line; do
         Find_Paths+=("$Auto_Path_Line")
-    done <<< "$(cat ~/.Auto_Path | grep -v ^\#)"
+    done <<< "$(cat ~/.Auto_Path | grep -v '^#')"
 fi
-
-# bin & sbin from the directories, in the following array, are automatically added in the order given
-Find_Paths=("$HOME" "/apex" "/base")
 
 for Find_Path in ${Find_Paths[@]}; do
     if [ -d /${Find_Path} ] && [ -r /${Find_Path} ]; then

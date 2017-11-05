@@ -32,6 +32,9 @@ if has("autocmd")
     autocmd VimEnter * if argc() == 0 && !exists("s:std_in") | NERDTree | endif
     map <Leader>f :NERDTreeToggle<CR>
 
+    " https://github.com/chrisbra/vim-sh-indent
+    Plug 'chrisbra/vim-sh-indent'
+
     " https://github.com/Xuyuanp/nerdtree-git-plugin
     Plug 'Xuyuanp/nerdtree-git-plugin'
 
@@ -120,6 +123,8 @@ endif
 "
 " preferences
 "
+
+filetype indent on
 
 " keyboard preferences
 noremap <F5> :call IndentBuffer()<CR>
