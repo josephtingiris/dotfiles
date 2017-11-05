@@ -142,6 +142,7 @@ set hidden                      " Allow hidden buffers
 set history=100                 " Default = 8
 set linebreak                   " Only wrap at sensible places
 set list listchars=tab:▷\ ,trail:⋅,nbsp:⋅
+set nocompatible
 set nolist                      " list disables line break
 "set number                      " Line numbers
 set shiftwidth=0                " Return value for shiftwidth(); Zero sets it to the value of tabstop
