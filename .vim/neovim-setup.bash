@@ -32,5 +32,5 @@ echo "Re-source environment & run ..."
 echo
 echo "pip2 install --user --upgrade neovim"
 echo "pip3 install --user --upgrade neovim"
-echo "gem install neovim"
+echo "gem install --user-install neovim"
 echo

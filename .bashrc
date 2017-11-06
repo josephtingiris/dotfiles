@@ -22,7 +22,7 @@ Find_Paths=("$HOME" "/apex" "/base")
 # add custom paths, in the order given in ~/.Auto_Path, before automatically finding bin paths
 if [ -r ~/.Auto_Path ]; then
     while read Auto_Path_Line; do
-        Find_Paths+=("$Auto_Path_Line")
+        Find_Paths+=($(eval "echo $Auto_Path_Line"))
     done <<< "$(cat ~/.Auto_Path | grep -v '^#')"
 fi
 
