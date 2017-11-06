@@ -105,7 +105,7 @@ endif " has("autocmd")
 
 "
 " functions
-" 
+"
 
 " preserve cursor et al and indent the whole buffer
 if !exists("*IndentBuffer")
@@ -212,6 +212,7 @@ map <Leader>t gt
 set autoindent                              " copy indet from current line when starting a new line
 set autoread                                " automatically re-read files that have changed outside of VIM
 set backspace=indent,eol,start              " allow backspace in insert mode
+set clipboard=unnamedplus                   " Set default clipboard name
 set complete-=i
 set noerrorbells                            " turn off error bells
 set expandtab                               " use spaces for tabs, not <Tab>
