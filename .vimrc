@@ -187,7 +187,7 @@ autocmd BufNewFile,BufRead named*.conf set filetype=named
 autocmd BufNewFile,BufRead *.zone set filetype=bindzone
 
 " autocmd Vim preferences
-autocmd VimEnter * "set term=$TERM"
+"autocmd VimEnter * "set term=$TERM"
 
 " color preferences
 colorscheme elflord

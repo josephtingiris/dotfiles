@@ -200,10 +200,6 @@ alias sd='screen -S $(basename $(pwd))'
 ### custom, color prompt
 ##
 
-if [ "$TMUX" != "" ]; then
-    export TERM=screen-256color
-fi
-
 if [ "$TERM" == "ansi" ] || [[ "$TERM" == *"color" ]] || [[ "$TERM" == *"xterm" ]]; then
     #export PS1="\[$(tput setaf 0)\][\u@\h \w]$PS \[$(tput sgr0)\]" # black
     #export PS1="\[$(tput setaf 1)\][\u@\h \w]$PS \[$(tput sgr0)\]" # dark red
