@@ -32,13 +32,21 @@ if has("autocmd")
 
             " vim & neovim compatible
 
+            " https://github.com/2072/PHP-Indenting-for-VIm
+            Plug '2072/PHP-Indenting-for-VIm'
+
+            " https://github.com/chrisbra/vim-sh-indent
+            Plug 'chrisbra/vim-sh-indent'
+
+            " https://github.com/ctrlpvim/ctrlp.vim
+            Plug 'ctrlpvim/ctrlp.vim'
+            let g:ctrlp_dont_split = 'NERD'
+            let g:ctrlp_show_hidden = 1
+
             " https://github.com/Raimondi/delimitMate
             Plug 'Raimondi/delimitMate'
             let delimitMate_matchpairs = "(:),[:],{:},<:>"
             au FileType vim,html let b:delimitMate_matchpairs = "(:),[:],{:},<:>"
-
-            " https://github.com/2072/PHP-Indenting-for-VIm
-            Plug '2072/PHP-Indenting-for-VIm'
 
             " https://github.com/scrooloose/nerdtree
             Plug 'scrooloose/nerdtree'
@@ -54,22 +62,19 @@ if has("autocmd")
             let g:syntastic_check_on_open = 1
             let g:syntastic_check_on_wq = 0
 
-            " https://github.com/chrisbra/vim-sh-indent
-            Plug 'chrisbra/vim-sh-indent'
+            " https://github.com/tpope/vim-fugitive
+            Plug 'tpope/vim-fugitive'
 
-            " https://github.com/Xuyuanp/nerdtree-git-plugin
-            Plug 'Xuyuanp/nerdtree-git-plugin'
+            " https://github.com/tpope/vim-sensible
+            Plug 'tpope/vim-sensible'
 
             " https://github.com/vim-airline/vim-airline
             Plug 'vim-airline/vim-airline'
             "let g:airline_powerline_fonts = 1
             let g:airline_detect_spellang=0
 
-            " https://github.com/tpope/vim-fugitive
-            Plug 'tpope/vim-fugitive'
-
-            " https://github.com/tpope/vim-sensible
-            Plug 'tpope/vim-sensible'
+            " https://github.com/Xuyuanp/nerdtree-git-plugin
+            Plug 'Xuyuanp/nerdtree-git-plugin'
 
             if has('nvim')
                 " neovim compatible, only
