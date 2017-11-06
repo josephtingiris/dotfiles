@@ -42,14 +42,10 @@ if has("autocmd")
 
             " https://github.com/scrooloose/nerdtree
             Plug 'scrooloose/nerdtree'
-            if exists(":NERDTree")
-                let NERDTreeShowHidden=1
-                autocmd StdinReadPre * let s:std_in=1
-                autocmd VimEnter * if argc() == 0 && !exists("s:std_in") | NERDTree | endif
-            endif
-            if exists(":NERDTreeToggle")
-                map <Leader>f :NERDTreeToggle<CR>
-            endif
+            let NERDTreeShowHidden=1
+            autocmd StdinReadPre * let s:std_in=1
+            autocmd VimEnter * if argc() == 0 && !exists("s:std_in") | NERDTree | endif
+            map <Leader>f :NERDTreeToggle<CR>
 
             " https://github.com/chrisbra/vim-sh-indent
             Plug 'chrisbra/vim-sh-indent'
