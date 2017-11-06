@@ -47,6 +47,13 @@ if has("autocmd")
             autocmd VimEnter * if argc() == 0 && !exists("s:std_in") | NERDTree | endif
             map <Leader>f :NERDTreeToggle<CR>
 
+            " https://github.com/vim-syntastic/syntastic
+            Plug 'scrooloose/syntastic'
+            let g:syntastic_always_populate_loc_list = 1
+            let g:syntastic_auto_loc_list = 1
+            let g:syntastic_check_on_open = 1
+            let g:syntastic_check_on_wq = 0
+
             " https://github.com/chrisbra/vim-sh-indent
             Plug 'chrisbra/vim-sh-indent'
 
