@@ -11,6 +11,7 @@ fi
 Yum_Packages=(
 centos-release-scl 
 epel-release
+ctags-etags
 neovim
 rh-python36-python-pip
 rh-ruby24-ruby-devel
