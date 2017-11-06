@@ -57,6 +57,11 @@ if has("autocmd")
             " https://github.com/Xuyuanp/nerdtree-git-plugin
             Plug 'Xuyuanp/nerdtree-git-plugin'
 
+            " https://github.com/vim-airline/vim-airline
+            Plug 'vim-airline/vim-airline'
+            "let g:airline_powerline_fonts = 1
+            let g:airline_detect_spellang=0
+
             " https://github.com/tpope/vim-fugitive
             Plug 'tpope/vim-fugitive'
 
