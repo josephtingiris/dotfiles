@@ -1,6 +1,6 @@
 # .bashrc
 
-Bashrc_Version="20171108, joseph.tingiris@gmail.com"
+Bashrc_Version="20171109, joseph.tingiris@gmail.com"
 
 ##
 ### source global definitions
@@ -428,6 +428,14 @@ if [ $(which --skip-alias git 2> /dev/null) ]; then
     alias gc=Git_Config
     alias git-hub-dotfiles=Git_Hub_Dotfiles
     alias dotfiles=Git_Hub_Dotfiles
+fi
+
+##
+### set more/less
+##
+
+if [ $(which --skip-alias less 2> /dev/null) ]; then
+    alias more='less -Ms -T.tags -U -x4'
 fi
 
 ##
