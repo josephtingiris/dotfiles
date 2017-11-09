@@ -1,6 +1,6 @@
 # .bashrc
 
-Bashrc_Version="20171104, joseph.tingiris@gmail.com"
+Bashrc_Version="20171108, joseph.tingiris@gmail.com"
 
 ##
 ### source global definitions
@@ -386,6 +386,14 @@ fi
 
 if [ "$USER" != "root" ]; then
     umask u+rw,g-rwx,o-rwx
+fi
+
+##
+### set ctags
+##
+
+if [ $(which --skip-alias ctags 2> /dev/null) ]; then
+    alias ctags="ctags --fields=+l --c-kinds=+p --c++-kinds=+p -f .tags"
 fi
 
 ##

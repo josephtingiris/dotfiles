@@ -12,6 +12,9 @@
 /.config/*
 !/.config/nvim
 
+# except .ctags
+!.ctags
+
 # except .github directory
 !/.github
 !/.github/*
@@ -45,6 +48,7 @@
 .vim/plug
 .vim/shada
 .vim/swap
+.vim/*tags
 #.vim/indent
 
 # except etc/profile.d directory

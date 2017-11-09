@@ -115,6 +115,35 @@ endif " has("autocmd")
 " functions
 "
 
+" call ctags a few different ways
+function! CtagsUpdate(scope)
+    let ctags_command=""
+
+    if a:scope == 'directory'
+        " tags for all files in the directory of the buffer
+        let ctags_command="!ctags --fields=+l -f " .expand('%:p:h'). "/.tags ".expand('%:p:h')."/*"
+    elseif a:scope == 'recursive'
+        " tags for all files in the directory of the buffer, recursively
+        let ctags_command="!ctags --fields=+l -f " .expand('%:p:h'). "/.tags ".expand('%:p:h')."/. -R"
+    else
+        " tags for the current file in the buffer
+        let ctags_command="!ctags --fields=+l --append --language-force=" . &filetype . " -f " .expand('%:p:h'). "/.tags " . expand('%:p') . " &> /dev/null"
+    endif
+
+    " silently execute the command
+    :silent execute l:ctags_command | execute 'redraw!'
+
+    " echo something useful
+    echo "Updated (" . a:scope . ") tags in " . expand('%:p:h') . "/.tags"
+endfunction
+set tags+=.tags;/                           " search backwards for .tags (too)
+command! CtagsFile call CtagsUpdate('file')
+command! CtagsDirectory call CtagsUpdate('directory')
+command! CtagsRecursive call CtagsUpdate('recursive')
+map <Leader>ctd :CtagsDirectory<CR>
+map <Leader>ctf :CtagsFile<CR>
+map <Leader>ctr :CtagsRecursive<CR>
+
 " preserve cursor et al and indent the whole buffer
 if !exists("*IndentBuffer")
     function! IndentBuffer()
@@ -155,9 +184,9 @@ endif
 " reconfigure/reload (source) .vimrc
 if !exists("*Reconfigure")
     function Reconfigure()
-        :exec ":source " . g:User_Dir . "/.vimrc"
+        :execute ":source " . g:User_Dir . "/.vimrc"
         if has("gui_running")
-            :exec ":source " . g:User_Dir . "/.gvimrc"
+            :execute ":source " . g:User_Dir . "/.gvimrc"
         endif
     endfunction
     command! Reconfigure call Reconfigure()
@@ -221,10 +250,11 @@ set autoindent                              " copy indet from current line when 
 set autoread                                " automatically re-read files that have changed outside of VIM
 set backspace=indent,eol,start              " allow backspace in insert mode
 set clipboard=unnamedplus                   " Set default clipboard name
-set complete-=i
+set complete-=i                             " do not complete for included files; .=current buffer, w=buffers in other windows, b=other loaded buffers, u=unloaded buffers, t=tags, i=include files
 set noerrorbells                            " turn off error bells
 set expandtab                               " use spaces for tabs, not <Tab>
-set formatoptions=tcqj
+set exrc                                    " source .exrc in the current directory (use .exrc for both vim/nvim compatibility, not .vimrc or .nvimrc)
+set formatoptions=tcqj                      " t=auto-wrap text, c=auto-wrap comments, q=allow comments formatting with, j=remove comment leader when joining lines
 set hidden                                  " allow hidden buffers
 set history=1000                            " default = 8
 set laststatus=2                            " use the second statusline
@@ -233,11 +263,11 @@ set list listchars=tab:▷\ ,trail:⋅,nbsp:⋅
 set nocompatible                            " make vim behave in a more useful way
 "set number                                  " .ine numbers
 set ruler                                   " show the line and column number of the cursor position
+set secure                                  " shell and write commands are not allowed in .nvimrc and .exrc in the current directory
 set shiftwidth=0                            " return value for shiftwidth(); zero sets it to the value of tabstop
 set showcmd                                 " show (partial) command in the last line of the screen
 set smartindent                             " smart autoindent when starting a new line
 set smarttab                                " when on a <Tab> in front of a line, insert lanks according to shiftwidth
-set tags=./tags;,tags                       " set tag file search preference
 set tabstop=4                               " default tabs are too big
 set textwidth=0                             " prevent vim from automatically inserting line breaks
 set ttyfast                                 " indicates a fast terminal connection

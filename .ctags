@@ -1,0 +1,10 @@
+# /usr/bin/ctags --fields=+l --c-kinds=+p --c++-kinds=+p --sort=no -f .tags
+-f .tags
+--append
+--exclude=.git/*
+--exclude=.svn/*
+--exclude=log/*
+--exclude=tmp/*
+--exclude=db/*
+--exclude=node_modules/*
+--exclude=vendor/*
