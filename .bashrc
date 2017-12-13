@@ -1,6 +1,6 @@
 # .bashrc
 
-Bashrc_Version="20171109, joseph.tingiris@gmail.com"
+Bashrc_Version="20171213, joseph.tingiris@gmail.com"
 
 ##
 ### source global definitions
@@ -69,9 +69,27 @@ fi
 
 Auto_Path+="/usr/local/bin:/usr/local/sbin:/usr/bin:/usr/sbin:/bin:/sbin"
 
-export PATH=$Auto_Path
+export PATH=$Auto_Path:${PATH}
 
 unset Auto_Path
+
+OIFS=$IFS
+IFS=':' read -ra Auto_Path <<< "$PATH"
+Uniq_Path=""
+for Dir_Path in "${Auto_Path[@]}"; do
+    In_Path=$(echo "$Uniq_Path" | egrep -e "^${Dir_Path}:|:${Dir_Path}:|${Dir_Path}$")
+    if [ "$In_Path" == "" ] && ([ -d "$Dir_Path" ] || [ -h "$Dir_Path" ]); then
+        Uniq_Path+="$Dir_Path:"
+    fi
+    unset In_Path
+done
+unset Dir_Path
+IFS=$OIFS
+Uniq_Path=$(echo $Uniq_Path | sed -e "/::/s//:/g" -e "/:$/s///g")
+
+export PATH="$Uniq_Path"
+
+unset Uniq_Path
 
 ##
 ### functions
