@@ -15,12 +15,6 @@ if [ "$USER" == "root" ] || [ "$LOGNAME" == "root" ]; then
     fi
 fi
 
-# Source global definitions
-if [ -f /etc/bashrc ]; then
-    . /etc/bashrc
-fi
-
-# Source shared username definitions
 if [ -x /usr/bin/logname ]; then
     UserName=$(/usr/bin/logname 2> /dev/null)
 else
@@ -29,8 +23,16 @@ else
     fi
 fi
 
-if [ "$UserName" != "" ] && [ -r /home/$UserName/.bashrc ] ; then
-    . /home/$UserName/.bashrc
+if [ "$UserName" == "$USER" ]; then
+    # Source global definitions
+    if [ -f /etc/bashrc ]; then
+        . /etc/bashrc
+    fi
+else
+    # Source shared username definitions
+    if [ "$UserName" != "" ] && [ -r /home/$UserName/.bashrc ] ; then
+        . /home/$UserName/.bashrc
+    fi
 fi
 
 # mimic /etc/profile.d for user specific environment
