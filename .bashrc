@@ -1,6 +1,6 @@
 # .bashrc
 
-Bashrc_Version="20171213, joseph.tingiris@gmail.com"
+Bashrc_Version="20171222, joseph.tingiris@gmail.com"
 
 ##
 ### source global definitions
@@ -37,15 +37,15 @@ for Find_Path in ${Find_Paths[@]}; do
 done
 unset Find_Path Find_Paths
 
+# after .Auto_Path, put /opt/rh bin & sbin directories in the path too
 # rhscl; see https://wiki.centos.org/SpecialInterestGroup/SCLo/CollectionsList
-# e.g. yum --enablerepo=extras install centos-release-scl && yum install rh-php56
 if [ -d /opt/rh ]; then
-    Rhscl_Roots=$(find /opt/rh/ -type f -name enable 2> /dev/null | sort -V)
+    Rhscl_Roots=$(find /opt/rh/ -type f -name enable 2> /dev/null | sort -Vr)
     for Rhscl_Enable in $Rhscl_Roots; do
         if [ -r "$Rhscl_Enable" ]; then
-            Unsets=$(cat "$Rhscl_Enable" | grep ^export 2> /dev/null | awk -F= '{print $1}' 2> /dev/null | awk '{print $2}' 2> /dev/null | grep -v ^PATH$ | sort -u)
-            for Unset in $Unsets; do
-                eval "unset $Unset"
+            Unset_Variables=$(cat "$Rhscl_Enable" | grep ^export 2> /dev/null | awk -F= '{print $1}' 2> /dev/null | awk '{print $2}' 2> /dev/null | grep -v ^PATH$ | sort -u)
+            for Unset_Variable in $Unset_Variables; do
+                eval "unset $Unset_Variable"
             done
         fi
     done
