@@ -78,7 +78,7 @@ if has("autocmd")
             let g:php_cs_fixer_cache = '/dev/null'
             let g:php_cs_fixer_rules = "@PSR1,@PSR2,@Symfony,combine_consecutive_unsets,heredoc_to_nowdoc,no_useless_return,ordered_class_elements"
             let g:php_cs_fixer_rules = '{"concat_space": {"spacing": "one"}}'
-            autocmd BufWritePost *.php call PhpCsFixerFixFile()
+            "autocmd BufWritePost *.php call PhpCsFixerFixFile()
 
             " https://github.com/Xuyuanp/nerdtree-git-plugin
             Plug 'Xuyuanp/nerdtree-git-plugin'
