@@ -1,6 +1,6 @@
 # .bashrc
 
-Bashrc_Version="20171222, joseph.tingiris@gmail.com"
+Bashrc_Version="20180111, joseph.tingiris@gmail.com"
 
 ##
 ### source global definitions
@@ -211,6 +211,7 @@ alias l='ls -lFhart'
 alias ls='ls --color=tty'
 alias mv='mv -i'
 alias rm='rm -i'
+alias root='sudo su -'
 alias s='source ~/.bashrc'
 alias sd='screen -S $(basename $(pwd))'
 
