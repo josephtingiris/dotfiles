@@ -1,6 +1,6 @@
 # .bashrc
 
-Bashrc_Version="20180111, joseph.tingiris@gmail.com"
+Bashrc_Version="20180208, joseph.tingiris@gmail.com"
 
 ##
 ### source global definitions
@@ -14,7 +14,7 @@ fi
 ### set PATH automatically (first)
 ##
 
-Auto_Path="./:"
+unset Auto_Path
 
 # bin & sbin from the directories, in the following array, are automatically added in the order given
 Find_Paths=("$HOME" "/apex" "/base")
@@ -30,7 +30,7 @@ for Find_Path in ${Find_Paths[@]}; do
     if [ -d /${Find_Path} ] && [ -r /${Find_Path} ]; then
         Find_Bins=$(find ${Find_Path}/ -maxdepth 2 -type d -name bin -printf "%d %p\n" -o -name sbin -printf "%d %p\n" 2> /dev/null | sort -n | awk '{print $NF}')
         for Find_Bin in $Find_Bins; do
-            Auto_Path+="$Find_Bin:"
+            Auto_Path+=":$Find_Bin"
         done
         unset Find_Bin Find_Bins
     fi
@@ -59,7 +59,7 @@ if [ -d /opt/rh ]; then
         Rhscl_Bins="usr/local/bin usr/local/sbin usr/bin usr/sbin bin sbin"
         for Rhscl_Bin in $Rhscl_Bins; do
             if [ -d "$Rhscl_Root/$Rhscl_Bin" ]; then
-                Auto_Path+="$Rhscl_Root/$Rhscl_Bin:"
+                Auto_Path+=":$Rhscl_Root/$Rhscl_Bin"
             fi
         done
         unset Rhscl_Bin Rhscl_Bins  Rhscl_Enable Rhscl_Root
@@ -67,7 +67,8 @@ if [ -d /opt/rh ]; then
     unset Rhscl_Enable Rhscl_Roots
 fi
 
-Auto_Path+="/usr/local/bin:/usr/local/sbin:/usr/bin:/usr/sbin:/bin:/sbin"
+# finally, add these to the end of Auto_Path
+Auto_Path+=":/usr/local/bin:/usr/local/sbin:/usr/bin:/usr/sbin:/bin:/sbin"
 
 export PATH=$Auto_Path:${PATH}
 
@@ -75,21 +76,31 @@ unset Auto_Path
 
 OIFS=$IFS
 IFS=':' read -ra Auto_Path <<< "$PATH"
-Uniq_Path=""
+Uniq_Path="./"
 for Dir_Path in "${Auto_Path[@]}"; do
-    In_Path=$(echo "$Uniq_Path" | egrep -e "^${Dir_Path}:|:${Dir_Path}:|${Dir_Path}$")
-    if [ "$In_Path" == "" ] && ([ -d "$Dir_Path" ] || [ -h "$Dir_Path" ]); then
-        Uniq_Path+="$Dir_Path:"
+    if ! [[ "${Uniq_Path}" =~ (^|:)${Dir_Path}($|:) ]]; then
+        if [ -r "$Dir_Path" ]; then
+            Uniq_Path+=":$Dir_Path"
+        fi
     fi
-    unset In_Path
 done
 unset Dir_Path
 IFS=$OIFS
-Uniq_Path=$(echo $Uniq_Path | sed -e "/::/s//:/g" -e "/:$/s///g")
 
 export PATH="$Uniq_Path"
 
 unset Uniq_Path
+
+Man_Paths=()
+Man_Paths+=(/usr/local/share/man)
+Man_Paths+=(/usr/share/man)
+for Man_Path in ${Man_Paths[@]}; do
+    if ! [[ "${MANPATH}" =~ (^|:)${Man_Path}($|:) ]]; then
+        if [ -r "$Man_Path" ]; then
+            export MANPATH+=":$Man_Path"
+        fi
+    fi
+done
 
 ##
 ### functions
