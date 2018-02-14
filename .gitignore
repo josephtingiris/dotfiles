@@ -22,6 +22,9 @@
 # except .gitignore
 !.gitignore
 
+# except .gemrc
+!.gemrc
+
 # except some .local directories
 !/.local
 /.local/*
