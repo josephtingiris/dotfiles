@@ -29,9 +29,11 @@ if [ "$UserName" == "$USER" ]; then
         . /etc/bashrc
     fi
 else
-    # Source shared username definitions
-    if [ "$UserName" != "" ] && [ -r /home/$UserName/.bashrc ] ; then
-        . /home/$UserName/.bashrc
+    if [ ! -f ~/.norc ]; then
+        # Source shared username definitions
+        if [ "$UserName" != "" ] && [ -r /home/$UserName/.bashrc ] ; then
+            . /home/$UserName/.bashrc
+        fi
     fi
 fi
 
