@@ -465,7 +465,7 @@ fi
 ##
 
 if [ $(which --skip-alias less 2> /dev/null) ]; then
-    alias more='less -Ms -T.tags -U -x4'
+    alias more='less -r -Ms -T.tags -U -x4'
 fi
 
 ##

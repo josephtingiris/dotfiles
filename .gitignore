@@ -7,6 +7,9 @@
 !.bashrc
 !.bashrc.root
 
+# except .colordiffrc
+!.colordiffrc
+
 # except some .config directories
 !/.config
 /.config/*
