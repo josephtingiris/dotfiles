@@ -225,6 +225,7 @@ alias rm='rm -i'
 alias root='sudo su -'
 alias s='source ~/.bashrc'
 alias sd='screen -S $(basename $(pwd))'
+alias nousername="find . -ls 2> /dev/null | awk '{print $5}' | sort -u | grep ^[0-9]"
 
 ##
 ### custom, color prompt
