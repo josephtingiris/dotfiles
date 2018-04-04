@@ -39,7 +39,7 @@ unset Find_Path Find_Paths
 
 # after .Auto_Path, put /opt/rh bin & sbin directories in the path too
 # rhscl; see https://wiki.centos.org/SpecialInterestGroup/SCLo/CollectionsList
-if [ -d /opt/rh ]; then
+if [ -d /opt/rh ] && [ -r ~/.Auto_Scl ]; then
     Rhscl_Roots=$(find /opt/rh/ -type f -name enable 2> /dev/null | sort -Vr)
     for Rhscl_Enable in $Rhscl_Roots; do
         if [ -r "$Rhscl_Enable" ]; then
