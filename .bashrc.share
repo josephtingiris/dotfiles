@@ -8,10 +8,12 @@ alias mv='mv -i'
 
 # Don't allow direct root logins via ssh
 if [ "$USER" == "root" ] || [ "$LOGNAME" == "root" ]; then
-    if [ "$SSH_TTY" != "" ]; then
-        echo "Don't log in as root; Log in as a user and use sudo"
-        echo
-        exit
+    if [ ! -r "${HOME}/.Allow" ]; then
+        if [ "$SSH_TTY" != "" ]; then
+            echo "Don't log in as root; Log in as a user and use sudo"
+            echo
+            exit
+        fi
     fi
 fi
 
