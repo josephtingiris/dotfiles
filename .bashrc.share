@@ -33,8 +33,11 @@ if [ "$UserName" == "$USER" ]; then
 else
     if [ ! -f ~/.norc ]; then
         # Source shared username definitions
-        if [ "$UserName" != "" ] && [ -r /home/$UserName/.bashrc ] ; then
-            . /home/$UserName/.bashrc
+
+        UserHome=$(eval echo ~$UserName)
+
+        if [ "$UserName" != "" ] && [ -r ${UserHome}/.bashrc ] ; then
+            . ${UserHome}/.bashrc
         fi
     fi
 fi
