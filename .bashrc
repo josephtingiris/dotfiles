@@ -1,6 +1,6 @@
 # .bashrc
 
-Bashrc_Version="20180208, joseph.tingiris@gmail.com"
+Bashrc_Version="20180710, joseph.tingiris@gmail.com"
 
 ##
 ### source global definitions
@@ -11,7 +11,37 @@ if [ -f /etc/bashrc ]; then
 fi
 
 ##
-### set PATH automatically (first)
+### determine true username
+##
+
+if [ $(which --skip-alias logname 2> /dev/null) ]; then
+    export User_Name=$(logname 2> /dev/null)
+else
+    if [ $(which --skip-alias who 2> /dev/null) ]; then
+        export User_Name=$(who -m 2> /dev/null)
+    fi
+fi
+if [ "$User_Name" != "" ]; then export Who="${User_Name%% *}"; fi
+
+if [ "$Who" == "" ] && [ "$USER" != "" ]; then export Who=$USER; fi
+if [ "$Who" == "" ] && [ "$LOGNAME" != "" ]; then export Who=$LOGNAME; fi
+if [ "$Who" == "" ]; then
+    export Who=UNKNOWN
+else
+    if [ $(which --skip-alias getent 2> /dev/null) ]; then
+        User_Dir=$(getent passwd $Who 2> /dev/null | awk -F: '{print $6}')
+    fi
+fi
+
+if [ "${User_Dir}" == "" ]; then
+    User_Dir="~"
+fi
+
+export Apex_User=${Who}@$HOSTNAME
+export Base_User=$Apex_User
+
+##
+### set PATH automatically
 ##
 
 unset Auto_Path
@@ -171,34 +201,8 @@ function Git_Hub_Dotfiles() {
 }
 
 ##
-### determine true username
+### set default timezone
 ##
-
-if [ $(which --skip-alias logname 2> /dev/null) ]; then
-    export User_Name=$(logname 2> /dev/null)
-else
-    if [ $(which --skip-alias who 2> /dev/null) ]; then
-        export User_Name=$(who -m 2> /dev/null)
-    fi
-fi
-if [ "$User_Name" != "" ]; then export Who="${User_Name%% *}"; fi
-
-if [ "$Who" == "" ] && [ "$USER" != "" ]; then export Who=$USER; fi
-if [ "$Who" == "" ] && [ "$LOGNAME" != "" ]; then export Who=$LOGNAME; fi
-if [ "$Who" == "" ]; then
-    export Who=UNKNOWN
-else
-    if [ $(which --skip-alias getent 2> /dev/null) ]; then
-        User_Dir=$(getent passwd $Who | awk -F: '{print $6}')
-    fi
-fi
-
-if [ "${User_Dir}" == "" ]; then
-    User_Dir="~"
-fi
-
-export Apex_User=${Who}@$HOSTNAME
-export Base_User=$Apex_User
 
 export TZ='America/New_York'
 
@@ -327,10 +331,18 @@ if [ "${HOME}" != "" ] && [ -d "${HOME}/.ssh" ]; then
 
         fi
 
+        Ssh_Dirs=()
+        Ssh_Dirs+=(${HOME})
+        Ssh_Dirs+=(${User_Dir})
         Ssh_Key_Files=()
-        while read Ssh_Key_File; do
-            Ssh_Key_Files+=($Ssh_Key_File)
-        done <<< "$(find "${HOME}/.ssh/" -name "*id_dsa" -o -name "*id_rsa" -o -name "*ecdsa_key" -o -name "*id_ed25519" 2> /dev/null)"
+
+        for Ssh_Dir in ${Ssh_Dirs[@]}; do
+            if [ -r "${Ssh_Dir}/.ssh" ] && [ -d "${Ssh_Dir}/.ssh" ]; then
+                while read Ssh_Key_File; do
+                    Ssh_Key_Files+=($Ssh_Key_File)
+                done <<< "$(find "${Ssh_Dir}/.ssh/" -name "*id_dsa" -o -name "*id_rsa" -o -name "*ecdsa_key" -o -name "*id_ed25519" 2> /dev/null)"
+            fi
+        done
 
         if [ -r "${HOME}/.ssh/config" ]; then
             while read Ssh_Key_File; do
