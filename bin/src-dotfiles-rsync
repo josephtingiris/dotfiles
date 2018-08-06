@@ -8,7 +8,14 @@ fi
 
 dotfiles_to=""
 if [ "$1" != "" ]; then
-    dotfiles_to="${1}:"
+    if [[ $(echo "$1" | grep : 2> /dev/null) ]]; then
+        dotfiles_to="${1}"
+    else
+        dotfiles_to="${1}:${HOME}"
+    fi
+fi
+if [ "$dotfiles_to" == "" ]; then
+    dotfiles_to="${HOME}"
 fi
 
 dotfiles_src="$(dirname $(readlink -e . 2> /dev/null | grep \/src\/dotfiles\/) 2> /dev/null)"
@@ -17,8 +24,8 @@ if [ "$dotfiles_src" == "" ]; then
 fi
 if [ "$dotfiles_src" != "" ] && [ -d "$dotfiles_src" ]; then
     rsync_args="-avp"
-    rsync ${rsync_args} ${dotfiles_src}/ ${dotfiles_to}${HOME}/
-    rsync ${rsync_args} --delete-after ${dotfiles_src}/.git/ ${dotfiles_to}${HOME}/.git/
+    rsync ${rsync_args} ${dotfiles_src}/ ${dotfiles_to}/
+    rsync ${rsync_args} --delete-after ${dotfiles_src}/.git/ ${dotfiles_to}/.git/
 else
     echo "this only works for/from src/dotfiles"
 fi
