@@ -1,0 +1,19 @@
+#! /bin/bash
+
+# find in file (fif)
+
+if [ ! "$1" ];then
+  exit
+fi
+
+if [ -d "$1" ]; then
+    FROM="$1"
+    STRING="$2"
+    FIND_FLAGS="$3"
+else
+    FROM="."
+    STRING="$1"
+    FIND_FLAGS="$2"
+fi
+
+LC_ALL=C find $FIND_FLAGS $(readlink -e "$FROM")/ -not -iwholename '*/.git/*' -and -not -iwholename '*/.svn/*' -type f -print0 | xargs -0 --max-args=64 --max-procs=16 grep -Fl "$STRING"

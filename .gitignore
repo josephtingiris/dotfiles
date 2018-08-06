@@ -11,7 +11,7 @@
 !.colordiffrc
 
 # except some .config directories
-!/.config
+!/.config/
 /.config/*
 !/.config/nvim
 
@@ -19,7 +19,7 @@
 !.ctags
 
 # except .github directory
-!/.github
+!/.github/
 !/.github/*
 
 # except .gitignore
@@ -29,7 +29,7 @@
 !.gemrc
 
 # except some .local directories
-!/.local
+!/.local/
 /.local/*
 !/.local/share
 /.local/share/*
@@ -48,7 +48,7 @@
 !.vimrc
 
 # except .vim directory
-!/.vim
+!/.vim/
 !/.vim/*
 .vim/.netrwhist
 .vim/plug
@@ -59,9 +59,12 @@
 
 # except specific files in the bin directory
 !/bin/
-!/bin/src-dotfiles-rsync
 /bin/*
+!/bin/ff
+!/bin/fif
+!/bin/src-dotfiles-rsync
 
-# except etc/profile.d directory
-!/etc
-/etc/*
+# except specific files in the etc/profile.d directory
+!/etc/
+/etc/profile.d/*
+!/etc/profile.d/README
