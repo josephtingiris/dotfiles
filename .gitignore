@@ -57,6 +57,11 @@
 .vim/*tags
 #.vim/indent
 
+# except specific files in the bin directory
+!/bin/
+!/bin/src-dotfiles-rsync
+/bin/*
+
 # except etc/profile.d directory
 !/etc
 /etc/*
