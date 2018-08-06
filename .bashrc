@@ -72,7 +72,7 @@ unset Find_Path Find_Paths
 if [ -d /opt/rh ] && [ -r ~/.Auto_Scl ]; then
     Rhscl_Roots=$(find /opt/rh/ -type f -name enable 2> /dev/null | sort -Vr)
     for Rhscl_Enable in $Rhscl_Roots; do
-        if [ -r "$Rhscl_Enable" ]; then
+        if [ -r "$Rhscl_Enable" ] && [ "$Rhscl_Enable" != "" ]; then
             Unset_Variables=$(cat "$Rhscl_Enable" | grep ^export 2> /dev/null | awk -F= '{print $1}' 2> /dev/null | awk '{print $2}' 2> /dev/null | grep -v ^PATH$ | sort -u)
             for Unset_Variable in $Unset_Variables; do
                 eval "unset $Unset_Variable"
@@ -80,7 +80,7 @@ if [ -d /opt/rh ] && [ -r ~/.Auto_Scl ]; then
         fi
     done
     for Rhscl_Enable in $Rhscl_Roots; do
-        if [ -r "$Rhscl_Enable" ]; then
+        if [ -r "$Rhscl_Enable" ] && [ "$Rhscl_Enable" != "" ]; then
             . "$Rhscl_Enable"
         else
             continue
@@ -109,7 +109,7 @@ IFS=':' read -ra Auto_Path <<< "$PATH"
 Uniq_Path="./"
 for Dir_Path in "${Auto_Path[@]}"; do
     if ! [[ "${Uniq_Path}" =~ (^|:)${Dir_Path}($|:) ]]; then
-        if [ -r "$Dir_Path" ]; then
+        if [ -r "$Dir_Path" ] && [ "$Dir_Path" != "" ]; then
             Uniq_Path+=":$Dir_Path"
         fi
     fi
@@ -207,16 +207,26 @@ function Git_Hub_Dotfiles() {
 export TZ='America/New_York'
 
 ##
-### exit here to avoid interactive shell enhancements
+### returns to avoid interactive shell enhancements
 ##
 
 if [ "$SUDO_COMMAND" != "" ]; then
-    exit
+    return
+else
+    if [ "$SSH_CONNECTION" != "" ] && [ "$SSH_TTY" == "" ]; then
+        return
+    fi
+fi
+
+# ansible hack
+if [[ ! $(env 2> /dev/null | grep ^HOSTNAME=) ]]; then
+    return
 fi
 
 ##
 ### global alias definitions
 ##
+
 
 alias cl='cd;clear'
 alias cp='cp -i'
