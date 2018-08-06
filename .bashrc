@@ -1,6 +1,6 @@
 # .bashrc
 
-Bashrc_Version="20180710, joseph.tingiris@gmail.com"
+Bashrc_Version="20180806, joseph.tingiris@gmail.com"
 
 ##
 ### source global definitions
@@ -47,7 +47,7 @@ export Base_User=$Apex_User
 unset Auto_Path
 
 # bin & sbin from the directories, in the following array, are automatically added in the order given
-Find_Paths=("$HOME" "/apex" "/base")
+Find_Paths=("${HOME}" "${User_Dir}" "/apex" "/base")
 
 # add custom paths, in the order given in ~/.Auto_Path, before automatically finding bin paths
 if [ -r ~/.Auto_Path ]; then
