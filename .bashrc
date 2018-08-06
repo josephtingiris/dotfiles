@@ -152,7 +152,10 @@ function Git_Config() {
     git config --global color.branch auto &> /dev/null
     git config --global color.status auto &> /dev/null
 
-    git config --global push.default simple &> /dev/null
+    if [[ $(git --version 2> /dev/null | grep 'version 1.9.') ]]; then
+        # only support this for git 1.9.x
+        git config --global push.default simple &> /dev/null
+    fi
 
     git config --global user.email "joseph.tingiris@gmail.com" &> /dev/null
     git config --global user.name "$USER@$HOSTNAME" &> /dev/null
@@ -303,8 +306,8 @@ fi
 ### if needed then generate an ssh key
 ##
 
+Ssh_Keygen=/usr/bin/ssh-keygen
 if [ ! -d ~/.ssh ]; then
-    Ssh_Keygen=/usr/bin/ssh-keygen
     if [ -x $Ssh_Keygen ]; then
         $Ssh_Keygen -t ed25519 -b 4096
     fi
@@ -323,7 +326,7 @@ if [ "${HOME}" != "" ] && [ -d "${HOME}/.ssh" ]; then
     Ssh_Agent=/usr/bin/ssh-agent
     Ssh_Agent_Timeout=86400
 
-    if [ -x $Ssh_Agent ] && [ -x $Ssh_Add ]; then
+    if [ -x $Ssh_Agent ] && [ -x $Ssh_Add ] && [ -x $Ssh_Keygen ]; then
 
         $Ssh_Add -l &> /dev/null
         if [ $? -eq 2 ]; then
@@ -381,6 +384,11 @@ if [ "${HOME}" != "" ] && [ -d "${HOME}/.ssh" ]; then
                 Ssh_Key_File_Pub=$(cat "${Ssh_Key_File}.pub" 2> /dev/null | awk '{print $2}' 2> /dev/null)
                 Ssh_Agent_Key=$($Ssh_Add -L  2> /dev/null | grep "$Ssh_Key_File_Pub" 2> /dev/null)
                 if [ "$Ssh_Agent_Key" != "" ]; then
+                    continue
+                fi
+                $Ssh_Keygen -l -f "${Ssh_Key_File}.pub" &> /dev/null
+                if [ $? -ne 0 ]; then
+                    # unsupported key type
                     continue
                 fi
             else
