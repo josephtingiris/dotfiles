@@ -6,10 +6,10 @@ if [ ! "$1" ];then
   exit
 fi
 
-if [[ $1 = *"/"* ]]; then
-    find_name_arg="-wholename *${1}"
+find_arg="-not -iwholename '*/.git/*' -and -not -iwholename '*/.svn/*' -and"
+if [[ $1 =~ "/" ]]; then
+    find $(readlink -e .) $find_arg -wholename "*${1}*"
 else
-    find_name_arg="-name *${1}*"
+    find $(readlink -e .) $find_arg -name "*${1}*"
 fi
 
-sudo find $2 $(readlink -e .) -not -iwholename '*/.git/*' -and -not -iwholename '*/.svn/*' -and $find_name_arg
