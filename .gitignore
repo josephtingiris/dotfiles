@@ -68,3 +68,7 @@
 !/etc/
 /etc/profile.d/*
 !/etc/profile.d/README
+
+# except specific files in the opt directory
+!/opt/
+!/opt/*

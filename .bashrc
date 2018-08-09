@@ -1,6 +1,6 @@
 # .bashrc
 
-Bashrc_Version="20180806, joseph.tingiris@gmail.com"
+Bashrc_Version="20180809, joseph.tingiris@gmail.com"
 
 ##
 ### source global definitions
@@ -9,6 +9,12 @@ Bashrc_Version="20180806, joseph.tingiris@gmail.com"
 if [ -f /etc/bashrc ]; then
     . /etc/bashrc
 fi
+
+##
+### determine os variant
+##
+
+export Uname_R=$(uname -r 2> /dev/null | awk -F\. '{print $(NF-1)"."$NF}' 2> /dev/null)
 
 ##
 ### determine true username
@@ -47,7 +53,14 @@ export Base_User=$Apex_User
 unset Auto_Path
 
 # bin & sbin from the directories, in the following array, are automatically added in the order given
-Find_Paths=("${HOME}" "${User_Dir}" "/apex" "/base")
+Find_Paths=()
+Find_Paths+=("${HOME}")
+Find_Paths+=("${User_Dir}")
+if [ -r "${User_Dir}/opt/${Uname_R}" ]; then
+    Find_Paths+=("${User_Dir}/opt/${Uname_R}")
+fi
+Find_Paths+=("/apex")
+Find_paths+=("/base")
 
 # add custom paths, in the order given in ~/.Auto_Path, before automatically finding bin paths
 if [ -r ~/.Auto_Path ]; then
@@ -281,12 +294,14 @@ fi
 ##
 
 unset Tmux_Info
-if [ $(which --skip-alias tmux 2> /dev/null) ]; then
+Tmux=$(which --skip-alias tmux 2> /dev/null)
+if [ -x $Tmux ]; then
     if [ -r "${User_Dir}/.tmux.conf" ]; then
+        #Tmux_Info+="[${User_Dir}/.tmux.conf]"
         Tmux_Info+="[${User_Dir}/.tmux.conf]"
         alias tmu=tmux
         alias tmus=tmux
-        alias tmux="tmux -f ${User_Dir}/.tmux.conf"
+        alias tmux="$Tmux -f ${User_Dir}/.tmux.conf"
     fi
 fi
 
@@ -475,6 +490,18 @@ for Editor in ${Editors[@]}; do
     fi
 done
 unset Editor Editors
+
+##
+### set LD_LIRBARY_PATH
+##
+
+if [ -r "${User_Dir}/opt/${Uname_R}/lib" ]; then
+    if [ "$LD_LIBRARY_PATH" == "" ]; then
+        export LD_LIBRARY_PATH="${User_Dir}/opt/${Uname_R}/lib"
+    else
+        export LD_LIBRARY_PATH="${LD_LIBRARY_PATH}:${User_Dir}/opt/${Uname_R}/lib"
+    fi
+fi
 
 ##
 ### set git
