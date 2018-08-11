@@ -1,0 +1,34 @@
+# specific settings for tmux 1.x - 2.0
+
+display-message 'sourced .tmux.conf-1.x-2.0'
+
+##
+#### bind-key
+###
+
+# Toggle mouse on
+bind-key M \
+    set-window-option -g mode-mouse on \;\
+    set-option -g mouse-resize-pane on \;\
+    set-option -g mouse-select-pane on \;\
+    set-option -g mouse-select-window on \;\
+    display-message 'Mouse: ON'
+
+# Toggle mouse off
+bind-key m \
+    set-window-option -g mode-mouse off \;\
+    set-option -g mouse-resize-pane off \;\
+    set-option -g mouse-select-pane off \;\
+    set-option -g mouse-select-window off \;\
+    display-message 'Mouse: OFF'
+
+##
+### set-option
+##
+
+# disable the display of various information messages
+set-option -sg quiet on
+
+# ensure utf8 is on
+set-option -g utf8 on
+set-option -g status-utf8 on
