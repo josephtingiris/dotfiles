@@ -1,6 +1,6 @@
 # .bashrc
 
-Bashrc_Version="20180809, joseph.tingiris@gmail.com"
+Bashrc_Version="20180810, joseph.tingiris@gmail.com"
 
 ##
 ### source global definitions
@@ -35,12 +35,12 @@ if [ "$Who" == "" ]; then
     export Who=UNKNOWN
 else
     if [ $(which --skip-alias getent 2> /dev/null) ]; then
-        User_Dir=$(getent passwd $Who 2> /dev/null | awk -F: '{print $6}')
+        export User_Dir=$(getent passwd $Who 2> /dev/null | awk -F: '{print $6}')
     fi
 fi
 
 if [ "${User_Dir}" == "" ]; then
-    User_Dir="~"
+    export User_Dir="~"
 fi
 
 export Apex_User=${Who}@$HOSTNAME
@@ -295,16 +295,13 @@ fi
 
 if [ "$TMUX" != "" ]; then
     export Tmux_Bin=$(ps -ho command -p $(env | grep ^TMUX= | head -1 | awk -F, '{print $2}') | awk '{print $1}')
-    Tmux_Info="[$TMUX][$Tmux_Bin]"
 else
-    unset Tmux_Info
     export Tmux_Bin=$(which --skip-alias tmux 2> /dev/null)
 fi
 
 if [ -x $Tmux_Bin ]; then
     if [ -r "${User_Dir}/.tmux.conf" ]; then
-        #Tmux_Info+="[${User_Dir}/.tmux.conf]"
-        Tmux_Info+="[${User_Dir}/.tmux.conf]"
+        Tmux_Info="[$Tmux_Bin] [${User_Dir}/.tmux.conf]"
         alias tmu=tmux
         alias tmus=tmux
         alias tmux="$Tmux_Bin -l -f ${User_Dir}/.tmux.conf"
@@ -549,11 +546,11 @@ if [ "$PS1" != "" ]; then
         echo
     fi
 
-    echo -n "${User_Dir}/.bashrc $Bashrc_Version"
-    if [ "$Tmux_Info" ]; then
-        echo -n " $Tmux_Info"
+    echo "${User_Dir}/.bashrc $Bashrc_Version"
+    if [ "$TMUX" ]; then
+        echo
+        echo "$Tmux_Info [$TMUX]"
     fi
-    echo
     echo
 fi
 
