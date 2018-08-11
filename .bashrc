@@ -255,7 +255,7 @@ alias rm='rm -i'
 alias root='sudo su -'
 alias s='source ~/.bashrc'
 alias sd='screen -S $(basename $(pwd))'
-alias nousername="find . -ls 2> /dev/null | awk '{print \$5}' | sort -u | grep ^[0-9]"
+alias noname="find . -ls 2> /dev/null | awk '{print \$5}' | sort -u | grep ^[0-9]"
 
 ##
 ### custom, color prompt
@@ -293,21 +293,24 @@ fi
 ### get tmux info
 ##
 
-unset Tmux_Info
-Tmux=$(which --skip-alias tmux 2> /dev/null)
-if [ -x $Tmux ]; then
+if [ "$TMUX" != "" ]; then
+    export Tmux_Bin=$(ps -ho command -p $(env | grep ^TMUX= | head -1 | awk -F, '{print $2}') | awk '{print $1}')
+    Tmux_Info="[$TMUX][$Tmux_Bin]"
+else
+    unset Tmux_Info
+    export Tmux_Bin=$(which --skip-alias tmux 2> /dev/null)
+fi
+
+if [ -x $Tmux_Bin ]; then
     if [ -r "${User_Dir}/.tmux.conf" ]; then
         #Tmux_Info+="[${User_Dir}/.tmux.conf]"
         Tmux_Info+="[${User_Dir}/.tmux.conf]"
         alias tmu=tmux
         alias tmus=tmux
-        alias tmux="$Tmux -f ${User_Dir}/.tmux.conf"
+        alias tmux="$Tmux_Bin -l -f ${User_Dir}/.tmux.conf"
     fi
 fi
 
-if [ "$TMUX" != "" ]; then
-    Tmux_Info="[$TMUX]"
-fi
 
 ##
 ### if needed then create .inputrc (with preferences)
