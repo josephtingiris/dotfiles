@@ -48,6 +48,10 @@ if has("autocmd")
             let delimitMate_matchpairs = "(:),[:],{:},<:>"
             au FileType vim,html let b:delimitMate_matchpairs = "(:),[:],{:},<:>"
 
+            " https://github.com/sbdchd/neoformat
+            Plug 'sbdchd/neoformat'
+            "let g:neoformat_verbose = 1 " only affects the verbosity of Neoformat
+
             " https://github.com/scrooloose/nerdtree
             Plug 'scrooloose/nerdtree'
             let NERDTreeShowHidden=1
