@@ -1,6 +1,6 @@
 # .bashrc
 
-Bashrc_Version="20180810, joseph.tingiris@gmail.com"
+Bashrc_Version="20180814, joseph.tingiris@gmail.com"
 
 ##
 ### source global definitions
@@ -60,7 +60,7 @@ if [ -r "${User_Dir}/opt/${Uname_R}" ]; then
     Find_Paths+=("${User_Dir}/opt/${Uname_R}")
 fi
 Find_Paths+=("/apex")
-Find_paths+=("/base")
+Find_Paths+=("/base")
 
 # add custom paths, in the order given in ~/.Auto_Path, before automatically finding bin paths
 if [ -r ~/.Auto_Path ]; then
