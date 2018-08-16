@@ -55,7 +55,7 @@ if [ $? -eq 0 ]; then
         YES=$yn
     fi
     if [ "$YES" == "y" ] || [ "$YES" == "yes" ]; then
-        (echo "SELECT concat('KILL ',id,';') FROM information_schema.processlist WHERE command <> 'Sleep'  AND info NOT LIKE '%PROCESSLIST%' AND time > $KILL_THRESHOLD ORDER BY time DESC;" | $MYSQL)
+        (echo "SELECT concat('KILL ',id,';') FROM information_schema.processlist WHERE command <> 'Sleep'  AND info NOT LIKE '%PROCESSLIST%' AND time > $KILL_THRESHOLD ORDER BY time DESC;" | $MYSQL) | $MYSQL
         if [ $? -eq 0 ]; then
             printf "\nsuccess.\n\n"
         else
