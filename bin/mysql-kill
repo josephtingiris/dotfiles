@@ -1,0 +1,68 @@
+#!/bin/bash
+
+# jtingiris
+
+# mysql-kill [threshold] [--yes] [mysql user] [mysql pass] [mysql host]
+
+# refuse to kill anything less than this many seconds
+KILL_REFUSE=900 # 15 minutes
+
+# how long is too long for a subprocess to be running (in seconds)
+if [ "$1" != "" ]; then
+    let KILL_THRESHOLD="$1"
+else
+    echo
+    echo "usage: $0 [kill threshold in seconds] [--yes] [mysql user] [mysql pass] [mysql host]"
+    echo
+    exit 1
+fi
+
+declare -l YES="$2"
+
+if [ "$3" == "" ]; then
+    MYSQL_USER=root
+else
+    MYSQL_USER="$3"
+fi
+
+if [ "$5" == "" ]; then
+    MYSQL_HOST=localhost
+else
+    MYSQL_HOST="$5"
+fi
+
+if [ "$4" == "" ]; then
+    printf "Enter password for ${MYSQL_USER}@${MYSQL_HOST} : "
+    read -s MYSQL_PASS
+else
+    MYSQL_PASS="$4"
+fi
+
+MYSQL="mysql -N --host=$MYSQL_HOST --user=$MYSQL_USER --password=$MYSQL_PASS"
+
+printf "\n$(date) -> mysql threads running on localhost for longer than $KILL_THRESHOLD seconds ...\n\n"
+(echo "SELECT id,state,user,host,command,time,left(replace(info,'\n','<lf>'),120) FROM information_schema.processlist WHERE command <> 'Sleep'  AND info NOT LIKE '%PROCESSLIST%' AND time > $KILL_THRESHOLD ORDER BY time DESC;" | $MYSQL)
+if [ $? -eq 0 ]; then
+    if [ $KILL_THRESHOLD -lt $KILL_REFUSE ]; then
+        printf "\naborting, refusing to kill everything running more than $KILL_THRESHOLD seconds; $KILL_REFUSE seconds is the minimum.\n\n"
+        exit 2
+    fi
+    if [ "$YES" = "--yes" ]; then
+        YES=yes
+    else
+        printf "Are you sure you want to kill those processes? "
+        read yn
+        YES=$yn
+    fi
+    if [ "$YES" == "y" ] || [ "$YES" == "yes" ]; then
+        (echo "SELECT concat('KILL ',id,';') FROM information_schema.processlist WHERE command <> 'Sleep'  AND info NOT LIKE '%PROCESSLIST%' AND time > $KILL_THRESHOLD ORDER BY time DESC;" | $MYSQL)
+        if [ $? -eq 0 ]; then
+            printf "\nsuccess.\n\n"
+        else
+            printf "\nfailed.\n\n"
+        fi
+    else
+        printf "\nnothing done.\n\n"
+    fi
+fi
+
