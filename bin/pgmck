@@ -1,0 +1,391 @@
+#!/bin/bash
+
+# This script will ...
+#
+# check default passwd & group files against 'master' passwd and group files,
+# or just check passwd & group for anomalies, such as conflicting uid:gid, etc.
+
+# joseph.tingiris@gmail.com, 20180701 ... created out of necessity
+
+###########
+# Globals #
+###########
+
+PATH=/usr/bin:/usr/sbin:/bin:/sbin
+
+Branded="$(basename $0).$(date +%Y%m%d%H%M%S.%N)"
+
+if [ "$DEBUG" != "" ]; then
+    let Debug="$DEBUG"
+else
+    let Debug=0
+fi
+
+let Verbose=0
+
+#############
+# Functions #
+#############
+
+# abort with a message & non-zero return code
+function aborting() {
+    pprint "" "ABORT"
+    pprint "$1" "ABORT"
+    pprint "" "ABORT"
+    exit 2
+}
+
+# 'check' a passwd/group pair of files, update and/or abort as necessary, output useful error reasons
+function checkPG() {
+    local passwd="$1"
+    isWritable "$passwd"
+
+    local group="$2"
+    isWritable "$group"
+
+    debug "passwd             = $passwd" 2
+    debug "group              = $group" 2
+
+    local error_count=0
+
+    pprint "$passwd ... check"
+
+    local duplicate_usernames=($(awk -F: '{if ($1 in users) print $1 ; else users[$1]}' $passwd))
+    local duplicate_uids=($(awk -F: '{if ($3 in users) print $3 ; else users[$3]}' $passwd))
+
+    while read passwd_line; do
+        #debug "passwd_line = $passwd_line" 11
+
+        # error_reasons gets appended, may be multiple reasons
+        local error_reasons=""
+
+        local username="$(echo "$passwd_line" | awk -F: '{print $1}')"
+        local password="$(echo "$passwd_line" | awk -F: '{print $2}')"
+        let local uid="$(echo "$passwd_line" | awk -F: '{print $3}')"
+        let local gid="$(echo "$passwd_line" | awk -F: '{print $4}')"
+        local comment="$(echo "$passwd_line" | awk -F: '{print $5}')"
+        local homedir="$(echo "$passwd_line" | awk -F: '{print $6}')"
+        local shell="$(echo "$passwd_line" | awk -F: '{print $7}')"
+        local passwd_line_ok=0
+
+
+        local username_conflict=0
+        for duplicate_username in ${duplicate_usernames[@]}; do
+            if [ "$username" == "$duplicate_username" ]; then
+                let passwd_line_ok=1
+                ((++username_conflict))
+                ((++error_count))
+                error_reasons+="duplicate username,"
+            fi
+        done
+
+        local uid_conflict=0
+        for duplicate_uid in ${duplicate_uids[@]}; do
+            if [ "$uid" == "$duplicate_uid" ]; then
+                let passwd_line_ok=1
+                ((++uid_conflict))
+                ((++error_count))
+                error_reasons+="duplicate uid $uid,"
+            fi
+        done
+
+        if [ $uid -gt 15 ]; then
+
+                # this is subjective; but I want to know ..
+                if [ "$uid" != "$gid" ]; then
+                    let passwd_line_ok=1
+                    ((++error_count))
+                    error_reasons+="$uid != $gid,"
+                fi
+
+                if [ -r "$group" ]; then
+                    local username_group_count=$(grep "^${username}:x:" "$group" | wc -l)
+                    if [ $username_group_count -eq 1 ]; then
+                        local username_group_match=$(grep "^${username}:x:$gid" "$group" | wc -l)
+                        if [ $username_group_match -ne 1 ]; then
+                            let passwd_line_ok=1
+                            ((++error_count))
+                            error_reasons+="$username group has a different gid in $group,"
+                        fi
+                    else
+                        if [ $username_group_count -eq 0 ]; then
+                            if [ -w "$group" ]; then
+                                echo "${username}:x:${uid}:${username}" >> "$group"
+                            else
+                                let passwd_line_ok=1
+                                ((++error_count))
+                                error_reasons+="$username group is missing in $group,"
+                            fi
+                        else
+                            let passwd_line_ok=1
+                            ((++error_count))
+                            error_reasons+="$username inconsistencies in $group,"
+                        fi
+                    fi
+                fi
+
+            fi
+
+            if [ $passwd_line_ok -ne 0 ]; then
+                error_reasons="$(echo "$error_reasons" | sed -e '/,$/s///g')" # remove trailing ,
+                pprint "$passwd [$uid:$gid] $username ($error_reasons)" "ERROR"
+                #else
+                #echo "[$passwd] [  OK   ] [$uid:$gid] $username"
+            fi
+
+            unset username password uid gid comment homedir shell
+        done <<< "$(cat "$passwd")"
+        unset duplicate_usernames duplicate_uids
+
+        echo "[$group] checking ..."
+        echo
+        local duplicate_usernames=$(awk -F: '{if ($1 in users) print $1 ; else users[$1]}' $group)
+        local duplicate_uids=$(awk -F: '{if ($3 in users) print $3 ; else users[$3]}' $group)
+        local group_line_ok=0
+
+        # mimic what was done with passwd
+        while read group_line; do
+            #echo "[$group] $group_line"
+
+            local error_reasons=""
+
+            local groupname="$(echo "$group_line" | awk -F: '{print $1}')"
+            local password="$(echo "$group_line" | awk -F: '{print $2}')"
+            let local gid="$(echo "$group_line" | awk -F: '{print $3}')"
+            local group_line_ok=0
+
+            groupname_count=$(grep ^${groupname}:x: "$group" | wc -l)
+            if [ $groupname_count -eq 0 ]; then
+                let group_line_ok=1
+                ((++error_count))
+                error_reasons+="$groupname group is missing in $group,"
+            else
+                if [ $groupname_count -ne 1 ]; then
+                    let group_line_ok=1
+                    ((++error_count))
+                    error_reasons+="$groupname group has $groupname_count duplicates in $group,"
+                fi
+            fi
+
+            if [ -r "$passwd" ]; then
+                local username_passwd_count=$(grep "^${groupname}:x:\b.*\b:${gid}:" "$passwd" | wc -l)
+                if [ $username_passwd_count -eq 0 ]; then
+                    if [ -w "$passwd" ]; then
+                        # preserve classic gids
+                        if [ $gid -gt 15 ]; then
+                            echo "$groupname:x:$gid:$gid:$groupname:/:/bin/false" >> "$passwd"
+                        fi
+                    else
+                        let group_line_ok=1
+                        ((++error_count))
+                        error_reasons+="$groupname group has no user in $passwd,"
+                    fi
+                else
+                    if [ $username_passwd_count -gt 1 ]; then
+                        let group_line_ok=1
+                        ((++error_count))
+                        error_reasons+="$groupname group has mismatched user in $passwd,"
+                    fi
+                fi
+            fi
+
+            if [ $group_line_ok -ne 0 ]; then
+                error_reasons="$(echo "$error_reasons" | sed -e '/,$/s///g')" # remove trailing ,
+                echo "[$group] [ ERROR ] [$gid] $groupname ($error_reasons)"
+                #else
+                #echo "[$group] [  OK   ] [$gid] $groupname"
+            fi
+
+            unset groupname password gid
+        done <<< "$(cat "$group")"
+
+        echo
+        echo "error_count = $error_count"
+        echo
+
+        return $error_count
+    }
+
+# output debug messages
+function debug() {
+    if [ "$Debug" != "" ]; then
+        pprint "$1" DEBUG
+    fi
+}
+
+# aborting if a filename given is not writable
+function isWritable() {
+    local filename="$1"
+
+    if [ "$filename" == "" ]; then
+        aborting "empty filename not writable"
+    fi
+
+    if [ ! -w "$filename" ]; then
+        aborting "$filename file not writable"
+    fi
+}
+
+# replace a passwd & group with a (numerically) sorted & unique version of the same files
+function sortPG() {
+    local passwd="$1"
+    isWritable "$passwd"
+
+    local group="$2"
+    isWritable "$group"
+
+    # check sorted passwd & group
+    cat "$passwd" 2> /dev/null | sort -u | sort -t: -k 3n,4n > /tmp/passwd.$Branded
+    isWritable "/tmp/passwd.$Branded"
+
+    diff -q /tmp/passwd.$Branded "$passwd" &> /dev/null
+    if [ $? -ne 0 ]; then
+        cp /tmp/passwd.$Branded "$passwd"
+        if [ $? -ne 0 ]; then
+            aborting "'cp /tmp/passwd.$Branded $passwd' failed"
+        fi
+    fi
+    rm -f /tmp/passwd.$Branded
+
+    cat "$group" 2> /dev/null | sort -u | sort -t: -k 3n,4n > /tmp/group.$Branded
+    isWritable "/tmp/group.$Branded"
+
+    diff -q /tmp/group.$Branded "$group" &> /dev/null
+    if [ $? -ne 0 ]; then
+        cp /tmp/group.$Branded "$group"
+        if [ $? -ne 0 ]; then
+            aborting "'cp /tmp/group.$Branded $group' failed"
+        fi
+    fi
+    rm -f /tmp/group.$Branded
+
+}
+
+# 'pretty' printf
+function pprint() {
+    local message="$1"
+    local -u level="$2"
+    local -i level_pad=10
+
+    if [ "$level" == "" ]; then
+        level="OK"
+    fi
+
+    local pretty=""
+    if [ $Verbose -gt 0 ]; then
+        pretty+="[$(date +%F" "%T)] "
+    fi
+
+    let local level_pad_left=(${level_pad}-${#level})/2
+    if [ $level_pad_left -lt 0 ]; then level_pad_left=0; fi
+    let local level_pad_right=(${level_pad}-${#level})-${level_pad_left}
+    if [ $level_pad_right -lt 0 ]; then level_pad_right=0; fi
+
+    # center level
+    pretty+="[%${level_pad_left}s%s%${level_pad_right}s] "
+
+    # message
+    pretty+="%s"
+
+    pretty+="\n"
+
+    printf "$pretty" " " "$level" " " "$message"
+}
+
+########
+# Main #
+########
+
+if [ "$USER" != "root" ]; then
+    aborting "must be root"
+fi
+
+debug "Debug = $Debug" 1
+
+#
+# The 'active' passwd & group; use files in pwd by default, else fall back to /etc (most often)
+#
+
+if [ -f ./passwd ]; then
+    Active_Passwd=$(readlink -e ./passwd)
+else
+    Active_Passwd=/etc/passwd
+fi
+isWritable "$Active_Passwd"
+
+if [ -f ./group ]; then
+    Active_Group=$(readlink -e ./group)
+else
+    Active_Group=/etc/group
+fi
+isWritable "$Active_Group"
+
+#
+# The 'master' passwd & group; use files in pwd by default, if they exist then use what's in /etc else make them the same as active
+#
+
+if [ -f ./passwd.master ]; then
+    Master_Passwd=$(readlink -e ./passwd.master)
+else
+    if [ -f /etc/passwd.master ]; then
+        Master_Passwd=/etc/passwd.master
+    else
+        Master_Passwd=$Active_Passwd
+    fi
+fi
+isWritable "$Master_Passwd"
+
+if [ -f ./group.master ]; then
+    Master_Group=$(readlink -e ./group.master)
+else
+    if [ -f /etc/group.master ]; then
+        Master_Group=/etc/group.master
+    else
+        Master_Group=$Active_Group
+    fi
+fi
+isWritable "$Master_Group"
+
+sortPG "$Master_Passwd" "$Master_Group"
+
+# pull all 'new' users from the active passwd and put them in the master passwd
+if [ "$Active_Passwd" != "$Master_Passwd" ]; then
+    if [ -w "$Master_Passwd" ]; then
+        for username in $(cat "$Active_Passwd" | awk -F: '{print $1}'); do
+            Master_Passwd_Username=$(grep ^${username}:x: "$Master_Passwd")
+            if [ "$Master_Passwd_Username" == "" ]; then
+                echo "[$Master_Passwd] adding username $username"
+                grep "^${username}:x:" "$Active_Passwd" | head -1 >> "$Master_Passwd"
+            fi
+        done
+    fi
+fi
+
+# pull all 'new' groups from the active group and put them in the master group
+if [ "$Active_Group" != "$Master_Group" ]; then
+    if [ -w "$Master_Group" ]; then
+        for groupname in $(cat "$Active_Group" | awk -F: '{print $1}'); do
+            Master_Group_Username=$(grep ^${groupname}:x: "$Master_Group")
+            if [ "$Master_Group_Username" == "" ]; then
+                echo "[$Master_Group] adding groupname $groupname"
+                grep "^${groupname}:x:" "$Active_Group" | head -1 >> "$Master_Group"
+            fi
+        done
+    fi
+fi
+
+sortPG "$Master_Passwd" "$Master_Group"
+
+if checkPG "$Master_Passwd" "$Master_Group"; then
+    pprint "checkPG $Active_Passwd $Active_Group"
+else
+    aborting "checkPG $Master_Passwd $Master_Group failed"
+fi
+
+if [ "$Active_Passwd" != "$Master_Passwd" ] && [ "$Active_Group" != "$Master_Group" ]; then
+    if checkPG "$Active_Passwd" "$Active_Group"; then
+        pprint "checkPG $Active_Passwd $Active_Group"
+    else
+        aborting "checkPG $Active_Passwd $Active_Group failed"
+    fi
+fi
