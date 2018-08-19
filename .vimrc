@@ -269,6 +269,7 @@ set exrc                                    " source .exrc in the current direct
 set formatoptions=tcqj                      " t=auto-wrap text, c=auto-wrap comments, q=allow comments formatting with, j=remove comment leader when joining lines
 set hidden                                  " allow hidden buffers
 set history=1000                            " default = 8
+set guicursor=                              " workaround neovim bug; https://github.com/neovim/neovim/issues/7002 (et al)
 set laststatus=2                            " use the second statusline
 set linebreak                               " only wrap at sensible places
 set list listchars=tab:▷\ ,trail:⋅,nbsp:⋅
