@@ -542,7 +542,7 @@ function updatePGM() {
             local master_homedir="$(echo "${master_passwd_line}" | awk -F: '{print $6}')"
 
             # for testing (quicker)
-            if [ "${master_username}" == "input" ]; then break; fi
+            #if [ "${master_username}" == "input" ]; then break; fi
 
             let local master_passwd_line_ok=0
 
@@ -550,7 +550,7 @@ function updatePGM() {
             while read passwd_line; do
                 if [ "${passwd_line}" == "" ]; then continue; fi
                 ((++passwd_line_count))
-                debug "passwd_line        = ${passwd_line}" ${passwd_line_count} 11
+                debug "update_check ${update_check}, passwd_line        = ${passwd_line}" ${passwd_line_count} 11
                 if [ "${master_username}:x:${master_uid}:${master_gid}" != "${passwd_line}" ]; then
                     master_passwd_line_ok=1
                 fi
@@ -786,6 +786,11 @@ else
 fi
 isAccessible "${Master_Group}"
 
+debug "Active_Passwd = $Active_Passwd"
+debug "Master_Passwd = $Master_Passwd"
+debug "Active_Group  = $Active_Group"
+debug "Master_Group  = $Master_Group"
+
 #
 # make sure the active & master files are paired with different files
 #
@@ -853,6 +858,11 @@ if [ ${Sync_Flag} -eq 0 ] || [ ${Yes_Flag} -eq 0 ]; then
     fi
 
     if [ ${Resort} -eq 0 ]; then
+        pprint "backup ${Master_Passwd} to ${Master_Passwd}.${Branded}" "QUEUE #0"
+        Queue_Commands+=("cp \"${Master_Passwd}\" \"${Master_Passwd}.${Branded}\"")
+        pprint "backup ${Master_Group} to ${Master_Group}.${Branded}" "QUEUE #0"
+        Queue_Commands+=("cp \"${Master_Group}\" \"${Master_Group}.${Branded}\"")
+
         pprint "${Master_Passwd} ${Master_Group} re-sort" "QUEUE #0"
         Queue_Commands+=("sortPG \"${Master_Passwd}\" \"${Master_Group}\"")
 
@@ -866,11 +876,6 @@ if [ ${Sync_Flag} -eq 0 ] || [ ${Yes_Flag} -eq 0 ]; then
         exit
     fi
 fi
-
-pprint "backup ${Master_Passwd} to ${Master_Passwd}.${Branded}" "QUEUE #0"
-Queue_Commands+=("cp \"${Master_Passwd}\" \"${Master_Passwd}.${Branded}\"")
-pprint "backup ${Master_Group} to ${Master_Group}.${Branded}" "QUEUE #0"
-Queue_Commands+=("cp \"${Master_Group}\" \"${Master_Group}.${Branded}\"")
 
 # at this point, nothing in the command queue should be irreversible
 queueEval "${Yes_Flag}"
@@ -906,17 +911,18 @@ if [ "${Active_Passwd}" != "${Master_Passwd}" ] && [ "${Active_Group}" != "${Mas
     # at this point, not much in the queue should be irreversible
     queueEval "${Yes_Flag}"
 
-    #if checkPG "${Active_Passwd}" "${Active_Group}"; then
-        #if [ ${Verbose} -eq 0 ]; then
-            #pprint "checkPG ${Active_Passwd} ${Active_Group}" OK
-        #fi
-    #fi
-
-    # at this point, a lot in the queue may be irreversible
-    queueEval "${Yes_Flag}"
-
     # it's likily that the active files are bad, that's OK (as long as the master files are good)
     updatePGM "${Active_Passwd}" "${Active_Group}" "${Master_Passwd}" "${Master_Group}"
+
+    #if checkPG "${Active_Passwd}" "${Active_Group}"; then
+    #if [ ${Verbose} -eq 0 ]; then
+    #pprint "checkPG ${Active_Passwd} ${Active_Group}" OK
+    #fi
+    #fi
+
+    # it's likily that the active files are bad, that's OK (as long as the master files are good)
+    #updatePGM "${Active_Passwd}" "${Active_Group}" "${Master_Passwd}" "${Master_Group}"
+
 fi
 
 # at this point, a lot in the queue may be irreversible
