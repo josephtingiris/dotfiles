@@ -657,12 +657,17 @@ function updatePGM() {
             unset master_username master_password master_uid master_gid master_comment master_homedir master_shell
         done # update_checks
 
-    # copy master_passwd & master_group to passwd & group
-    pprint "copy ${master_passwd} to ${passwd}" "QUEUE #${update_check}"
-    Queue_Commands+=("cp \"${master_passwd}\" \"${passwd}\"")
-    pprint "copy ${master_group} to ${group}" "QUEUE #${update_check}"
-    Queue_Commands+=("cp \"${master_group}\" \"${group}\"")
-}
+        # copy master_passwd & master_group to passwd & group
+        if [ "${master_passwd}" != "${passwd}" ]; then
+            pprint "copy ${master_passwd} to ${passwd}" "QUEUE #${update_check}"
+            Queue_Commands+=("cp \"${master_passwd}\" \"${passwd}\"")
+        fi
+
+        if [ "${master_group}" != "${group}" ]; then
+            pprint "copy ${master_group} to ${group}" "QUEUE #${update_check}"
+            Queue_Commands+=("cp \"${master_group}\" \"${group}\"")
+        fi
+    }
 
 function usage() {
     printf "\nusage:\n\n"
@@ -889,6 +894,10 @@ if checkPG "${Master_Passwd}" "${Master_Group}"; then
 
     if [ ${Verbose} -eq 0 ]; then
         pprint "checkPG ${Active_Passwd} ${Active_Group}" OK
+    fi
+
+    if [ "${Master_Passwd}" == "/etc/passwd" ] && [ "${Master_Group}" == "/etc/group" ]; then
+        updatePGM "${Active_Passwd}" "${Active_Group}" "${Master_Passwd}" "${Master_Group}"
     fi
 
 else
