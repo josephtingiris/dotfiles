@@ -9,7 +9,7 @@
 # ... and then some.
 
 # joseph.tingiris@gmail.com, 20180801 ... created
-# joseph.tingiris@gmail.com, 20180818 ... alpha (centos 7)
+# joseph.tingiris@gmail.com, 20180818 ... alpha (centos 7, fedora 28)
 
 ###########
 # Globals #
@@ -631,20 +631,20 @@ function updatePGM() {
                             # need to do this once; it needs to be run only on the second check pass for duplicates
                             if [ ${update_checks} -eq 1 ] || [ ${update_check} -eq 2 ]; then
                                 Queue_Commands+=("# ${master_passwd} ${master_username} change files uid from ${uid} to ${master_uid}")
-                                Queue_Commands+=("find ${find_args} -user ${uid} -and -group ${gid} -print0 | xargs -0 --no-run-if-empty chown --changes --dereference --preserve-root ${master_uid}")
+                                Queue_Commands+=("find ${find_args} -user ${uid} -print0 | xargs -0 --no-run-if-empty chown --changes --dereference --preserve-root ${master_uid}")
                                 Queue_Commands+=("# ${master_passwd} ${master_username} change files gid from ${gid} to ${master_gid}")
-                                Queue_Commands+=("find ${find_args} -user ${uid} -and -group ${gid} -print0 | xargs -0 --no-run-if-empty chgrp --changes --dereference --preserve-root ${master_gid}")
+                                Queue_Commands+=("find ${find_args} -group ${gid} -print0 | xargs -0 --no-run-if-empty chgrp --changes --dereference --preserve-root ${master_gid}")
                             fi
                         else
                             # only need to do this once
                             if [ ${update_check} -eq 1 ]; then
                                 if [ "${uid}" != "${master_uid}" ]; then
                                     Queue_Commands+=("# ${master_passwd} ${master_username} uid will change from ${uid} to ${master_uid}")
-                                    Queue_Commands+=("find ${find_args} -user ${uid} -and -group ${gid} -print0 | xargs -0 --no-run-if-empty chown --changes --dereference --preserve-root ${master_uid}")
+                                    Queue_Commands+=("find ${find_args} -user ${uid} -print0 | xargs -0 --no-run-if-empty chown --changes --dereference --preserve-root ${master_uid}")
                                 fi
                                 if [ "${gid}" != "${master_gid}" ]; then
                                     Queue_Commands+=("# ${master_passwd} ${master_username} gid will change from ${gid} to ${master_gid}")
-                                    Queue_Commands+=("find ${find_args} -user ${uid} -and -group ${gid} -print0 | xargs -0 --no-run-if-empty chgrp --changes --dereference --preserve-root ${master_gid}")
+                                    Queue_Commands+=("find ${find_args} -group ${gid} -print0 | xargs -0 --no-run-if-empty chgrp --changes --dereference --preserve-root ${master_gid}")
                                 fi
                             fi
                         fi
@@ -693,6 +693,11 @@ else
     Tested_Ok=1 # false
     if [ "$ID" == "centos" ]; then
         if [ "$VERSION_ID" == "7" ]; then
+            Tested_Ok=0 # true
+        fi
+    fi
+    if [ "$ID" == "fedora" ]; then
+        if [ "$VERSION_ID" == "28" ]; then
             Tested_Ok=0 # true
         fi
     fi
