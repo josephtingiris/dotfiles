@@ -2,10 +2,14 @@
 
 # This script will ...
 #
-# check default passwd & group files against 'master' passwd and group files,
+# check active passwd & group files against master passwd and group files,
 # or just check passwd & group for anomalies, such as conflicting uid:gid, etc.
+# optionally update active passwd & group and correct filesystem permissions
+#
+# ... and then some.
 
-# joseph.tingiris@gmail.com, 20180701 ... created out of necessity
+# joseph.tingiris@gmail.com, 20180801 ... created
+# joseph.tingiris@gmail.com, 20180818 ... alpha (centos 7)
 
 ###########
 # Globals #
@@ -14,6 +18,7 @@
 PATH=/usr/bin:/usr/sbin:/bin:/sbin
 
 Branded="$(basename $0).$(date +%Y%m%d%H%M%S.%N)"
+Queue_Commands=()
 
 if [ "$DEBUG" != "" ]; then
     let Debug="$DEBUG"
@@ -21,7 +26,13 @@ else
     let Debug=0
 fi
 
-let Verbose=0
+# 0=true, 1=false
+let Delete_Flag=1
+let Reboot_Flag=1 # TODO; check /run/users/, /proc/, etc ...
+let Report_Flag=1
+let Sync_Flag=1
+let Verbose=1
+let Yes_Flag=1
 
 #############
 # Functions #
@@ -29,235 +40,413 @@ let Verbose=0
 
 # abort with a message & non-zero return code
 function aborting() {
+    printf "\n"
     pprint "" "ABORT"
     pprint "$1" "ABORT"
     pprint "" "ABORT"
+    printf "\n"
     exit 2
 }
 
-# 'check' a passwd/group pair of files, update and/or abort as necessary, output useful error reasons
+# 'check' a passwd/group pair of files, update and/or abort as necessary, output useful reasons
 function checkPG() {
     local passwd="$1"
-    isWritable "$passwd"
+    isAccessible "${passwd}"
 
     local group="$2"
-    isWritable "$group"
+    isAccessible "${group}"
 
-    debug "passwd             = $passwd" 2
-    debug "group              = $group" 2
+    debug "passwd             = ${passwd}" 2
+    debug "group              = ${group}" 2
 
-    local error_count=0
+    local issue_count=0
 
-    pprint "$passwd ... check"
+    pprint "${passwd}" CHECK
 
-    local duplicate_usernames=($(awk -F: '{if ($1 in users) print $1 ; else users[$1]}' $passwd))
-    local duplicate_uids=($(awk -F: '{if ($3 in users) print $3 ; else users[$3]}' $passwd))
+    local duplicate_usernames=($(awk -F: '{if ($1 in users) print $1 ; else users[$1]}' ${passwd}))
+    local duplicate_uids=($(awk -F: '{if ($3 in users) print $3 ; else users[$3]}' ${passwd}))
 
     while read passwd_line; do
-        #debug "passwd_line = $passwd_line" 11
+        #debug "passwd_line = ${passwd_line}" 11
 
-        # error_reasons gets appended, may be multiple reasons
-        local error_reasons=""
+        # reasons gets appended, may be multiple reasons
+        local reasons=""
 
-        local username="$(echo "$passwd_line" | awk -F: '{print $1}')"
-        local password="$(echo "$passwd_line" | awk -F: '{print $2}')"
-        let local uid="$(echo "$passwd_line" | awk -F: '{print $3}')"
-        let local gid="$(echo "$passwd_line" | awk -F: '{print $4}')"
-        local comment="$(echo "$passwd_line" | awk -F: '{print $5}')"
-        local homedir="$(echo "$passwd_line" | awk -F: '{print $6}')"
-        local shell="$(echo "$passwd_line" | awk -F: '{print $7}')"
+        local username="$(echo "${passwd_line}" | awk -F: '{print $1}')"
+        #local password="$(echo "${passwd_line}" | awk -F: '{print $2}')"
+        let local uid="$(echo "${passwd_line}" | awk -F: '{print $3}')"
+        let local gid="$(echo "${passwd_line}" | awk -F: '{print $4}')"
+        local comment="$(echo "${passwd_line}" | awk -F: '{print $5}')"
+        local homedir="$(echo "${passwd_line}" | awk -F: '{print $6}')"
+        local shell="$(echo "${passwd_line}" | awk -F: '{print $7}')"
         local passwd_line_ok=0
 
+        local error_count=0
 
-        local username_conflict=0
+        local duplicate_username
         for duplicate_username in ${duplicate_usernames[@]}; do
-            if [ "$username" == "$duplicate_username" ]; then
+            if [ "${username}" == "${duplicate_username}" ]; then
                 let passwd_line_ok=1
-                ((++username_conflict))
-                ((++error_count))
-                error_reasons+="duplicate username,"
+                ((++issue_count))
+                reasons+="duplicate username,"
             fi
         done
+        unset duplicate_username
 
-        local uid_conflict=0
+        # conflicting uids are an exceptional condition; best effort to fix but it's a genuine error that could cause
+        # serious repercussions & is certainly an insecurity vector
+        local duplicate_uid
+        local duplicate_uid_last=""
         for duplicate_uid in ${duplicate_uids[@]}; do
-            if [ "$uid" == "$duplicate_uid" ]; then
+            if [ "${duplicate_uid}" == "" ]; then continue; fi
+            if [ "${uid}" == "${duplicate_uid_last}" ]; then
                 let passwd_line_ok=1
-                ((++uid_conflict))
+                ((++issue_count))
                 ((++error_count))
-                error_reasons+="duplicate uid $uid,"
+                reasons+="uid conflict,"
+                let local uid_error_count=$(grep ":x:${uid}:${gid}:" "${passwd}" 2> /dev/null | grep -v "${username}:x:${uid}:${gid}:" | wc -l)
+                if [ ${uid_error_count} -ge 1 ]; then
+                    # more serious; a completely different username shares this user's uid:gid
+                    pprint "${passwd} ${username}:x:${uid}:${gid} uid ${uid} and gid ${gid} conflicts with the following other users" FATAL
+                    printf "\n"
+                    grep ":x:${uid}:${gid}:" "${passwd}" 2> /dev/null
+                    aborting
+                else
+                    # more difficult; a completely different username shares this user's uid but not gid
+                    pprint "${passwd} ${username}:x:${uid}:${gid} uid ${uid} conflicts with other users" ERROR
+                fi
+            else
+                if [ "${uid}" == "${duplicate_uid}" ]; then
+                    let passwd_line_ok=1
+                    ((++issue_count))
+                    reasons+="duplicate uid ${uid},"
+                fi
             fi
+            duplicate_uid_last=${duplicate_uid}
         done
+        unset duplicate_uid duplicate_uid_last
 
-        if [ $uid -gt 15 ]; then
+        if [ ${uid} -gt 15 ]; then
 
                 # this is subjective; but I want to know ..
-                if [ "$uid" != "$gid" ]; then
+                if [ "${uid}" != "${gid}" ]; then
                     let passwd_line_ok=1
-                    ((++error_count))
-                    error_reasons+="$uid != $gid,"
+                    ((++issue_count))
+                    reasons+="uid ${uid} does not match gid ${gid},"
                 fi
 
-                if [ -r "$group" ]; then
-                    local username_group_count=$(grep "^${username}:x:" "$group" | wc -l)
-                    if [ $username_group_count -eq 1 ]; then
-                        local username_group_match=$(grep "^${username}:x:$gid" "$group" | wc -l)
-                        if [ $username_group_match -ne 1 ]; then
-                            let passwd_line_ok=1
-                            ((++error_count))
-                            error_reasons+="$username group has a different gid in $group,"
-                        fi
-                    else
-                        if [ $username_group_count -eq 0 ]; then
-                            if [ -w "$group" ]; then
-                                echo "${username}:x:${uid}:${username}" >> "$group"
-                            else
-                                let passwd_line_ok=1
-                                ((++error_count))
-                                error_reasons+="$username group is missing in $group,"
-                            fi
+                local username_group_count=$(grep "^${username}:x:" "${group}" | wc -l)
+                if [ ${username_group_count} -eq 1 ]; then
+                    local username_group_match=$(grep "^${username}:x:${gid}" "${group}" | wc -l)
+                    if [ ${username_group_match} -ne 1 ]; then
+                        let passwd_line_ok=1
+                        ((++issue_count))
+                        reasons+="${username} group has a different gid in ${group},"
+                    fi
+                else
+                    if [ ${username_group_count} -eq 0 ]; then
+                        if [ -w "${group}" ]; then
+                            pprint "${passwd}:x:${uid}:${gid} add ${username} to ${group}" "QUEUE #0"
+                            # automatically 'fix'?
+                            Queue_Commands+=("echo \"${username}:x:${uid}:${username}\" >> \"${group}\"")
                         else
                             let passwd_line_ok=1
-                            ((++error_count))
-                            error_reasons+="$username inconsistencies in $group,"
+                            ((++issue_count))
+                            reasons+="${username} group is missing from ${group},"
                         fi
+                    else
+                        let passwd_line_ok=1
+                        ((++issue_count))
+                        reasons+="${username} anomalies in ${group},"
                     fi
                 fi
 
             fi
 
-            if [ $passwd_line_ok -ne 0 ]; then
-                error_reasons="$(echo "$error_reasons" | sed -e '/,$/s///g')" # remove trailing ,
-                pprint "$passwd [$uid:$gid] $username ($error_reasons)" "ERROR"
-                #else
-                #echo "[$passwd] [  OK   ] [$uid:$gid] $username"
+            if [ ${passwd_line_ok} -ne 0 ]; then
+                reasons="$(echo "${reasons}" | sed -e '/,$/s///g')" # remove trailing ,
+                if [ ${Report_Flag} -eq 0 ]; then
+                    pprint "${passwd} ${username}:x:${uid}:${gid} (${reasons})" "WARNING"
+                fi
+            else
+                debug "${passwd} ${username}:x:${uid}:${gid}"
             fi
 
             unset username password uid gid comment homedir shell
-        done <<< "$(cat "$passwd")"
+        done <<< "$(cat "${passwd}")"
         unset duplicate_usernames duplicate_uids
 
-        echo "[$group] checking ..."
-        echo
-        local duplicate_usernames=$(awk -F: '{if ($1 in users) print $1 ; else users[$1]}' $group)
-        local duplicate_uids=$(awk -F: '{if ($3 in users) print $3 ; else users[$3]}' $group)
+        if [ ${Report_Flag} -eq 0 ]; then
+            printf "\n"
+        fi
+        pprint "${group}" CHECK
+
+        local duplicate_groupnames=$(awk -F: '{if ($1 in groups) print $1 ; else groups[$1]}' ${group})
+        local duplicate_gids=$(awk -F: '{if ($3 in groups) print $3 ; else groups[$3]}' ${group})
         local group_line_ok=0
 
         # mimic what was done with passwd
         while read group_line; do
-            #echo "[$group] $group_line"
+            #echo "[${group}] ${group_line}"
 
-            local error_reasons=""
+            local reasons=""
 
-            local groupname="$(echo "$group_line" | awk -F: '{print $1}')"
-            local password="$(echo "$group_line" | awk -F: '{print $2}')"
-            let local gid="$(echo "$group_line" | awk -F: '{print $3}')"
+            local groupname="$(echo "${group_line}" | awk -F: '{print $1}')"
+            #local password="$(echo "${group_line}" | awk -F: '{print $2}')"
+            let local gid="$(echo "${group_line}" | awk -F: '{print $3}')"
             local group_line_ok=0
 
-            groupname_count=$(grep ^${groupname}:x: "$group" | wc -l)
-            if [ $groupname_count -eq 0 ]; then
+            groupname_count=$(grep ^${groupname}:x: "${group}" | wc -l)
+            if [ ${groupname_count} -eq 0 ]; then
                 let group_line_ok=1
-                ((++error_count))
-                error_reasons+="$groupname group is missing in $group,"
+                ((++issue_count))
+                reasons+="${groupname} group is missing in ${group},"
             else
-                if [ $groupname_count -ne 1 ]; then
-                    let group_line_ok=1
-                    ((++error_count))
-                    error_reasons+="$groupname group has $groupname_count duplicates in $group,"
-                fi
+
+                local groupname_conflict=0
+                for duplicate_groupname in ${duplicate_groupnames[@]}; do
+                    if [ "${groupname}" == "${duplicate_groupname}" ]; then
+                        let group_line_ok=1
+                        ((++groupname_conflict))
+                        ((++issue_count))
+                        reasons+="duplicate groupname,"
+                    fi
+                done
+                unset duplicate_groupname
+
+                local gid_conflict=0
+                for duplicate_gid in ${duplicate_gids[@]}; do
+                    if [ "${gid}" == "${duplicate_gid}" ]; then
+                        let group_line_ok=1
+                        ((++gid_conflict))
+                        ((++issue_count))
+                        reasons+="duplicate gid ${gid},"
+                    fi
+
+                done
+                unset duplicate_gid
+
             fi
 
-            if [ -r "$passwd" ]; then
-                local username_passwd_count=$(grep "^${groupname}:x:\b.*\b:${gid}:" "$passwd" | wc -l)
-                if [ $username_passwd_count -eq 0 ]; then
-                    if [ -w "$passwd" ]; then
-                        # preserve classic gids
-                        if [ $gid -gt 15 ]; then
-                            echo "$groupname:x:$gid:$gid:$groupname:/:/bin/false" >> "$passwd"
+            local username_passwd_count=$(grep "^${groupname}:x:\b.*\b:${gid}:" "${passwd}" | wc -l)
+            if [ ${username_passwd_count} -eq 0 ]; then
+                if [ -w "${passwd}" ]; then
+                    # preserve classic gids
+                    if [ ${gid} -gt 15 ]; then
+                        # automatically 'fix'?
+                        local uid_exists=$(grep ":x:${gid}:" "${passwd}" 2> /dev/null)
+                        if [ "$uid_exists" == "" ]; then
+                            pprint "${group} ${groupname}:x:${gid} add ${groupname}:x:${gid}:${gid} to ${passwd}" "QUEUE #1"
+                            Queue_Commands+=("echo \"${groupname}:x:${gid}:${gid}:${groupname}:/:/bin/false\" >> \"${passwd}\"")
+                        else
+                            pprint "${group} ${groupname}:x:${gid} uid ${gid} already exists; refusing to add ${groupname}:x:${gid}:${gid} to ${passwd}" "WARNING"
                         fi
-                    else
-                        let group_line_ok=1
-                        ((++error_count))
-                        error_reasons+="$groupname group has no user in $passwd,"
                     fi
                 else
-                    if [ $username_passwd_count -gt 1 ]; then
-                        let group_line_ok=1
-                        ((++error_count))
-                        error_reasons+="$groupname group has mismatched user in $passwd,"
-                    fi
+                    let group_line_ok=1
+                    ((++issue_count))
+                    reasons+="${groupname} group has no user in ${passwd},"
+                fi
+            else
+                if [ ${username_passwd_count} -gt 1 ]; then
+                    let group_line_ok=1
+                    ((++issue_count))
+                    reasons+="${groupname} group has mismatched user in ${passwd},"
                 fi
             fi
 
-            if [ $group_line_ok -ne 0 ]; then
-                error_reasons="$(echo "$error_reasons" | sed -e '/,$/s///g')" # remove trailing ,
-                echo "[$group] [ ERROR ] [$gid] $groupname ($error_reasons)"
-                #else
-                #echo "[$group] [  OK   ] [$gid] $groupname"
+            if [ ${group_line_ok} -ne 0 ]; then
+                reasons="$(echo "${reasons}" | sed -e '/,$/s///g')" # remove trailing ,
+                if [ ${Report_Flag} -eq 0 ]; then
+                    pprint "${group} ${groupname}:x:${gid} (${reasons})" WARNING
+                fi
+            else
+                debug "${group} ${groupname}:x:${gid}"
             fi
 
             unset groupname password gid
-        done <<< "$(cat "$group")"
+        done <<< "$(cat "${group}")"
+        unset duplicate_groupnames duplicate_gids
 
-        echo
-        echo "error_count = $error_count"
-        echo
+        if [ ${issue_count} -gt 0 ]; then
+            echo
+            pprint "${passwd} & ${group} issue_count = ${issue_count}" WARNING
+            echo
+        fi
 
-        return $error_count
+        return ${error_count}
     }
 
 # output debug messages
 function debug() {
-    if [ "$Debug" != "" ]; then
+    if [ ${Debug} -gt 0 ]; then
         pprint "$1" DEBUG
     fi
 }
 
+function usersRm() {
+    local passwd="$1"
+    isAccessible "${passwd}"
+
+    local group="$2"
+    isAccessible "${group}"
+
+    local master_passwd="$3"
+    isAccessible "${master_passwd}"
+
+    local master_group="$4"
+    isAccessible "${master_group}"
+
+    local usernames="$5"
+
+    if [ "${usernames}" == "" ]; then
+        aborting "can't delete empty usernames"
+    fi
+
+    local passwd_files=()
+    if [ "${passwd}" == "${master_passwd}" ]; then
+        passwd_files+=("${passwd}")
+    else
+        passwd_files+=("${passwd}")
+        passwd_files+=("${master_passwd}")
+    fi
+
+    local group_files=()
+    if [ "${group}" == "${master_group}" ]; then
+        group_files+=("${group}")
+    else
+        group_files+=("${group}")
+        group_files+=("${master_group}")
+    fi
+
+    for username in ${usernames}; do
+        for passwd_file in ${passwd_files[@]}; do
+            if grep -q "^${username}:x:" "${passwd_file}"; then
+                pprint "username ${username} is being removed from ${passwd_file}" DELETE
+                sed -ie "/^${username}:x:/D" "${passwd_file}"
+            else
+                pprint "username ${username} not in ${passwd_file}" OK
+            fi
+        done
+        for group_file in ${group_files[@]}; do
+            if grep -q "^${username}:x:" "${group_file}"; then
+                pprint "username ${username} is being removed from ${group_file}" DELETE
+                sed -ie "/^${username}:x:/D" "${group_file}"
+            else
+                pprint "username ${username} not in ${group_file}" OK
+            fi
+            if egrep -qe ":${username},|:${username}$|,${username},|,${username}$" "${group_file}"; then
+                pprint "username ${username} is being removed from ${group_file}" DELETE
+                sed -ie "/:${username},/s//:/g" ${group_file}
+                sed -ie "/:${username}$/s//:/g" ${group_file}
+                sed -ie "/,${username},/s//,/g" ${group_file}
+                sed -ie "/,${username}$/s///g" ${group_file}
+            fi
+        done
+    done
+
+    # TODO; support multiple flags at once
+    exit
+}
+
 # aborting if a filename given is not writable
-function isWritable() {
+function isAccessible() {
     local filename="$1"
 
-    if [ "$filename" == "" ]; then
-        aborting "empty filename not writable"
+    if [ ${Yes_Flag} -eq 0 ]; then
+        local feedback="writable"
+    else
+        local feedback="readable"
     fi
 
-    if [ ! -w "$filename" ]; then
-        aborting "$filename file not writable"
+    if [ "${filename}" == "" ]; then
+        aborting "empty filename not ${feedback}"
     fi
+
+    if [ ${Yes_Flag} -eq 0 ]; then
+        if [ ! -w "${filename}" ]; then
+            aborting "${filename} file not ${feedback}"
+        fi
+    else
+        if [ ! -r "${filename}" ]; then
+            aborting "${filename} file not ${feedback}"
+        fi
+    fi
+}
+
+# eval all commands in Queue_Commands & if successful reset the array else abort
+function queueEval() {
+    if [ "${Queue_Commands}" == "" ]; then return 0; fi
+
+    let local harmful="$1"
+
+    if [ ! -w /var/tmp/eval.${Branded} ]; then
+        touch /var/tmp/eval.${Branded}
+        if [ $? -ne 0 ] ;then
+            aborting "failed to touch /var/tmp/eval.${Branded}"
+        fi
+    fi
+
+    printf "\n[  UPDATE   ] "
+    if [ ${harmful} -ne 0 ]; then
+        printf "\n\n"
+    fi
+    for Queue_Command in "${Queue_Commands[@]}"; do
+        if [ ${harmful} -eq 0 ]; then
+            printf "."
+            eval ${Queue_Command}
+            if [ $? -ne 0 ]; then
+                echo "${Queue_Command} # failed" >> /var/tmp/eval.${Branded}
+                aborting "'${Queue_Command}' failed, see /var/tmp/eval.${Branded}"
+            else
+                echo "${Queue_Command} # success" >> /var/tmp/eval.${Branded}
+            fi
+        else
+            echo "${Queue_Command} # not run" >> /var/tmp/eval.${Branded}
+            echo ${Queue_Command}
+        fi
+    done
+    printf "\n"
+    if [ ${harmful} -eq 0 ]; then
+        printf "\n"
+    fi
+
+    unset Queue_Commands
+    Queue_Commands=()
 }
 
 # replace a passwd & group with a (numerically) sorted & unique version of the same files
 function sortPG() {
     local passwd="$1"
-    isWritable "$passwd"
+    isAccessible "${passwd}"
 
     local group="$2"
-    isWritable "$group"
+    isAccessible "${group}"
 
-    # check sorted passwd & group
-    cat "$passwd" 2> /dev/null | sort -u | sort -t: -k 3n,4n > /tmp/passwd.$Branded
-    isWritable "/tmp/passwd.$Branded"
+    # sort passwd & group
+    cat "${passwd}" 2> /dev/null | sort -u | sort -t: -k 3n,4n > /tmp/passwd.${Branded}
+    isAccessible "/tmp/passwd.${Branded}"
 
-    diff -q /tmp/passwd.$Branded "$passwd" &> /dev/null
+    diff -q /tmp/passwd.${Branded} "${passwd}" &> /dev/null
     if [ $? -ne 0 ]; then
-        cp /tmp/passwd.$Branded "$passwd"
+        cp /tmp/passwd.${Branded} "${passwd}"
         if [ $? -ne 0 ]; then
-            aborting "'cp /tmp/passwd.$Branded $passwd' failed"
+            aborting "'cp /tmp/passwd.${Branded} ${passwd}' failed"
         fi
     fi
-    rm -f /tmp/passwd.$Branded
+    rm -f /tmp/passwd.${Branded}
 
-    cat "$group" 2> /dev/null | sort -u | sort -t: -k 3n,4n > /tmp/group.$Branded
-    isWritable "/tmp/group.$Branded"
+    cat "${group}" 2> /dev/null | sort -u | sort -t: -k 3n,4n > /tmp/group.${Branded}
+    isAccessible "/tmp/group.${Branded}"
 
-    diff -q /tmp/group.$Branded "$group" &> /dev/null
+    diff -q /tmp/group.${Branded} "${group}" &> /dev/null
     if [ $? -ne 0 ]; then
-        cp /tmp/group.$Branded "$group"
+        cp /tmp/group.${Branded} "${group}"
         if [ $? -ne 0 ]; then
-            aborting "'cp /tmp/group.$Branded $group' failed"
+            aborting "'cp /tmp/group.${Branded} ${group}' failed"
         fi
     fi
-    rm -f /tmp/group.$Branded
+    rm -f /tmp/group.${Branded}
 
 }
 
@@ -265,21 +454,21 @@ function sortPG() {
 function pprint() {
     local message="$1"
     local -u level="$2"
-    local -i level_pad=10
+    local -i level_pad=11
 
-    if [ "$level" == "" ]; then
-        level="OK"
+    if [ "${level}" == "" ]; then
+        level="INFO"
     fi
 
     local pretty=""
-    if [ $Verbose -gt 0 ]; then
+    if [ ${Verbose} -eq 0 ]; then
         pretty+="[$(date +%F" "%T)] "
     fi
 
     let local level_pad_left=(${level_pad}-${#level})/2
-    if [ $level_pad_left -lt 0 ]; then level_pad_left=0; fi
+    if [ ${level_pad_left} -lt 0 ]; then level_pad_left=0; fi
     let local level_pad_right=(${level_pad}-${#level})-${level_pad_left}
-    if [ $level_pad_right -lt 0 ]; then level_pad_right=0; fi
+    if [ ${level_pad_right} -lt 0 ]; then level_pad_right=0; fi
 
     # center level
     pretty+="[%${level_pad_left}s%s%${level_pad_right}s] "
@@ -289,7 +478,200 @@ function pprint() {
 
     pretty+="\n"
 
-    printf "$pretty" " " "$level" " " "$message"
+    printf "${pretty}" " " "${level}" " " "${message}"
+}
+
+# update a passwd & group with a master passwd & group and filesystem permissions
+function updatePGM() {
+    local passwd="$1"
+    isAccessible "${passwd}"
+
+    local group="$2"
+    isAccessible "${group}"
+
+    local master_passwd="$3"
+    isAccessible "${master_passwd}"
+
+    local master_group="$4"
+    isAccessible "${master_group}"
+
+    debug "passwd        = ${passwd}"
+    debug "master_passwd = ${master_passwd}"
+    debug "group         = ${group}"
+    debug "master_group  = ${master_group}"
+
+    let local update_checks=1
+
+    # check for duplicate uid/gid in passwd & group before proceeding
+    # if there are duplicate uids then do multiple checks; it's more likely that uid:gid are not both the same
+    local duplicate_uids=($(awk -F: '{if ($3 in users) print $3 ; else users[$3]}' ${passwd}))
+    if [ "${duplicate_uids}" != "" ]; then
+        let local update_checks=2
+        local duplicate_uid
+        if [ "${Debug}" != "" ]; then
+            for duplicate_uid in ${duplicate_uids[@]}; do
+                if [ ${Report_Flag} -eq 0 ]; then
+                    pprint "${passwd} has duplicate uid ${duplicate_uid}" WARNING
+                fi
+                local duplicate_line
+                while read duplicate_line; do
+                    if [ ${Report_Flag} -eq 0 ]; then
+                        pprint "${passwd} ${duplicate_line}" WARNING
+                    fi
+                done <<< "$(grep ":x:${duplicate_uid}:" ${passwd})"
+                unset duplicate_line
+            done
+            unset duplicate_uid
+        fi
+    fi
+
+    let local update_check=0
+    while [ ${update_check} -lt ${update_checks} ]; do
+        ((++update_check))
+        debug "update_check ${update_check}"
+
+        while read master_passwd_line; do
+            if [ "${master_passwd_line}" == "" ]; then continue; fi
+
+            debug "update_check ${update_check}, master_passwd_line = ${master_passwd_line}" 11
+
+            local master_username="$(echo "${master_passwd_line}" | awk -F: '{print $1}')"
+            #local master_password="$(echo "${master_passwd_line}" | awk -F: '{print $2}')"
+            let local master_uid="$(echo "${master_passwd_line}" | awk -F: '{print $3}')"
+            let local master_gid="$(echo "${master_passwd_line}" | awk -F: '{print $4}')"
+            local master_homedir="$(echo "${master_passwd_line}" | awk -F: '{print $6}')"
+
+            # for testing (quicker)
+            if [ "${master_username}" == "input" ]; then break; fi
+
+            let local master_passwd_line_ok=0
+
+            let local passwd_line_count=0
+            while read passwd_line; do
+                if [ "${passwd_line}" == "" ]; then continue; fi
+                ((++passwd_line_count))
+                debug "passwd_line        = ${passwd_line}" ${passwd_line_count} 11
+                if [ "${master_username}:x:${master_uid}:${master_gid}" != "${passwd_line}" ]; then
+                    master_passwd_line_ok=1
+                fi
+            done <<< "$(grep "^${master_username}:x:" "${passwd}" | awk -F: '{print $1":"$2":"$3":"$4}' | sort -u)"
+            unset passwd_line
+
+            if [ ${master_passwd_line_ok} -eq 0 ]; then
+
+                    # only need to do this once
+                    if [ ${update_check} -eq 1 ]; then
+                        if [ ! -e "${master_homedir}" ]; then
+                            pprint "${master_passwd} ${master_username} make home '${master_homedir}' directory" "QUEUE #${update_check}"
+                            Queue_Commands+=("mkdir -p \"${master_homedir}\"")
+                            Queue_Commands+=("chown ${master_uid}:${master_gid} \"${master_homedir}\"")
+                        fi
+                    fi
+
+                    if [ ${Verbose} -eq 0 ]; then
+                        pprint "${master_passwd} ${master_username}" OK
+                    fi
+                    continue
+                else
+                    debug "${master_passwd} ${master_username} (${passwd_line_count}) CHECK #${update_check}"
+
+                    local master_comment="$(echo "${master_passwd_line}" | awk -F: '{print $5}')"
+                    local master_shell="$(echo "${master_passwd_line}" | awk -F: '{print $7}')"
+
+                    while read passwd_line; do
+                        if [ "${passwd_line}" == "" ]; then continue; fi
+
+                        local username="$(echo "${passwd_line}" | awk -F: '{print $1}')"
+                        if [ "${username}" != "${master_username}" ]; then
+                            aborting "${passwd} ${username}:x:${uid}:${gid} != ${master_passwd} ${username}"
+                        fi
+                        #local password="$(echo "${passwd_line}" | awk -F: '{print $2}')"
+                        let local uid="$(echo "${passwd_line}" | awk -F: '{print $3}')"
+                        let local gid="$(echo "${passwd_line}" | awk -F: '{print $4}')"
+                        local comment="$(echo "${passwd_line}" | awk -F: '{print $5}')"
+                        local homedir="$(echo "${passwd_line}" | awk -F: '{print $6}')"
+                        local shell="$(echo "${passwd_line}" | awk -F: '{print $7}')"
+
+                        # only need to do this once
+                        if [ ${update_check} -eq 1 ]; then
+
+                            if [ "${homedir}" != "${master_homedir}" ]; then
+                                if [ "${homedir}" != "/" ] && [ "${homedir}" != "" ]; then
+                                    if [ -d "${homedir}" ]; then
+                                        if [ ! -e "${master_homedir}" ]; then
+                                            pprint "${master_passwd} ${master_username} home directory will change from '${homedir}' to '${master_homedir}'" "QUEUE #${update_check}"
+                                            Queue_Commands+=("mv \"${homedir}\" \"${master_homedir}\"")
+                                        else
+                                            pprint "${master_passwd} ${master_username} home directory will move from '${homedir}' to '${master_homedir}' (${Branded})" "QUEUE #${update_check}"
+                                            Queue_Commands+=("mv \"${master_homedir}/\" \"${master_homedir}.${Branded}\"")
+                                            Queue_Commands+=("mv \"${homedir}\" \"${master_homedir}\"")
+                                        fi
+                                    fi
+                                fi
+                            fi
+
+                            if [ ! -e "${master_homedir}" ]; then
+                                pprint "${master_passwd} ${master_username} make home '${master_homedir}' directory" "QUEUE #${update_check}"
+                                Queue_Commands+=("mkdir -p \"${master_homedir}\"")
+                                Queue_Commands+=("chown ${master_uid}:${master_gid} \"${master_homedir}\"")
+                            fi
+
+                        fi
+
+                        find_args="/ -path /dev -prune -or -path /proc -prune -or -path /run/user -prune -or -path /sys -prune -or"
+
+                        if [ "${uid}" != "${master_uid}" ] && [ "${gid}" != "${master_gid}" ]; then
+                            pprint "${master_passwd} ${master_username} uid and gid will change from ${uid}:${gid} to ${master_uid}:${master_gid}" "QUEUE #${update_check}"
+                            # only need to do this once; it *should* fix everything
+                            if [ ${update_check} -eq 1 ]; then
+                                Queue_Commands+=("# ${master_passwd} ${master_username} change files uid:gid from ${uid}:${gid} to ${master_uid}:${master_gid}")
+                                Queue_Commands+=("find ${find_args} -user ${uid} -and -group ${gid} -print0 | xargs -0 --no-run-if-empty chown --changes --dereference --preserve-root ${master_uid}:${master_gid}")
+                            fi
+
+                            # need to do this once; it needs to be run only on the second check pass for duplicates
+                            if [ ${update_checks} -eq 1 ] || [ ${update_check} -eq 2 ]; then
+                                Queue_Commands+=("# ${master_passwd} ${master_username} change files uid from ${uid} to ${master_uid}")
+                                Queue_Commands+=("find ${find_args} -user ${uid} -and -group ${gid} -print0 | xargs -0 --no-run-if-empty chown --changes --dereference --preserve-root ${master_uid}")
+                                Queue_Commands+=("# ${master_passwd} ${master_username} change files gid from ${gid} to ${master_gid}")
+                                Queue_Commands+=("find ${find_args} -user ${uid} -and -group ${gid} -print0 | xargs -0 --no-run-if-empty chgrp --changes --dereference --preserve-root ${master_gid}")
+                            fi
+                        else
+                            # only need to do this once
+                            if [ ${update_check} -eq 1 ]; then
+                                if [ "${uid}" != "${master_uid}" ]; then
+                                    Queue_Commands+=("# ${master_passwd} ${master_username} uid will change from ${uid} to ${master_uid}")
+                                    Queue_Commands+=("find ${find_args} -user ${uid} -and -group ${gid} -print0 | xargs -0 --no-run-if-empty chown --changes --dereference --preserve-root ${master_uid}")
+                                fi
+                                if [ "${gid}" != "${master_gid}" ]; then
+                                    Queue_Commands+=("# ${master_passwd} ${master_username} gid will change from ${gid} to ${master_gid}")
+                                    Queue_Commands+=("find ${find_args} -user ${uid} -and -group ${gid} -print0 | xargs -0 --no-run-if-empty chgrp --changes --dereference --preserve-root ${master_gid}")
+                                fi
+                            fi
+                        fi
+
+                    done <<< "$(grep "^${master_username}:x:" "${passwd}" | sort -u)"
+                    unset passwd_line username password uid gid comment homedir shell
+                fi
+
+            done <<< "$(cat "${master_passwd}")"
+            unset master_username master_password master_uid master_gid master_comment master_homedir master_shell
+        done # update_checks
+
+    # copy master_passwd & master_group to passwd & group
+    pprint "copy ${master_passwd} to ${passwd}" "QUEUE #${update_check}"
+    Queue_Commands+=("cp \"${master_passwd}\" \"${passwd}\"")
+    pprint "copy ${master_group} to ${group}" "QUEUE #${update_check}"
+    Queue_Commands+=("cp \"${master_group}\" \"${group}\"")
+}
+
+function usage() {
+    printf "\nusage:\n\n"
+    printf "$0 check\n"
+    printf "$0 sync\n"
+    printf "$0 rm <username>\n"
+    printf "$0 yes\n"
+    printf "\n"
+    exit 1
 }
 
 ########
@@ -300,92 +682,242 @@ if [ "$USER" != "root" ]; then
     aborting "must be root"
 fi
 
-debug "Debug = $Debug" 1
+#
+# evaluate the os-release; abort if it hasn't been validated to work
+#
+
+if [ ! -r /etc/os-release ] && [ ! -e /etc/os-release ]; then
+    aborting "/etc/os-release file not found (readable)"
+else
+    source /etc/os-release
+    Tested_Ok=1 # false
+    if [ "$ID" == "centos" ]; then
+        if [ "$VERSION_ID" == "7" ]; then
+            Tested_Ok=0 # true
+        fi
+    fi
+    if [ ${Tested_Ok} -ne 0 ]; then
+        aborting "$0 hasn't been tested on this os-release (ID=$ID, VERSION_ID=$VERSION_ID)"
+    fi
+    unset Tested_Ok
+fi
+
+debug "Debug = ${Debug}" 1
+
+#
+# set cli flag variables
+#
+
+case "$1" in
+    check | report)
+        Report_Flag=0
+        ;;
+    delete | rm)
+        Delete_Flag=0
+        ;;
+    sync)
+        Sync_Flag=0
+        ;;
+    yes)
+        Yes_Flag=0
+        ;;
+    *)
+        usage
+        ;;
+esac
 
 #
 # The 'active' passwd & group; use files in pwd by default, else fall back to /etc (most often)
 #
 
-if [ -f ./passwd ]; then
-    Active_Passwd=$(readlink -e ./passwd)
+if [ "$ACTIVE_PASSWD" != "" ]; then
+    Active_Passwd=$(readlink -e "$ACTIVE_PASSWD" 2> /dev/null)
 else
-    Active_Passwd=/etc/passwd
+    if [ -f ./passwd ]; then
+        Active_Passwd=$(readlink -e ./passwd 2> /dev/null)
+    else
+        Active_Passwd=/etc/passwd
+    fi
 fi
-isWritable "$Active_Passwd"
+isAccessible "${Active_Passwd}"
 
-if [ -f ./group ]; then
-    Active_Group=$(readlink -e ./group)
+if [ "$ACTIVE_GROUP" != "" ]; then
+    Active_Group=$(readlink -e "$ACTIVE_GROUP" 2> /dev/null)
 else
-    Active_Group=/etc/group
+    if [ -f ./group ]; then
+        Active_Group=$(readlink -e ./group 2> /dev/null)
+    else
+        Active_Group=/etc/group
+    fi
 fi
-isWritable "$Active_Group"
+isAccessible "${Active_Group}"
 
 #
 # The 'master' passwd & group; use files in pwd by default, if they exist then use what's in /etc else make them the same as active
 #
 
-if [ -f ./passwd.master ]; then
-    Master_Passwd=$(readlink -e ./passwd.master)
+if [ "$MASTER_PASSWD" != "" ]; then
+    Master_Passwd=$(readlink -e "$MASTER_PASSWD" 2> /dev/null)
 else
-    if [ -f /etc/passwd.master ]; then
-        Master_Passwd=/etc/passwd.master
+    if [ -f ./passwd.master ]; then
+        Master_Passwd=$(readlink -e ./passwd.master 2> /dev/null)
     else
-        Master_Passwd=$Active_Passwd
+        if [ -f /etc/passwd.master ]; then
+            Master_Passwd=$(readlink -e /etc/passwd.master 2> /dev/null)
+        else
+            Master_Passwd=${Active_Passwd}
+        fi
     fi
 fi
-isWritable "$Master_Passwd"
+isAccessible "${Master_Passwd}"
 
-if [ -f ./group.master ]; then
-    Master_Group=$(readlink -e ./group.master)
+if [ "$MASTER_GROUP" != "" ]; then
+    Master_Group=$(readlink -e "$MASTER_GROUP" 2> /dev/null)
 else
-    if [ -f /etc/group.master ]; then
-        Master_Group=/etc/group.master
+    if [ -f ./group.master ]; then
+        Master_Group=$(readlink -e ./group.master)
     else
-        Master_Group=$Active_Group
+        if [ -f /etc/group.master ]; then
+            Master_Group=$(readlink -e /etc/group.master)
+        else
+            Master_Group=${Active_Group}
+        fi
     fi
 fi
-isWritable "$Master_Group"
+isAccessible "${Master_Group}"
 
-sortPG "$Master_Passwd" "$Master_Group"
+#
+# make sure the active & master files are paired with different files
+#
 
-# pull all 'new' users from the active passwd and put them in the master passwd
-if [ "$Active_Passwd" != "$Master_Passwd" ]; then
-    if [ -w "$Master_Passwd" ]; then
-        for username in $(cat "$Active_Passwd" | awk -F: '{print $1}'); do
-            Master_Passwd_Username=$(grep ^${username}:x: "$Master_Passwd")
-            if [ "$Master_Passwd_Username" == "" ]; then
-                echo "[$Master_Passwd] adding username $username"
-                grep "^${username}:x:" "$Active_Passwd" | head -1 >> "$Master_Passwd"
-            fi
-        done
+if [ "${Active_Passwd}" == "${Master_Passwd}" ] && [ "${Active_Group}" != "${Master_Group}" ]; then
+    aborting "different active & master passwd but identical group files"
+fi
+
+if [ "${Active_Passwd}" != "${Master_Passwd}" ] && [ "${Active_Group}" == "${Master_Group}" ]; then
+    aborting "different active & master group but identical passwd files"
+fi
+
+#
+# delete users from both active & master files (exits)
+#
+
+if [ "$1" == "delete" ] || [ "$1" == "rm" ]; then
+    usersRm "${Active_Passwd}" "${Active_Group}" "${Master_Passwd}" "${Master_Group}" "$2"
+fi
+
+#
+# a simple checks should pass; / should always be owned by 0:0 and mode 555
+#
+
+pprint "make / uid 0, gid 0, and mode 555" "QUEUE #0"
+Queue_Commands+=("chown 0:0 /")
+Queue_Commands+=("chmod 555 /")
+pprint "${Master_Passwd} ${Master_Group} sort" "QUEUE #0"
+Queue_Commands+=("sortPG \"${Master_Passwd}\" \"${Master_Group}\"")
+
+#
+# 'sync' users and groups in the active passwd & group that are not in the master passwd & group
+#
+
+if [ ${Sync_Flag} -eq 0 ] || [ ${Yes_Flag} -eq 0 ]; then
+
+    let Resort=1
+
+    # sync all 'new' users from the active passwd and put them in the master passwd
+    if [ "${Active_Passwd}" != "${Master_Passwd}" ]; then
+        if [ -w "${Master_Passwd}" ]; then
+            for username in $(awk -F: '{print $1}' "${Active_Passwd}"); do
+                Master_Passwd_Username=$(grep ^${username}:x: "${Master_Passwd}")
+                if [ "${Master_Passwd_Username}" == "" ]; then
+                    pprint "${Master_Passwd} add username '${username}' from ${Active_Passwd}" QUEUE
+                    Queue_Commands+=("grep \"^${username}:x:\" \"${Active_Passwd}\" | head -1 >> \"${Master_Passwd}\"")
+                    let Resort=1
+                fi
+            done
+        fi
+    fi
+
+    # sync all 'new' groups from the active group and put them in the master group
+    if [ "${Active_Group}" != "${Master_Group}" ]; then
+        if [ -w "${Master_Group}" ]; then
+            for groupname in $(awk -F: '{print $1}' "${Active_Group}"); do
+                Master_Group_Username=$(grep ^${groupname}:x: "${Master_Group}")
+                if [ "${Master_Group_Username}" == "" ]; then
+                    pprint "${Master_Group} add groupname '${groupname}' from ${Active_Group}" QUEUE
+                    Queue_Commands+=("grep \"^${groupname}:x:\" \"${Active_Group}\" | head -1 >> \"${Master_Group}\"")
+                    let Resort=1
+                fi
+            done
+        fi
+    fi
+
+    if [ ${Resort} -eq 0 ]; then
+        pprint "${Master_Passwd} ${Master_Group} re-sort" "QUEUE #0"
+        Queue_Commands+=("sortPG \"${Master_Passwd}\" \"${Master_Group}\"")
+
+        if [ ${Yes_Flag} -ne 0 ]; then
+            queueEval "0"
+        fi
+    else
+        pprint "all active users and groups are in sync" OK
+    fi
+    if [ ${Yes_Flag} -ne 0 ]; then
+        exit
     fi
 fi
 
-# pull all 'new' groups from the active group and put them in the master group
-if [ "$Active_Group" != "$Master_Group" ]; then
-    if [ -w "$Master_Group" ]; then
-        for groupname in $(cat "$Active_Group" | awk -F: '{print $1}'); do
-            Master_Group_Username=$(grep ^${groupname}:x: "$Master_Group")
-            if [ "$Master_Group_Username" == "" ]; then
-                echo "[$Master_Group] adding groupname $groupname"
-                grep "^${groupname}:x:" "$Active_Group" | head -1 >> "$Master_Group"
-            fi
-        done
+pprint "backup ${Master_Passwd} to ${Master_Passwd}.${Branded}" "QUEUE #0"
+Queue_Commands+=("cp \"${Master_Passwd}\" \"${Master_Passwd}.${Branded}\"")
+pprint "backup ${Master_Group} to ${Master_Group}.${Branded}" "QUEUE #0"
+Queue_Commands+=("cp \"${Master_Group}\" \"${Master_Group}.${Branded}\"")
+
+# at this point, nothing in the command queue should be irreversible
+queueEval "${Yes_Flag}"
+
+if checkPG "${Master_Passwd}" "${Master_Group}"; then
+
+    if [ ${Verbose} -eq 0 ]; then
+        pprint "checkPG ${Active_Passwd} ${Active_Group}" OK
     fi
-fi
 
-sortPG "$Master_Passwd" "$Master_Group"
-
-if checkPG "$Master_Passwd" "$Master_Group"; then
-    pprint "checkPG $Active_Passwd $Active_Group"
 else
-    aborting "checkPG $Master_Passwd $Master_Group failed"
+    # continuing with bad master files is, well, bad
+    if [ "${Master_Passwd}" == "/etc/passwd" ] && [ "${Master_Group}" == "/etc/group" ]; then
+        pprint "Consider trying this ..." SUGGEST
+        pprint "" SUGGEST
+        pprint "1) cp /etc/passwd /etc/passwd.master" SUGGEST
+        pprint "2) cp /etc/group /etc/group.master" SUGGEST
+        pprint "3) vi /etc/group.master /etc/passwd.master # fix the ERROR(s), group file first" SUGGEST
+        pprint "4) $0 report # fix any new ERROR(s), repeat #3" SUGGEST
+        pprint "5) $0 yes # let the script do the rest" SUGGEST
+        pprint "6) rm /etc/passwd.master /etc/group.master # or, fix the WARNING(s) and repeat" SUGGEST
+    fi
+    aborting "${Master_Passwd} & ${Master_Group} have issues, fix them manually"
 fi
 
-if [ "$Active_Passwd" != "$Master_Passwd" ] && [ "$Active_Group" != "$Master_Group" ]; then
-    if checkPG "$Active_Passwd" "$Active_Group"; then
-        pprint "checkPG $Active_Passwd $Active_Group"
-    else
-        aborting "checkPG $Active_Passwd $Active_Group failed"
-    fi
+if [ "${Active_Passwd}" != "${Master_Passwd}" ] && [ "${Active_Group}" != "${Master_Group}" ]; then
+
+    pprint "backup ${Active_Passwd} to ${Active_Passwd}.${Branded}" "QUEUE #0"
+    Queue_Commands+=("cp \"${Active_Passwd}\" \"${Active_Passwd}.${Branded}\"")
+    pprint "backup ${Active_Group} to ${Active_Group}.${Branded}" "QUEUE #0"
+    Queue_Commands+=("cp \"${Active_Group}\" \"${Active_Group}.${Branded}\"")
+
+    # at this point, not much in the queue should be irreversible
+    queueEval "${Yes_Flag}"
+
+    #if checkPG "${Active_Passwd}" "${Active_Group}"; then
+        #if [ ${Verbose} -eq 0 ]; then
+            #pprint "checkPG ${Active_Passwd} ${Active_Group}" OK
+        #fi
+    #fi
+
+    # at this point, a lot in the queue may be irreversible
+    queueEval "${Yes_Flag}"
+
+    # it's likily that the active files are bad, that's OK (as long as the master files are good)
+    updatePGM "${Active_Passwd}" "${Active_Group}" "${Master_Passwd}" "${Master_Group}"
 fi
+
+# at this point, a lot in the queue may be irreversible
+queueEval "${Yes_Flag}"
