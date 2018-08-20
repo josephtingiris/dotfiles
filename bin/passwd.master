@@ -822,7 +822,8 @@ if [ ${Sync_Flag} -eq 0 ] || [ ${Yes_Flag} -eq 0 ]; then
     if [ "$2" != "" ] && [ -d "$2" ]; then
         if [ "${Active_Passwd}" != "${Master_Passwd}" ] && [ "${Active_Group}" != "${Master_Group}" ]; then
             while read Sync_Passwd; do
-                Sync_Group=$(echo "${Sync_Passwd}" | sed -e '/passwd/s//group/g')
+                # only use 'proper' named pairs; must start with passwd
+                Sync_Group=$(echo "${Sync_Passwd}" | sed -e '/^passwd/s//group/g')
                 if [ "$Sync_Passwd" != "" ] && [ "$Sync_Group" != "" ]; then
                     if [ -w "$Sync_Passwd" ] && [ -w "$Sync_Group" ]; then
                         pprint "sync passwd file ${Sync_Passwd}" INFO
