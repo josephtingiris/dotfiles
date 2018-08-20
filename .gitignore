@@ -65,7 +65,7 @@
 !/bin/ff
 !/bin/fif
 !/bin/mysql-kill
-!/bin/pgmck
+!/bin/passwd.master
 !/bin/src-dotfiles-rsync
 
 # except specific files in the etc/profile.d directory

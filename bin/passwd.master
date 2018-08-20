@@ -34,6 +34,9 @@ let Sync_Flag=1
 let Verbose=1
 let Yes_Flag=1
 
+# counters
+let Queue_Count=0
+
 #############
 # Functions #
 #############
@@ -146,7 +149,7 @@ function checkPG() {
                 else
                     if [ ${username_group_count} -eq 0 ]; then
                         if [ -w "${group}" ]; then
-                            pprint "${passwd}:x:${uid}:${gid} add ${username} to ${group}" "QUEUE #0"
+                            pprint "${passwd}:x:${uid}:${gid} add ${username} to ${group}" "QUEUE #${Queue_Count}"
                             # automatically 'fix'?
                             Queue_Commands+=("echo \"${username}:x:${uid}:${username}\" >> \"${group}\"")
                         else
@@ -236,7 +239,7 @@ function checkPG() {
                         # automatically 'fix'?
                         local uid_exists=$(grep ":x:${gid}:" "${passwd}" 2> /dev/null)
                         if [ "$uid_exists" == "" ]; then
-                            pprint "${group} ${groupname}:x:${gid} add ${groupname}:x:${gid}:${gid} to ${passwd}" "QUEUE #1"
+                            pprint "${group} ${groupname}:x:${gid} add ${groupname}:x:${gid}:${gid} to ${passwd}" "QUEUE #${Queue_Count}"
                             Queue_Commands+=("echo \"${groupname}:x:${gid}:${gid}:${groupname}:/:/bin/false\" >> \"${passwd}\"")
                         else
                             pprint "${group} ${groupname}:x:${gid} uid ${gid} already exists; refusing to add ${groupname}:x:${gid}:${gid} to ${passwd}" "WARNING"
@@ -323,7 +326,7 @@ function usersRm() {
         for passwd_file in ${passwd_files[@]}; do
             if grep -q "^${username}:x:" "${passwd_file}"; then
                 pprint "username ${username} is being removed from ${passwd_file}" DELETE
-                sed -ie "/^${username}:x:/D" "${passwd_file}"
+                sed -i "/^${username}:x:/D" "${passwd_file}"
             else
                 pprint "username ${username} not in ${passwd_file}" OK
             fi
@@ -331,16 +334,16 @@ function usersRm() {
         for group_file in ${group_files[@]}; do
             if grep -q "^${username}:x:" "${group_file}"; then
                 pprint "username ${username} is being removed from ${group_file}" DELETE
-                sed -ie "/^${username}:x:/D" "${group_file}"
+                sed -i "/^${username}:x:/D" "${group_file}"
             else
                 pprint "username ${username} not in ${group_file}" OK
             fi
             if egrep -qe ":${username},|:${username}$|,${username},|,${username}$" "${group_file}"; then
                 pprint "username ${username} is being removed from ${group_file}" DELETE
-                sed -ie "/:${username},/s//:/g" ${group_file}
-                sed -ie "/:${username}$/s//:/g" ${group_file}
-                sed -ie "/,${username},/s//,/g" ${group_file}
-                sed -ie "/,${username}$/s///g" ${group_file}
+                sed -i "/:${username},/s//:/g" ${group_file}
+                sed -i "/:${username}$/s//:/g" ${group_file}
+                sed -i "/,${username},/s//,/g" ${group_file}
+                sed -i "/,${username}$/s///g" ${group_file}
             fi
         done
     done
@@ -387,13 +390,13 @@ function queueEval() {
         fi
     fi
 
-    printf "\n[  UPDATE   ] "
-    if [ ${harmful} -ne 0 ]; then
-        printf "\n\n"
+    if [ ${harmful} -eq 0 ]; then
+        printf "\n[  UPDATE   ] executing command queue\n\n"
+    else
+        printf "\n[  UPDATE   ] displaying command queue\n\n"
     fi
     for Queue_Command in "${Queue_Commands[@]}"; do
         if [ ${harmful} -eq 0 ]; then
-            printf "."
             eval ${Queue_Command}
             if [ $? -ne 0 ]; then
                 echo "${Queue_Command} # failed" >> /var/tmp/eval.${Branded}
@@ -407,9 +410,6 @@ function queueEval() {
         fi
     done
     printf "\n"
-    if [ ${harmful} -eq 0 ]; then
-        printf "\n"
-    fi
 
     unset Queue_Commands
     Queue_Commands=()
@@ -511,7 +511,7 @@ function updatePGM() {
         if [ "${Debug}" != "" ]; then
             for duplicate_uid in ${duplicate_uids[@]}; do
                 if [ ${Report_Flag} -eq 0 ]; then
-                    pprint "${passwd} has duplicate uid ${duplicate_uid}" WARNING
+                    pprint "${passwd} duplicate uid ${duplicate_uid}" WARNING
                 fi
                 local duplicate_line
                 while read duplicate_line; do
@@ -529,6 +529,10 @@ function updatePGM() {
     while [ ${update_check} -lt ${update_checks} ]; do
         ((++update_check))
         debug "update_check ${update_check}"
+
+        if [ $update_check -eq 2 ]; then
+            ((++Queue_Count))
+        fi
 
         while read master_passwd_line; do
             if [ "${master_passwd_line}" == "" ]; then continue; fi
@@ -562,14 +566,14 @@ function updatePGM() {
                     # only need to do this once
                     if [ ${update_check} -eq 1 ]; then
                         if [ ! -e "${master_homedir}" ]; then
-                            pprint "${master_passwd} ${master_username} make home '${master_homedir}' directory" "QUEUE #${update_check}"
+                            pprint "${master_passwd} ${master_username}:x:${master_uid}:${master_gid} make home directory '${master_homedir}'" "QUEUE #${Queue_Count}"
                             Queue_Commands+=("mkdir -p \"${master_homedir}\"")
                             Queue_Commands+=("chown ${master_uid}:${master_gid} \"${master_homedir}\"")
                         fi
                     fi
 
                     if [ ${Verbose} -eq 0 ]; then
-                        pprint "${master_passwd} ${master_username}" OK
+                        pprint "${master_passwd} ${master_username}:x:${master_uid}:${master_gid}" OK
                     fi
                     continue
                 else
@@ -599,10 +603,10 @@ function updatePGM() {
                                 if [ "${homedir}" != "/" ] && [ "${homedir}" != "" ]; then
                                     if [ -d "${homedir}" ]; then
                                         if [ ! -e "${master_homedir}" ]; then
-                                            pprint "${master_passwd} ${master_username} home directory will change from '${homedir}' to '${master_homedir}'" "QUEUE #${update_check}"
+                                            pprint "${master_passwd} ${master_username}:x:${master_uid}:${master_gid} home directory will change from '${homedir}' to '${master_homedir}'" "QUEUE #${Queue_Count}"
                                             Queue_Commands+=("mv \"${homedir}\" \"${master_homedir}\"")
                                         else
-                                            pprint "${master_passwd} ${master_username} home directory will move from '${homedir}' to '${master_homedir}' (${Branded})" "QUEUE #${update_check}"
+                                            pprint "${master_passwd} ${master_username}:x:${master_uid}:${master_gid} home directory will move from '${homedir}' to '${master_homedir}' (${Branded})" "QUEUE #${Queue_Count}"
                                             Queue_Commands+=("mv \"${master_homedir}/\" \"${master_homedir}.${Branded}\"")
                                             Queue_Commands+=("mv \"${homedir}\" \"${master_homedir}\"")
                                         fi
@@ -611,7 +615,7 @@ function updatePGM() {
                             fi
 
                             if [ ! -e "${master_homedir}" ]; then
-                                pprint "${master_passwd} ${master_username} make home '${master_homedir}' directory" "QUEUE #${update_check}"
+                                pprint "${master_passwd} ${master_username}:x:${master_uid}:${master_gid} make home '${master_homedir}' directory" "QUEUE #${Queue_Count}"
                                 Queue_Commands+=("mkdir -p \"${master_homedir}\"")
                                 Queue_Commands+=("chown ${master_uid}:${master_gid} \"${master_homedir}\"")
                             fi
@@ -621,7 +625,7 @@ function updatePGM() {
                         find_args="/ -path /dev -prune -or -path /proc -prune -or -path /run/user -prune -or -path /sys -prune -or"
 
                         if [ "${uid}" != "${master_uid}" ] && [ "${gid}" != "${master_gid}" ]; then
-                            pprint "${master_passwd} ${master_username} uid and gid will change from ${uid}:${gid} to ${master_uid}:${master_gid}" "QUEUE #${update_check}"
+                            pprint "${master_passwd} ${master_username}:x:${master_uid}:${master_gid} uid and gid will change from ${uid}:${gid} to ${master_uid}:${master_gid}" "QUEUE #${Queue_Count}"
                             # only need to do this once; it *should* fix everything
                             if [ ${update_check} -eq 1 ]; then
                                 Queue_Commands+=("# ${master_passwd} ${master_username} change files uid:gid from ${uid}:${gid} to ${master_uid}:${master_gid}")
@@ -657,21 +661,30 @@ function updatePGM() {
             unset master_username master_password master_uid master_gid master_comment master_homedir master_shell
         done # update_checks
 
-        # copy master_passwd & master_group to passwd & group
+        #
+        # if they're different then copy master_passwd & master_group to passwd & group
+        #
+
         if [ "${master_passwd}" != "${passwd}" ]; then
-            pprint "copy ${master_passwd} to ${passwd}" "QUEUE #${update_check}"
-            Queue_Commands+=("cp \"${master_passwd}\" \"${passwd}\"")
+            diff -q "${master_passwd}" "${passwd}" &> /dev/null
+            if [ $? -ne 0 ]; then
+                pprint "copy ${master_passwd} to ${passwd}" "QUEUE #${Queue_Count}"
+                Queue_Commands+=("cp \"${master_passwd}\" \"${passwd}\"")
+            fi
         fi
 
         if [ "${master_group}" != "${group}" ]; then
-            pprint "copy ${master_group} to ${group}" "QUEUE #${update_check}"
-            Queue_Commands+=("cp \"${master_group}\" \"${group}\"")
+            diff -q "${master_group}" "${group}" &> /dev/null
+            if [ $? -ne 0 ]; then
+                pprint "copy ${master_group} to ${group}" "QUEUE #${Queue_Count}"
+                Queue_Commands+=("cp \"${master_group}\" \"${group}\"")
+            fi
         fi
     }
 
 function usage() {
     printf "\nusage:\n\n"
-    printf "$0 check\n"
+    printf "$0 report\n"
     printf "$0 sync\n"
     printf "$0 rm <username>\n"
     printf "$0 yes\n"
@@ -821,67 +834,105 @@ if [ "$1" == "delete" ] || [ "$1" == "rm" ]; then
     usersRm "${Active_Passwd}" "${Active_Group}" "${Master_Passwd}" "${Master_Group}" "$2"
 fi
 
+((++Queue_Count))
+
 #
 # a simple checks should pass; / should always be owned by 0:0 and mode 555
 #
 
-pprint "make / uid 0, gid 0, and mode 555" "QUEUE #0"
+pprint "make / uid 0, gid 0, and mode 555" "QUEUE #${Queue_Count}"
 Queue_Commands+=("chown 0:0 /")
 Queue_Commands+=("chmod 555 /")
-pprint "${Master_Passwd} ${Master_Group} sort" "QUEUE #0"
+pprint "${Master_Passwd} ${Master_Group} sort" "QUEUE #${Queue_Count}"
 Queue_Commands+=("sortPG \"${Master_Passwd}\" \"${Master_Group}\"")
 
 #
-# 'sync' users and groups in the active passwd & group that are not in the master passwd & group
+# experimental; 'sync' users and groups from all matching files in a given directory
 #
 
 if [ ${Sync_Flag} -eq 0 ] || [ ${Yes_Flag} -eq 0 ]; then
 
+    if [ "$2" != "" ] && [ -d "$2" ]; then
+        if [ "${Active_Passwd}" != "${Master_Passwd}" ] && [ "${Active_Group}" != "${Master_Group}" ]; then
+            while read Sync_Passwd; do
+                Sync_Group=$(echo "${Sync_Passwd}" | sed -e '/passwd/s//group/g')
+                if [ "$Sync_Passwd" != "" ] && [ "$Sync_Group" != "" ]; then
+                    if [ -w "$Sync_Passwd" ] && [ -w "$Sync_Group" ]; then
+                        pprint "sync passwd file ${Sync_Passwd}" INFO
+                        pprint "sync group file ${Sync_Passwd}" INFO
+                        export ACTIVE_PASSWD="$Sync_Passwd"
+                        export ACTIVE_GROUP="$Sync_Group"
+                        $0 sync
+                    else
+                        if [ ! -w "$Sync_Passwd" ]; then
+                            pprint "$Sync_Passwd file not writable" WARNING
+                        fi
+                        if [ -w "$Sync_Group" ]; then
+                            pprint "$Sync_Group file not writable" WARNING
+                        fi
+                    fi
+                fi
+            done <<< "$(grep -l root:x:0:0: "${2}"/* 2> /dev/null)"
+            unset Sync_Passwd Sync_Group
+        else
+            aborting "syncing all matching files in ${2} only works if there are valid master passwd & group files"
+        fi
+        exit
+    fi
+
     let Resort=1
 
+    #
     # sync all 'new' users from the active passwd and put them in the master passwd
+    #
+
     if [ "${Active_Passwd}" != "${Master_Passwd}" ]; then
         if [ -w "${Master_Passwd}" ]; then
             for username in $(awk -F: '{print $1}' "${Active_Passwd}"); do
                 Master_Passwd_Username=$(grep ^${username}:x: "${Master_Passwd}")
                 if [ "${Master_Passwd_Username}" == "" ]; then
-                    pprint "${Master_Passwd} add username '${username}' from ${Active_Passwd}" QUEUE
+                    pprint "${Master_Passwd} add username '${username}' from ${Active_Passwd}" "QUEUE #${Queue_Count}"
                     Queue_Commands+=("grep \"^${username}:x:\" \"${Active_Passwd}\" | head -1 >> \"${Master_Passwd}\"")
-                    let Resort=1
+                    let Resort=0
                 fi
             done
         fi
     fi
 
+    #
     # sync all 'new' groups from the active group and put them in the master group
+    #
+
     if [ "${Active_Group}" != "${Master_Group}" ]; then
         if [ -w "${Master_Group}" ]; then
             for groupname in $(awk -F: '{print $1}' "${Active_Group}"); do
                 Master_Group_Username=$(grep ^${groupname}:x: "${Master_Group}")
                 if [ "${Master_Group_Username}" == "" ]; then
-                    pprint "${Master_Group} add groupname '${groupname}' from ${Active_Group}" QUEUE
+                    pprint "${Master_Group} add groupname '${groupname}' from ${Active_Group}" "QUEUE #${Queue_Count}"
                     Queue_Commands+=("grep \"^${groupname}:x:\" \"${Active_Group}\" | head -1 >> \"${Master_Group}\"")
-                    let Resort=1
+                    let Resort=0
                 fi
             done
         fi
     fi
 
     if [ ${Resort} -eq 0 ]; then
-        pprint "backup ${Master_Passwd} to ${Master_Passwd}.${Branded}" "QUEUE #0"
+        pprint "backup ${Master_Passwd} to ${Master_Passwd}.${Branded}" "QUEUE #${Queue_Count}"
         Queue_Commands+=("cp \"${Master_Passwd}\" \"${Master_Passwd}.${Branded}\"")
-        pprint "backup ${Master_Group} to ${Master_Group}.${Branded}" "QUEUE #0"
+        pprint "backup ${Master_Group} to ${Master_Group}.${Branded}" "QUEUE #${Queue_Count}"
         Queue_Commands+=("cp \"${Master_Group}\" \"${Master_Group}.${Branded}\"")
 
-        pprint "${Master_Passwd} ${Master_Group} re-sort" "QUEUE #0"
+        pprint "${Master_Passwd} ${Master_Group} re-sort" "QUEUE #${Queue_Count}"
         Queue_Commands+=("sortPG \"${Master_Passwd}\" \"${Master_Group}\"")
 
         if [ ${Yes_Flag} -ne 0 ]; then
             queueEval "0"
+            ((++Queue_Count))
         fi
     else
-        pprint "all active users and groups are in sync" OK
+        pprint "${Active_Passwd} & ${Active_Group} users and groups are in sync" OK
     fi
+
     if [ ${Yes_Flag} -ne 0 ]; then
         exit
     fi
@@ -889,8 +940,36 @@ fi
 
 # at this point, nothing in the command queue should be irreversible
 queueEval "${Yes_Flag}"
+((++Queue_Count))
 
 if checkPG "${Master_Passwd}" "${Master_Group}"; then
+
+    #
+    # The master files could be OK, per say, but checkPG may have found something it wanted to update.
+    # If it did then rebuild the Queue_Commands array with a backup of each master file, first
+    #
+
+    if [ "$Queue_Commands" != "" ]; then
+        Tmp_Queue_Commands=()
+        pprint "backup ${Master_Passwd} to ${Master_Passwd}.${Branded}" "QUEUE #${Queue_Count}"
+        Tmp_Queue_Commands+=("cp \"${Master_Passwd}\" \"${Master_Passwd}.${Branded}\"")
+        pprint "backup ${Master_Group} to ${Master_Group}.${Branded}" "QUEUE #${Queue_Count}"
+        Tmp_Queue_Commands+=("cp \"${Master_Group}\" \"${Master_Group}.${Branded}\"")
+
+        for Queue_Command in "${Queue_Commands[@]}"; do
+            Tmp_Queue_Commands+=("$Queue_Command")
+        done
+
+        Queue_Commands=()
+        for Tmp_Queue_Command in "${Tmp_Queue_Commands[@]}"; do
+            Queue_Commands+=("$Tmp_Queue_Command")
+        done
+
+        for Queue_Command in "${Queue_Commands[@]}"; do
+            debug "new command: $Queue_Command"
+        done
+        unset Queue_Command Tmp_Queue_Command Tmp_Queue_Commands
+    fi
 
     if [ ${Verbose} -eq 0 ]; then
         pprint "checkPG ${Active_Passwd} ${Active_Group}" OK
@@ -917,13 +996,14 @@ fi
 
 if [ "${Active_Passwd}" != "${Master_Passwd}" ] && [ "${Active_Group}" != "${Master_Group}" ]; then
 
-    pprint "backup ${Active_Passwd} to ${Active_Passwd}.${Branded}" "QUEUE #0"
+    pprint "backup ${Active_Passwd} to ${Active_Passwd}.${Branded}" "QUEUE #${Queue_Count}"
     Queue_Commands+=("cp \"${Active_Passwd}\" \"${Active_Passwd}.${Branded}\"")
-    pprint "backup ${Active_Group} to ${Active_Group}.${Branded}" "QUEUE #0"
+    pprint "backup ${Active_Group} to ${Active_Group}.${Branded}" "QUEUE #${Queue_Count}"
     Queue_Commands+=("cp \"${Active_Group}\" \"${Active_Group}.${Branded}\"")
 
     # at this point, not much in the queue should be irreversible
     queueEval "${Yes_Flag}"
+    ((++Queue_Count))
 
     # it's likily that the active files are bad, that's OK (as long as the master files are good)
     updatePGM "${Active_Passwd}" "${Active_Group}" "${Master_Passwd}" "${Master_Group}"
@@ -941,3 +1021,4 @@ fi
 
 # at this point, a lot in the queue may be irreversible
 queueEval "${Yes_Flag}"
+((++Queue_Count))
