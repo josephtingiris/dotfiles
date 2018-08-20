@@ -415,41 +415,6 @@ function queueEval() {
     Queue_Commands=()
 }
 
-# replace a passwd & group with a (numerically) sorted & unique version of the same files
-function sortPG() {
-    local passwd="$1"
-    isAccessible "${passwd}"
-
-    local group="$2"
-    isAccessible "${group}"
-
-    # sort passwd & group
-    cat "${passwd}" 2> /dev/null | sort -u | sort -t: -k 3n,4n > /tmp/passwd.${Branded}
-    isAccessible "/tmp/passwd.${Branded}"
-
-    diff -q /tmp/passwd.${Branded} "${passwd}" &> /dev/null
-    if [ $? -ne 0 ]; then
-        cp /tmp/passwd.${Branded} "${passwd}"
-        if [ $? -ne 0 ]; then
-            aborting "'cp /tmp/passwd.${Branded} ${passwd}' failed"
-        fi
-    fi
-    rm -f /tmp/passwd.${Branded}
-
-    cat "${group}" 2> /dev/null | sort -u | sort -t: -k 3n,4n > /tmp/group.${Branded}
-    isAccessible "/tmp/group.${Branded}"
-
-    diff -q /tmp/group.${Branded} "${group}" &> /dev/null
-    if [ $? -ne 0 ]; then
-        cp /tmp/group.${Branded} "${group}"
-        if [ $? -ne 0 ]; then
-            aborting "'cp /tmp/group.${Branded} ${group}' failed"
-        fi
-    fi
-    rm -f /tmp/group.${Branded}
-
-}
-
 # 'pretty' printf
 function pprint() {
     local message="$1"
@@ -843,8 +808,10 @@ fi
 pprint "make / uid 0, gid 0, and mode 555" "QUEUE #${Queue_Count}"
 Queue_Commands+=("chown 0:0 /")
 Queue_Commands+=("chmod 555 /")
-pprint "${Master_Passwd} ${Master_Group} sort" "QUEUE #${Queue_Count}"
-Queue_Commands+=("sortPG \"${Master_Passwd}\" \"${Master_Group}\"")
+pprint "${Master_Passwd} sort" "QUEUE #${Queue_Count}"
+Queue_Commands+=("sort -u -t: -k 3n,4n \"${Master_Passwd}\" -o \"${Master_Passwd}\"")
+pprint "${Master_Group} sort" "QUEUE #${Queue_Count}"
+Queue_Commands+=("sort -u -t: -k 3n,4n \"${Master_Group}\" -o \"${Master_Group}\"")
 
 #
 # experimental; 'sync' users and groups from all matching files in a given directory
@@ -922,8 +889,10 @@ if [ ${Sync_Flag} -eq 0 ] || [ ${Yes_Flag} -eq 0 ]; then
         pprint "backup ${Master_Group} to ${Master_Group}.${Branded}" "QUEUE #${Queue_Count}"
         Queue_Commands+=("cp \"${Master_Group}\" \"${Master_Group}.${Branded}\"")
 
-        pprint "${Master_Passwd} ${Master_Group} re-sort" "QUEUE #${Queue_Count}"
-        Queue_Commands+=("sortPG \"${Master_Passwd}\" \"${Master_Group}\"")
+        pprint "${Master_Passwd} re-sort" "QUEUE #${Queue_Count}"
+        Queue_Commands+=("sort -u -t: -k 3n,4n \"${Master_Passwd}\" -o \"${Master_Passwd}\"")
+        pprint "${Master_Group} re-sort" "QUEUE #${Queue_Count}"
+        Queue_Commands+=("sort -u -t: -k 3n,4n \"${Master_Group}\" -o \"${Master_Group}\"")
 
         if [ ${Yes_Flag} -ne 0 ]; then
             queueEval "0"
