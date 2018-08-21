@@ -31,7 +31,7 @@ let Delete_Flag=1
 let Reboot_Flag=1 # TODO; check /run/users/, /proc/, etc ...
 let Report_Flag=1
 let Sync_Flag=1
-let Verbose=1
+let Verbose_Flag=1
 let Yes_Flag=1
 
 # counters
@@ -390,11 +390,21 @@ function queueEval() {
         fi
     fi
 
+    let local command_count=0
+    for Queue_Command in "${Queue_Commands[@]}"; do
+        ((++command_count))
+    done
+
     if [ ${harmful} -eq 0 ]; then
-        printf "\n[  UPDATE   ] executing command queue\n\n"
+        printf "\n[  UPDATE   ] executing $command_count commands in queue\n\n"
     else
-        printf "\n[  UPDATE   ] displaying command queue\n\n"
+        if [ $Verbose_Flag -eq 0 ]; then
+            printf "\n[  UPDATE   ] displaying $command_count commands in queue\n\n"
+        else
+            printf "\n[  UPDATE   ] $command_count commands queued\n\n"
+        fi
     fi
+    let local command_count=0
     for Queue_Command in "${Queue_Commands[@]}"; do
         if [ ${harmful} -eq 0 ]; then
             eval ${Queue_Command}
@@ -406,10 +416,14 @@ function queueEval() {
             fi
         else
             echo "${Queue_Command} # not run" >> /var/tmp/eval.${Branded}
+        fi
+        if [ $Verbose_Flag -eq 0 ]; then
             echo ${Queue_Command}
         fi
     done
-    printf "\n"
+    if [ $command_count -gt 0 ]; then
+        printf "\n"
+    fi
 
     unset Queue_Commands
     Queue_Commands=()
@@ -426,7 +440,7 @@ function pprint() {
     fi
 
     local pretty=""
-    if [ ${Verbose} -eq 0 ]; then
+    if [ ${Verbose_Flag} -eq 0 ]; then
         pretty+="[$(date +%F" "%T)] "
     fi
 
@@ -465,6 +479,7 @@ function updatePGM() {
     debug "group         = ${group}"
     debug "master_group  = ${master_group}"
 
+    let local notice=1
     let local update_checks=1
 
     # check for duplicate uid/gid in passwd & group before proceeding
@@ -526,76 +541,64 @@ function updatePGM() {
             done <<< "$(grep "^${master_username}:x:" "${passwd}" | awk -F: '{print $1":"$2":"$3":"$4}' | sort -u)"
             unset passwd_line
 
-            if [ ${master_passwd_line_ok} -eq 0 ]; then
+            #
+            # check homedir(s); mv or mkdir as needed; only need to do this once
+            #
 
-                    # only need to do this once
-                    if [ ${update_check} -eq 1 ]; then
-                        if [ ! -e "${master_homedir}" ]; then
-                            pprint "${master_passwd} ${master_username}:x:${master_uid}:${master_gid} make home directory '${master_homedir}'" "QUEUE #${Queue_Count}"
-                            Queue_Commands+=("mkdir -p \"${master_homedir}\"")
-                            Queue_Commands+=("chown ${master_uid}:${master_gid} \"${master_homedir}\"")
-                        fi
+            if [ ${update_check} -eq 1 ]; then
+
+                if [ ! -e "${master_homedir}" ]; then
+                    let local notice=0
+                    if [ -d "${homedir}" ]; then
+                        pprint "${master_passwd} ${master_username}:x:${master_uid}:${master_gid} home directory will change from '${homedir}' to '${master_homedir}'" "QUEUE #${Queue_Count}"
+                        Queue_Commands+=("mv \"${homedir}\" \"${master_homedir}\"")
+                    else
+                        pprint "${master_passwd} ${master_username}:x:${master_uid}:${master_gid} make home '${master_homedir}' directory" "QUEUE #${Queue_Count}"
+                        Queue_Commands+=("mkdir -p \"${master_homedir}\"")
+                        Queue_Commands+=("chown ${master_uid}:${master_gid} \"${master_homedir}\"")
                     fi
+                fi
 
-                    if [ ${Verbose} -eq 0 ]; then
+            fi
+
+
+            if [ ${master_passwd_line_ok} -eq 0 ]; then
+                if [ ${Verbose_Flag} -eq 0 ]; then
+                    if [ ${notice} -ne 0 ]; then
                         pprint "${master_passwd} ${master_username}:x:${master_uid}:${master_gid}" OK
                     fi
-                    continue
-                else
-                    debug "${master_passwd} ${master_username} (${passwd_line_count}) CHECK #${update_check}"
+                fi
 
-                    local master_comment="$(echo "${master_passwd_line}" | awk -F: '{print $5}')"
-                    local master_shell="$(echo "${master_passwd_line}" | awk -F: '{print $7}')"
+                continue # if the master passwd line is OK then there's no need for further checks
+            else
+                debug "${master_passwd} ${master_username} (${passwd_line_count}) CHECK #${update_check}"
 
-                    while read passwd_line; do
-                        if [ "${passwd_line}" == "" ]; then continue; fi
+                local master_comment="$(echo "${master_passwd_line}" | awk -F: '{print $5}')"
+                local master_shell="$(echo "${master_passwd_line}" | awk -F: '{print $7}')"
 
-                        local username="$(echo "${passwd_line}" | awk -F: '{print $1}')"
-                        if [ "${username}" != "${master_username}" ]; then
-                            aborting "${passwd} ${username}:x:${uid}:${gid} != ${master_passwd} ${username}"
-                        fi
-                        #local password="$(echo "${passwd_line}" | awk -F: '{print $2}')"
-                        let local uid="$(echo "${passwd_line}" | awk -F: '{print $3}')"
-                        let local gid="$(echo "${passwd_line}" | awk -F: '{print $4}')"
-                        local comment="$(echo "${passwd_line}" | awk -F: '{print $5}')"
-                        local homedir="$(echo "${passwd_line}" | awk -F: '{print $6}')"
-                        local shell="$(echo "${passwd_line}" | awk -F: '{print $7}')"
+                while read passwd_line; do
+                    if [ "${passwd_line}" == "" ]; then continue; fi
 
-                        # only need to do this once
+                    local username="$(echo "${passwd_line}" | awk -F: '{print $1}')"
+                    if [ "${username}" != "${master_username}" ]; then
+                        aborting "${passwd} ${username}:x:${uid}:${gid} != ${master_passwd} ${username}"
+                    fi
+                    #local password="$(echo "${passwd_line}" | awk -F: '{print $2}')"
+                    let local uid="$(echo "${passwd_line}" | awk -F: '{print $3}')"
+                    let local gid="$(echo "${passwd_line}" | awk -F: '{print $4}')"
+                    local comment="$(echo "${passwd_line}" | awk -F: '{print $5}')"
+                    local homedir="$(echo "${passwd_line}" | awk -F: '{print $6}')"
+                    local shell="$(echo "${passwd_line}" | awk -F: '{print $7}')"
+
+                    find_args="/ -path /dev -prune -or -path /proc -prune -or -path /run/user -prune -or -path /sys -prune -or"
+
+                    if [ "${uid}" != "${master_uid}" ] && [ "${gid}" != "${master_gid}" ]; then
+                        pprint "${master_passwd} ${master_username}:x:${master_uid}:${master_gid} uid and gid will change from ${uid}:${gid} to ${master_uid}:${master_gid}" "QUEUE #${Queue_Count}"
+                        # only need to do this once; it *should* fix everything
                         if [ ${update_check} -eq 1 ]; then
-
-                            if [ "${homedir}" != "${master_homedir}" ]; then
-                                if [ "${homedir}" != "/" ] && [ "${homedir}" != "" ]; then
-                                    if [ -d "${homedir}" ]; then
-                                        if [ ! -e "${master_homedir}" ]; then
-                                            pprint "${master_passwd} ${master_username}:x:${master_uid}:${master_gid} home directory will change from '${homedir}' to '${master_homedir}'" "QUEUE #${Queue_Count}"
-                                            Queue_Commands+=("mv \"${homedir}\" \"${master_homedir}\"")
-                                        else
-                                            pprint "${master_passwd} ${master_username}:x:${master_uid}:${master_gid} home directory will move from '${homedir}' to '${master_homedir}' (${Branded})" "QUEUE #${Queue_Count}"
-                                            Queue_Commands+=("mv \"${master_homedir}/\" \"${master_homedir}.${Branded}\"")
-                                            Queue_Commands+=("mv \"${homedir}\" \"${master_homedir}\"")
-                                        fi
-                                    fi
-                                fi
-                            fi
-
-                            if [ ! -e "${master_homedir}" ]; then
-                                pprint "${master_passwd} ${master_username}:x:${master_uid}:${master_gid} make home '${master_homedir}' directory" "QUEUE #${Queue_Count}"
-                                Queue_Commands+=("mkdir -p \"${master_homedir}\"")
-                                Queue_Commands+=("chown ${master_uid}:${master_gid} \"${master_homedir}\"")
-                            fi
-
+                            Queue_Commands+=("# ${master_passwd} ${master_username} change files uid:gid from ${uid}:${gid} to ${master_uid}:${master_gid}")
+                            Queue_Commands+=("find ${find_args} -user ${uid} -and -group ${gid} -print0 | xargs -0 --no-run-if-empty chown --changes --dereference --preserve-root ${master_uid}:${master_gid}")
                         fi
-
-                        find_args="/ -path /dev -prune -or -path /proc -prune -or -path /run/user -prune -or -path /sys -prune -or"
-
-                        if [ "${uid}" != "${master_uid}" ] && [ "${gid}" != "${master_gid}" ]; then
-                            pprint "${master_passwd} ${master_username}:x:${master_uid}:${master_gid} uid and gid will change from ${uid}:${gid} to ${master_uid}:${master_gid}" "QUEUE #${Queue_Count}"
-                            # only need to do this once; it *should* fix everything
-                            if [ ${update_check} -eq 1 ]; then
-                                Queue_Commands+=("# ${master_passwd} ${master_username} change files uid:gid from ${uid}:${gid} to ${master_uid}:${master_gid}")
-                                Queue_Commands+=("find ${find_args} -user ${uid} -and -group ${gid} -print0 | xargs -0 --no-run-if-empty chown --changes --dereference --preserve-root ${master_uid}:${master_gid}")
-                            fi
 
                             # need to do this once; it needs to be run only on the second check pass for duplicates
                             if [ ${update_checks} -eq 1 ] || [ ${update_check} -eq 2 ]; then
@@ -649,10 +652,10 @@ function updatePGM() {
 
 function usage() {
     printf "\nusage:\n\n"
-    printf "$0 report\n"
-    printf "$0 sync\n"
-    printf "$0 rm <username>\n"
-    printf "$0 yes\n"
+    printf "$0 report [verbose]                 # harmless; show a report of what would be done\n"
+    printf "$0 sync [verbose]                   # updates master files only, with users & groups that only exist in the active files\n"
+    printf "$0 rm \"<username(s)>\" [verbose]     # if found, remove usernames from active and master passwd & group files\n"
+    printf "$0 yes [verbose]                    # harmful! changes everything the report shows\n"
     printf "\n"
     exit 1
 }
@@ -661,8 +664,10 @@ function usage() {
 # Main #
 ########
 
-if [ "$USER" != "root" ]; then
-    aborting "must be root"
+if [ "$SUDO_USER" == "" ]; then
+    if [ "$USER" != "root" ]; then
+        aborting "must be root, or use sudo"
+    fi
 fi
 
 #
@@ -711,6 +716,18 @@ case "$1" in
         ;;
     *)
         usage
+        ;;
+esac
+
+case "$2" in
+    verbose)
+        Verbose_Flag=0
+        ;;
+esac
+
+case "$3" in
+    verbose)
+        Verbose_Flag=0
         ;;
 esac
 
@@ -795,7 +812,7 @@ fi
 # delete users from both active & master files (exits)
 #
 
-if [ "$1" == "delete" ] || [ "$1" == "rm" ]; then
+if [ $Delete_Flag -eq 0 ]; then
     usersRm "${Active_Passwd}" "${Active_Group}" "${Master_Passwd}" "${Master_Group}" "$2"
 fi
 
@@ -895,15 +912,13 @@ if [ ${Sync_Flag} -eq 0 ] || [ ${Yes_Flag} -eq 0 ]; then
         pprint "${Master_Group} re-sort" "QUEUE #${Queue_Count}"
         Queue_Commands+=("sort -u -t: -k 3n,4n \"${Master_Group}\" -o \"${Master_Group}\"")
 
-        if [ ${Yes_Flag} -ne 0 ]; then
-            queueEval "0"
-            ((++Queue_Count))
-        fi
     else
         pprint "${Active_Passwd} & ${Active_Group} users and groups are in sync" OK
     fi
 
     if [ ${Yes_Flag} -ne 0 ]; then
+        queueEval "0"
+        ((++Queue_Count))
         exit
     fi
 fi
@@ -941,7 +956,7 @@ if checkPG "${Master_Passwd}" "${Master_Group}"; then
         unset Queue_Command Tmp_Queue_Command Tmp_Queue_Commands
     fi
 
-    if [ ${Verbose} -eq 0 ]; then
+    if [ ${Verbose_Flag} -eq 0 ]; then
         pprint "checkPG ${Active_Passwd} ${Active_Group}" OK
     fi
 
@@ -977,15 +992,6 @@ if [ "${Active_Passwd}" != "${Master_Passwd}" ] && [ "${Active_Group}" != "${Mas
 
     # it's likily that the active files are bad, that's OK (as long as the master files are good)
     updatePGM "${Active_Passwd}" "${Active_Group}" "${Master_Passwd}" "${Master_Group}"
-
-    #if checkPG "${Active_Passwd}" "${Active_Group}"; then
-    #if [ ${Verbose} -eq 0 ]; then
-    #pprint "checkPG ${Active_Passwd} ${Active_Group}" OK
-    #fi
-    #fi
-
-    # it's likily that the active files are bad, that's OK (as long as the master files are good)
-    #updatePGM "${Active_Passwd}" "${Active_Group}" "${Master_Passwd}" "${Master_Group}"
 
 fi
 
