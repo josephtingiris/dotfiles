@@ -764,11 +764,11 @@ isAccessible "${Active_Group}"
 if [ "$MASTER_PASSWD" != "" ]; then
     Master_Passwd=$(readlink -e "$MASTER_PASSWD" 2> /dev/null)
 else
-    if [ -f ./passwd.master ]; then
-        Master_Passwd=$(readlink -e ./passwd.master 2> /dev/null)
+    if [ -f ./master.passwd ]; then
+        Master_Passwd=$(readlink -e ./master.passwd 2> /dev/null)
     else
-        if [ -f /etc/passwd.master ]; then
-            Master_Passwd=$(readlink -e /etc/passwd.master 2> /dev/null)
+        if [ -f /etc/master.passwd ]; then
+            Master_Passwd=$(readlink -e /etc/master.passwd 2> /dev/null)
         else
             Master_Passwd=${Active_Passwd}
         fi
@@ -779,11 +779,11 @@ isAccessible "${Master_Passwd}"
 if [ "$MASTER_GROUP" != "" ]; then
     Master_Group=$(readlink -e "$MASTER_GROUP" 2> /dev/null)
 else
-    if [ -f ./group.master ]; then
-        Master_Group=$(readlink -e ./group.master)
+    if [ -f ./master.group ]; then
+        Master_Group=$(readlink -e ./master.group)
     else
-        if [ -f /etc/group.master ]; then
-            Master_Group=$(readlink -e /etc/group.master)
+        if [ -f /etc/master.group ]; then
+            Master_Group=$(readlink -e /etc/master.group)
         else
             Master_Group=${Active_Group}
         fi
@@ -969,12 +969,12 @@ else
     if [ "${Master_Passwd}" == "/etc/passwd" ] && [ "${Master_Group}" == "/etc/group" ]; then
         pprint "Consider trying this ..." SUGGEST
         pprint "" SUGGEST
-        pprint "1) cp /etc/passwd /etc/passwd.master" SUGGEST
-        pprint "2) cp /etc/group /etc/group.master" SUGGEST
-        pprint "3) vi /etc/group.master /etc/passwd.master # fix the ERROR(s), group file first" SUGGEST
+        pprint "1) cp /etc/passwd /etc/master.passwd" SUGGEST
+        pprint "2) cp /etc/group /etc/master.group" SUGGEST
+        pprint "3) vi /etc/master.group /etc/master.passwd # fix the ERROR(s), group file first" SUGGEST
         pprint "4) $0 report # fix any new ERROR(s), repeat #3" SUGGEST
         pprint "5) $0 yes # let the script do the rest" SUGGEST
-        pprint "6) rm /etc/passwd.master /etc/group.master # or, fix the WARNING(s) and repeat" SUGGEST
+        pprint "6) rm /etc/master.passwd /etc/master.group # or, fix the WARNING(s) and repeat" SUGGEST
     fi
     aborting "${Master_Passwd} & ${Master_Group} have issues, fix them manually"
 fi
