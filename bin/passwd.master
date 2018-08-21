@@ -395,33 +395,33 @@ function queueEval() {
         ((++command_count))
     done
 
-    if [ ${harmful} -eq 0 ]; then
-        printf "\n[  UPDATE   ] executing $command_count commands in queue\n\n"
-    else
-        if [ $Verbose_Flag -eq 0 ]; then
-            printf "\n[  UPDATE   ] displaying $command_count commands in queue\n\n"
-        else
-            printf "\n[  UPDATE   ] $command_count commands queued\n\n"
-        fi
-    fi
-    let local command_count=0
-    for Queue_Command in "${Queue_Commands[@]}"; do
-        if [ ${harmful} -eq 0 ]; then
-            eval ${Queue_Command}
-            if [ $? -ne 0 ]; then
-                echo "${Queue_Command} # failed" >> /var/tmp/eval.${Branded}
-                aborting "'${Queue_Command}' failed, see /var/tmp/eval.${Branded}"
-            else
-                echo "${Queue_Command} # success" >> /var/tmp/eval.${Branded}
-            fi
-        else
-            echo "${Queue_Command} # not run" >> /var/tmp/eval.${Branded}
-        fi
-        if [ $Verbose_Flag -eq 0 ]; then
-            echo ${Queue_Command}
-        fi
-    done
     if [ $command_count -gt 0 ]; then
+        if [ ${harmful} -eq 0 ]; then
+            printf "\n[  UPDATE   ] executing $command_count commands in queue\n\n"
+        else
+            if [ $Verbose_Flag -eq 0 ]; then
+                printf "\n[  UPDATE   ] displaying $command_count commands in queue\n\n"
+            else
+                printf "\n[  UPDATE   ] $command_count commands queued\n\n"
+            fi
+        fi
+        let local command_count=0
+        for Queue_Command in "${Queue_Commands[@]}"; do
+            if [ ${harmful} -eq 0 ]; then
+                eval ${Queue_Command}
+                if [ $? -ne 0 ]; then
+                    echo "${Queue_Command} # failed" >> /var/tmp/eval.${Branded}
+                    aborting "'${Queue_Command}' failed, see /var/tmp/eval.${Branded}"
+                else
+                    echo "${Queue_Command} # success" >> /var/tmp/eval.${Branded}
+                fi
+            else
+                echo "${Queue_Command} # not run" >> /var/tmp/eval.${Branded}
+            fi
+            if [ $Verbose_Flag -eq 0 ]; then
+                echo ${Queue_Command}
+            fi
+        done
         printf "\n"
     fi
 
@@ -902,9 +902,9 @@ if [ ${Sync_Flag} -eq 0 ] || [ ${Yes_Flag} -eq 0 ]; then
     fi
 
     if [ ${Resort} -eq 0 ]; then
-        pprint "backup ${Master_Passwd} to ${Master_Passwd}.${Branded}" "QUEUE #${Queue_Count}"
+        pprint "backup re-sort ${Master_Passwd} to ${Master_Passwd}.${Branded}" "QUEUE #${Queue_Count}"
         Queue_Commands+=("cp \"${Master_Passwd}\" \"${Master_Passwd}.${Branded}\"")
-        pprint "backup ${Master_Group} to ${Master_Group}.${Branded}" "QUEUE #${Queue_Count}"
+        pprint "backup re-sort ${Master_Group} to ${Master_Group}.${Branded}" "QUEUE #${Queue_Count}"
         Queue_Commands+=("cp \"${Master_Group}\" \"${Master_Group}.${Branded}\"")
 
         pprint "${Master_Passwd} re-sort" "QUEUE #${Queue_Count}"
@@ -936,9 +936,9 @@ if checkPG "${Master_Passwd}" "${Master_Group}"; then
 
     if [ "$Queue_Commands" != "" ]; then
         Tmp_Queue_Commands=()
-        pprint "backup ${Master_Passwd} to ${Master_Passwd}.${Branded}" "QUEUE #${Queue_Count}"
+        pprint "backup master ${Master_Passwd} to ${Master_Passwd}.${Branded}" "QUEUE #${Queue_Count}"
         Tmp_Queue_Commands+=("cp \"${Master_Passwd}\" \"${Master_Passwd}.${Branded}\"")
-        pprint "backup ${Master_Group} to ${Master_Group}.${Branded}" "QUEUE #${Queue_Count}"
+        pprint "backup master ${Master_Group} to ${Master_Group}.${Branded}" "QUEUE #${Queue_Count}"
         Tmp_Queue_Commands+=("cp \"${Master_Group}\" \"${Master_Group}.${Branded}\"")
 
         for Queue_Command in "${Queue_Commands[@]}"; do
@@ -981,10 +981,21 @@ fi
 
 if [ "${Active_Passwd}" != "${Master_Passwd}" ] && [ "${Active_Group}" != "${Master_Group}" ]; then
 
-    pprint "backup ${Active_Passwd} to ${Active_Passwd}.${Branded}" "QUEUE #${Queue_Count}"
-    Queue_Commands+=("cp \"${Active_Passwd}\" \"${Active_Passwd}.${Branded}\"")
-    pprint "backup ${Active_Group} to ${Active_Group}.${Branded}" "QUEUE #${Queue_Count}"
-    Queue_Commands+=("cp \"${Active_Group}\" \"${Active_Group}.${Branded}\"")
+    diff "${Active_Passwd}" "${Master_Passwd}" &> /dev/null
+    if [ $? -ne 0 ]; then
+        pprint "backup active ${Active_Passwd} to ${Active_Passwd}.${Branded}" "QUEUE #${Queue_Count}"
+        Queue_Commands+=("cp \"${Active_Passwd}\" \"${Active_Passwd}.${Branded}\"")
+        pprint "backup active ${Active_Group} to ${Active_Group}.${Branded}" "QUEUE #${Queue_Count}"
+        Queue_Commands+=("cp \"${Active_Group}\" \"${Active_Group}.${Branded}\"")
+    else
+        diff "${Active_Group}" "${Master_Group}" &> /dev/null
+        if [ $? -ne 0 ]; then
+            pprint "backup active ${Active_Passwd} to ${Active_Passwd}.${Branded}" "QUEUE #${Queue_Count}"
+            Queue_Commands+=("cp \"${Active_Passwd}\" \"${Active_Passwd}.${Branded}\"")
+            pprint "backup active ${Active_Group} to ${Active_Group}.${Branded}" "QUEUE #${Queue_Count}"
+            Queue_Commands+=("cp \"${Active_Group}\" \"${Active_Group}.${Branded}\"")
+        fi
+    fi
 
     # at this point, not much in the queue should be irreversible
     queueEval "${Yes_Flag}"
