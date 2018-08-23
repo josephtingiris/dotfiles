@@ -98,6 +98,9 @@ if has("autocmd")
                 endfunction
                 Plug 'euclio/vim-markdown-composer', { 'do': function('BuildComposer') }
 
+                " https://github.com/Valloric/YouCompleteMe
+                Plug 'Valloric/YouCompleteMe'
+
             else
                 " vim compatible, only
 
