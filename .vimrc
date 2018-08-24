@@ -273,8 +273,9 @@ set formatoptions=tcqj                      " t=auto-wrap text, c=auto-wrap comm
 set hidden                                  " allow hidden buffers
 set history=1000                            " default = 8
 if has('nvim')
+    " workaround nvim terminal bug; https://github.com/neovim/neovim/wiki/FAQ#nvim-shows-weird-symbols-2-q-when-changing-modes
     autocmd OptionSet guicursor noautocmd set guicursor=
-    set guicursor=                              " workaround nvim terminal bug; https://github.com/neovim/neovim/wiki/FAQ#nvim-shows-weird-symbols-2-q-when-changing-modes
+    set guicursor=
 endif
 set laststatus=2                            " use the second statusline
 set linebreak                               " only wrap at sensible places
