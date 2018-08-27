@@ -1,6 +1,6 @@
 # .bashrc
 
-Bashrc_Version="20180824, joseph.tingiris@gmail.com"
+Bashrc_Version="20180827, joseph.tingiris@gmail.com"
 
 ##
 ### source global definitions
@@ -33,6 +33,7 @@ if [ "$Who" == "" ] && [ "$USER" != "" ]; then export Who=$USER; fi
 if [ "$Who" == "" ] && [ "$LOGNAME" != "" ]; then export Who=$LOGNAME; fi
 if [ "$Who" == "" ]; then
     export Who=UNKNOWN
+    export User_Dir="/tmp"
 else
     if [ $(which --skip-alias getent 2> /dev/null) ]; then
         export User_Dir=$(getent passwd $Who 2> /dev/null | awk -F: '{print $6}')
@@ -327,27 +328,26 @@ if [ ! -f ~/.inputrc ]; then
 fi
 
 ##
-### if needed then generate an ssh key
+### check ssh, ssh-agent & add all potential keys (if they're not already added)
 ##
 
-Ssh_Keygen=/usr/bin/ssh-keygen
-if [ ! -d ~/.ssh ]; then
-    if [ -x $Ssh_Keygen ]; then
-        $Ssh_Keygen -t ed25519 -b 4096
+if [ "${HOME}" != "" ] && [ -d "${HOME}" ]; then
+
+    # if needed then generate an ssh key
+
+    Ssh_Keygen=/usr/bin/ssh-keygen
+    if [ ! -d "${HOME}/.ssh" ]; then
+        if [ -x $Ssh_Keygen ]; then
+            $Ssh_Keygen -t ed25519 -b 4096
+        fi
+        unset Ssh_Keygen
     fi
-    unset Ssh_Keygen
-fi
-
-##
-### start/check ssh-agent & add all potential keys (if they're not already added)
-##
-
-if [ "${HOME}" != "" ] && [ -d "${HOME}/.ssh" ]; then
 
     # this works in conjunction with .bash_logout
 
     Ssh_Add=/usr/bin/ssh-add
     Ssh_Agent=/usr/bin/ssh-agent
+    Ssh_Agent_File="${HOME}/.ssh-agent.${Who}@${HOSTNAME}"
     Ssh_Agent_Timeout=86400
 
     if [ -x $Ssh_Agent ] && [ -x $Ssh_Add ] && [ -x $Ssh_Keygen ]; then
@@ -355,15 +355,15 @@ if [ "${HOME}" != "" ] && [ -d "${HOME}/.ssh" ]; then
         $Ssh_Add -l &> /dev/null
         if [ $? -eq 2 ]; then
 
-            if [ -r ${HOME}/.ssh-agent.$HOSTNAME ]; then
-                eval "$(<${HOME}/.ssh-agent.$HOSTNAME)" &> /dev/null
+            if [ -r "${Ssh_Agent_File}" ]; then
+                eval "$(<${Ssh_Agent_File})" &> /dev/null
             fi
 
             $Ssh_Add -l &> /dev/null
             if [ $? -eq 2 ]; then
                 # TODO: see if another ssh-agent is running by this user & use it rather than start a new one every time
-                (umask 066; $Ssh_Agent -t $Ssh_Agent_Timeout 1> ${HOME}/.ssh-agent.$HOSTNAME)
-                eval "$(<${HOME}/.ssh-agent.$HOSTNAME)" &> /dev/null
+                (umask 066; $Ssh_Agent -t $Ssh_Agent_Timeout 1> ${Ssh_Agent_File})
+                eval "$(<${Ssh_Agent_File})" &> /dev/null
             fi
 
         fi
@@ -434,7 +434,7 @@ if [ "${HOME}" != "" ] && [ -d "${HOME}/.ssh" ]; then
 
     fi
 
-    unset Ssh_Add Ssh_Agent Ssh_Agent_Timeout
+    unset Ssh_Add Ssh_Agent Ssh_Agent_File Ssh_Agent_Timeout
 
 fi
 
