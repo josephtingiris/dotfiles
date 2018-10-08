@@ -1,6 +1,6 @@
 # .bashrc
 
-Bashrc_Version="20180827, joseph.tingiris@gmail.com"
+Bashrc_Version="20181008, joseph.tingiris@gmail.com"
 
 ##
 ### source global definitions
@@ -151,7 +151,7 @@ done
 ##
 
 # add stuff to my .gitconfig
-function Git_Config() {
+function gitConfig() {
 
     if [ -f ~/.gitconfig.lock  ]; then
         rm -f ~/.gitconfig.local &> /dev/null
@@ -161,6 +161,7 @@ function Git_Config() {
     git config --global alias.ls ls-files &> /dev/null
     git config --global alias.rev-prase rev-parse &> /dev/null
     git config --global alias.st status &> /dev/null
+    git config --global alias.up pull &> /dev/null
 
     git config --global color.ui auto &> /dev/null
     git config --global color.branch auto &> /dev/null
@@ -177,7 +178,7 @@ function Git_Config() {
 }
 
 # keep my home directory dotfiles up to date
-function Git_Hub_Dotfiles() {
+function githubDotfiles() {
 
     local cwd=$(/usr/bin/pwd 2> /dev/null)
     cd ~
@@ -521,10 +522,10 @@ if [ $(which --skip-alias git 2> /dev/null) ]; then
     alias get=git
     alias gi=git
     alias giit=git
-    alias git-config=Git_Config
-    alias gc=Git_Config
-    alias git-hub-dotfiles=Git_Hub_Dotfiles
-    alias dotfiles=Git_Hub_Dotfiles
+    alias git-config=gitConfig
+    alias gc=gitConfig
+    alias git-hub-dotfiles=githubDotfiles
+    alias dotfiles=githubDotfiles
 fi
 
 ##
