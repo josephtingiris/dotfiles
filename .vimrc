@@ -300,7 +300,7 @@ set secure                                  " shell and write commands are not a
 set shiftwidth=0                            " return value for shiftwidth(); zero sets it to the value of tabstop
 set showcmd                                 " show (partial) command in the last line of the screen
 set smartindent                             " smart autoindent when starting a new line
-set smarttab                                " when on a <Tab> in front of a line, insert lanks according to shiftwidth
+set smarttab                                " when on a <Tab> in front of a line, insert blanks according to shiftwidth
 set tabstop=4                               " default tabs are too big
 set textwidth=0                             " prevent vim from automatically inserting line breaks
 set ttyfast                                 " indicates a fast terminal connection
