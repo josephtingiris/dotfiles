@@ -299,7 +299,7 @@ set ruler                                   " show the line and column number of
 set secure                                  " shell and write commands are not allowed in .nvimrc and .exrc in the current directory
 set shiftwidth=0                            " return value for shiftwidth(); zero sets it to the value of tabstop
 set showcmd                                 " show (partial) command in the last line of the screen
-set smartindent                             " smart autoindent when starting a new line
+"set smartindent                             " smart autoindent when starting a new line; shouldn't use with filtetype indent
 set smarttab                                " when on a <Tab> in front of a line, insert blanks according to shiftwidth
 set tabstop=4                               " default tabs are too big
 set textwidth=0                             " prevent vim from automatically inserting line breaks
