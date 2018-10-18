@@ -143,8 +143,8 @@ if has("autocmd")
     "autocmd VimEnter * "set term=$TERM"
 
     " autocmd yml preferences
-    autocmd FileType yaml setlocal ai ts=2 sw=2 et
-    autocmd FileType yml setlocal ai ts=2 sw=2 et
+    autocmd FileType yaml setlocal ai ts=2 sts=2 sw=2 et
+    autocmd FileType yml setlocal ai ts=2 sts=2 sw=2 et
 
     if has('nvim')
         " workaround nvim terminal bug; https://github.com/neovim/neovim/wiki/FAQ#nvim-shows-weird-symbols-2-q-when-changing-modes
@@ -302,6 +302,7 @@ set showcmd                                 " show (partial) command in the last
 "set smartindent                             " smart autoindent when starting a new line; shouldn't use with filtetype indent
 set smarttab                                " when on a <Tab> in front of a line, insert blanks according to shiftwidth
 set tabstop=4                               " default tabs are too big
+set softtabstop=4                           " default tabs are too big
 set textwidth=0                             " prevent vim from automatically inserting line breaks
 set ttyfast                                 " indicates a fast terminal connection
 set undodir=~/.vim/undo                     " set undo directory location
