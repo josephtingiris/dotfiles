@@ -38,6 +38,10 @@ if has("autocmd")
             " https://github.com/chrisbra/vim-sh-indent
             Plug 'chrisbra/vim-sh-indent'
 
+            " https://github.com/pearofducks/ansible-vim
+            Plug 'pearofducks/ansible-vim'
+            let g:ansible_unindent_after_newline = 1
+
             " https://github.com/ctrlpvim/ctrlp.vim
             Plug 'ctrlpvim/ctrlp.vim'
             let g:ctrlp_dont_split = 'NERD'
@@ -121,6 +125,31 @@ if has("autocmd")
         " autoload plug begin
         call plug#end()
 
+    endif
+
+    " autocmd Buf preferences
+    autocmd BufNewFile,BufRead *.d set filetype=sh
+    autocmd BufNewFile,BufRead *.j2 set filetype=yaml.ansible
+    autocmd BufNewFile,BufRead *.jinja2 set filetype=yaml.ansible
+    autocmd BufNewFile,BufRead *.md set filetype=markdown
+    autocmd BufNewFile,BufRead http* set filetype=xml syntax=apache
+    autocmd BufNewFile,BufRead named*.conf set filetype=named
+    autocmd BufNewFile,BufRead *.web set filetype=sh
+    autocmd BufNewFile,BufRead *.yml set filetype=yaml.ansible
+    autocmd BufNewFile,BufRead *.yaml set filetype=yaml.ansible
+    autocmd BufNewFile,BufRead *.zone set filetype=bindzone
+
+    " autocmd Vim preferences
+    "autocmd VimEnter * "set term=$TERM"
+
+    " autocmd yml preferences
+    autocmd FileType yaml setlocal ai ts=2 sw=2 et
+    autocmd FileType yml setlocal ai ts=2 sw=2 et
+
+    if has('nvim')
+        " workaround nvim terminal bug; https://github.com/neovim/neovim/wiki/FAQ#nvim-shows-weird-symbols-2-q-when-changing-modes
+        autocmd OptionSet guicursor noautocmd set guicursor=
+        set guicursor=
     endif
 
 endif " has("autocmd")
@@ -229,17 +258,6 @@ endif
 " preferences
 "
 
-" autocmd Buf preferences
-autocmd BufNewFile,BufRead *.d set filetype=sh
-autocmd BufNewFile,BufRead *.md set filetype=markdown
-autocmd BufNewFile,BufRead *.web set filetype=sh
-autocmd BufNewFile,BufRead http* set filetype=xml syntax=apache
-autocmd BufNewFile,BufRead named*.conf set filetype=named
-autocmd BufNewFile,BufRead *.zone set filetype=bindzone
-
-" autocmd Vim preferences
-"autocmd VimEnter * "set term=$TERM"
-
 " color preferences
 colorscheme elflord
 set background=dark
@@ -272,11 +290,6 @@ set exrc                                    " source .exrc in the current direct
 set formatoptions=tcqj                      " t=auto-wrap text, c=auto-wrap comments, q=allow comments formatting with, j=remove comment leader when joining lines
 set hidden                                  " allow hidden buffers
 set history=1000                            " default = 8
-if has('nvim')
-    " workaround nvim terminal bug; https://github.com/neovim/neovim/wiki/FAQ#nvim-shows-weird-symbols-2-q-when-changing-modes
-    autocmd OptionSet guicursor noautocmd set guicursor=
-    set guicursor=
-endif
 set laststatus=2                            " use the second statusline
 set linebreak                               " only wrap at sensible places
 set list listchars=tab:▷\ ,trail:⋅,nbsp:⋅
