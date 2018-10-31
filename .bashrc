@@ -1,6 +1,6 @@
 # .bashrc
 
-Bashrc_Version="20181008, joseph.tingiris@gmail.com"
+Bashrc_Version="20181031, joseph.tingiris@gmail.com"
 
 ##
 ### source global definitions
@@ -27,11 +27,11 @@ else
         export User_Name=$(who -m 2> /dev/null)
     fi
 fi
-if [ "$User_Name" != "" ]; then export Who="${User_Name%% *}"; fi
+if [ ${#User_Name} -gt 0 ]; then export Who="${User_Name%% *}"; fi
 
-if [ "$Who" == "" ] && [ "$USER" != "" ]; then export Who=$USER; fi
-if [ "$Who" == "" ] && [ "$LOGNAME" != "" ]; then export Who=$LOGNAME; fi
-if [ "$Who" == "" ]; then
+if [ ${#Who} -eq 0 ] && [ ${#USER} -eq 0 ]; then export Who=$USER; fi
+if [ ${#Who} -eq 0 ] && [ ${#LOGNAME} -gt 0 ]; then export Who=$LOGNAME; fi
+if [ ${#Who} -eq 0 ]; then
     export Who=UNKNOWN
     export User_Dir="/tmp"
 else
@@ -40,8 +40,17 @@ else
     fi
 fi
 
-if [ "${User_Dir}" == "" ]; then
+if [ ${#User_Dir} -eq 0 ]; then
     export User_Dir="~"
+else
+    if [ ${#User_Name} -gt 0 ]; then
+        if [ -f "${User_Dir}/.bashrc" ]; then
+            chown ${User_Name} "${User_Dir}/.bashrc" &> /dev/null
+        fi
+        if [ -f "${User_Dir}/.bashrc.share" ]; then
+            chown ${User_Name} "${User_Dir}/.bashrc.share" &> /dev/null
+        fi
+    fi
 fi
 
 export Apex_User=${Who}@$HOSTNAME
@@ -197,7 +206,7 @@ function githubDotfiles() {
             echo "git_head_working    = $git_head_working"
             echo
 
-            if [ "$PS1" != "" ]; then
+            if [ ${#PS1} -gt 0 ]; then
                 git pull
             else
                 git pull &> /dev/null
@@ -228,10 +237,10 @@ export TZ='America/New_York'
 ### returns to avoid interactive shell enhancements
 ##
 
-if [ "$SUDO_COMMAND" != "" ]; then
+if [ ${#SUDO_COMMAND} -gt 0 ]; then
     return
 else
-    if [ "$SSH_CONNECTION" != "" ] && [ "$SSH_TTY" == "" ]; then
+    if [ ${#SSH_CONNECTION} -gt 0 ] && [ ${#SSH_TTY} -eq 0 ]; then
         return
     fi
 fi
@@ -263,7 +272,7 @@ alias noname="find . -ls 2> /dev/null | awk '{print \$5}' | sort -u | grep ^[0-9
 ### get tmux info
 ##
 
-if [ "$TMUX" != "" ]; then
+if [ ${#TMUX} -gt 0 ]; then
     export Tmux_Bin=$(ps -ho command -p $(env | grep ^TMUX= | head -1 | awk -F, '{print $2}') | awk '{print $1}')
 else
     export Tmux_Bin=$(which --skip-alias tmux 2> /dev/null)
@@ -283,7 +292,7 @@ fi
 ##
 
 if [[ "$TERM" != *"screen"* ]] && [[ "$TERM" != *"tmux"* ]]; then
-    if [ "$KONSOLE_DBUS_WINDOW" != "" ]; then
+    if [ ${#KONSOLE_DBUS_WINDOW} -gt 0 ]; then
         export TERM=konsole-256color # if it's a konsole dbus window then konsole-25color
     fi
 fi
@@ -332,7 +341,7 @@ fi
 ### check ssh, ssh-agent & add all potential keys (if they're not already added)
 ##
 
-if [ "${HOME}" != "" ] && [ -d "${HOME}" ]; then
+if [ ${#HOME} -gt 0 ] && [ -d "${HOME}" ]; then
 
     # if needed then generate an ssh key
 
@@ -422,7 +431,7 @@ if [ "${HOME}" != "" ] && [ -d "${HOME}" ]; then
             if [ -r "$Ssh_Key_File" ]; then
                 Ssh_Agent_Key=$($Ssh_Add -l 2> /dev/null | grep $Ssh_Key_File 2> /dev/null)
                 if [ "$Ssh_Agent_Key" == "" ]; then
-                    if [ "$PS1" != "" ]; then
+                    if [ ${#PS1} -gt 0 ]; then
                         $Ssh_Add $Ssh_Key_File
                     else
                         $Ssh_Add $Ssh_Key_File &> /dev/null
@@ -454,7 +463,7 @@ fi
 ### mimic /etc/profile.d in home etc/profile.d directory
 ##
 
-if  [ "${HOME}" != "" ] && [ "${HOME}" != "/" ] && [ -d "${HOME}/etc/profile.d" ]; then
+if  [ ${#HOME} -gt 0 ] && [ "${HOME}" != "/" ] && [ -d "${HOME}/etc/profile.d" ]; then
     SHELL=/bin/bash
     # Only display echos from profile.d scripts if this is not a login shell
     # or is an interactive shell - otherwise just process them to set envvars
@@ -506,7 +515,7 @@ unset Editor Editors
 ##
 
 if [ -r "${User_Dir}/opt/${Uname_R}/lib" ]; then
-    if [ "$LD_LIBRARY_PATH" == "" ]; then
+    if [ ${#LD_LIBRARY_PATH} -eq 0 ]; then
         export LD_LIBRARY_PATH="${User_Dir}/opt/${Uname_R}/lib"
     else
         export LD_LIBRARY_PATH="${LD_LIBRARY_PATH}:${User_Dir}/opt/${Uname_R}/lib"
