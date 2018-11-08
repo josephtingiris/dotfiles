@@ -274,6 +274,7 @@ noremap <F8> :set paste<CR>
 noremap <F10> <Esc>:setlocal spell spelllang=en_us<CR>
 noremap <F11> <Esc>:setlocal nospell<CR>
 noremap <F12> <Esc>:syntax sync fromstart<CR>
+nnoremap qb :silent! normal mpea}<Esc>bi{<Esc>`pl " put {} (braces) around a word
 map <Leader>jcf :%!python -m json.tool<CR>   " format/indent json better
 map <Leader>q :q<CR>
 map <Leader>t gt
