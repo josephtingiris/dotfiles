@@ -930,8 +930,8 @@ is used, the
 .Ic update-environment
 option will not be applied.
 .It Xo Ic refresh-client
-.Op Fl cDLRSU
-.Op Fl C Ar XxY
+.Op Fl cDlLRSU
+.Op Fl C Ar width,height
 .Op Fl t Ar target-client
 .Op Ar adjustment
 .Xc
@@ -975,6 +975,25 @@ it.
 .Pp
 .Fl C
 sets the width and height of a control client.
+.Fl l
+requests the clipboard from the client using the
+.Xr xterm 1
+escape sequence and stores it in a new paste buffer.
+.Pp
+.Fl L ,
+.Fl R ,
+.Fl U
+and
+.Fl D
+move the visible portion of the window left, right, up or down
+by
+.Ar adjustment ,
+if the window is larger than the client.
+.Fl c
+resets so that the position follows the cursor.
+See the
+.Ic window-size
+option.
 .It Xo Ic rename-session
 .Op Fl t Ar target-session
 .Ar new-name
@@ -2818,7 +2837,7 @@ Set status line message command style, where
 .Ar style
 is a comma-separated list of characteristics to be specified.
 .Pp
-These may be
+The style format is shared by many options and may be:
 .Ql bg=colour
 to set the background colour,
 .Ql fg=colour
@@ -2841,8 +2860,13 @@ and so on),
 to
 .Ic colour255
 from the 256-colour set,
-.Ic default ,
-or a hexadecimal RGB string such as
+.Ic default
+for the default colour (inherited from another option in the case of some options, for example
+.Ic window-status-style
+inherits from
+.Ic status-style ) ,
+.Ic terminal
+for the terminal default colour, or a hexadecimal RGB string such as
 .Ql #ffffff .
 .Pp
 The attributes is either
@@ -2857,8 +2881,12 @@ or a comma-delimited list of one or more of:
 .Ic reverse ,
 .Ic hidden ,
 .Ic italics ,
+.Ic strikethrough ,
+.Ic double-underscore
+.Ic curly-underscore
+.Ic dotted-underscore
 or
-.Ic strikethrough
+.Ic dashed-underscore
 to turn an attribute on, or an attribute prefixed with
 .Ql no
 to turn one off.
@@ -3992,7 +4020,7 @@ option.
 .El
 .Pp
 When a pane is first created, its title is the hostname.
-A pane's title can be set via the OSC title setting sequence, for example:
+A pane's title can be set via the title setting escape sequence, for example:
 .Bd -literal -offset indent
 $ printf '\e033]2;My Title\e033\e\e'
 .Ed
@@ -4507,8 +4535,6 @@ is used, the channel is locked and any clients that try to lock the same
 channel are made to wait until the channel is unlocked with
 .Ic wait-for
 .Fl U .
-This command only works from outside
-.Nm .
 .El
 .Sh TERMINFO EXTENSIONS
 .Nm
@@ -4525,6 +4551,11 @@ to change the cursor colour from inside
 .Bd -literal -offset indent
 $ printf '\e033]12;red\e033\e\e'
 .Ed
+.It Em \&Smulx
+Set a styled underline.
+The single parameter is one of: 0 for no underline, 1 for normal
+underline, 2 for double underline, 3 for curly underline, 4 for dotted
+underline and 5 for dashed underline.
 .It Em \&Ss , Se
 Set or reset the cursor style.
 If set, a sequence such as this may be used
@@ -4541,7 +4572,7 @@ Indicate that the terminal supports the
 .Ql direct colour
 RGB escape sequence (for example, \ee[38;2;255;255;255m).
 .Pp
-If supported, this is used for the OSC initialize colour escape sequence (which
+If supported, this is used for the initialize colour escape sequence (which
 may be enabled by adding the
 .Ql initc
 and
