@@ -26,7 +26,7 @@ if has("autocmd")
     if !empty(glob(User_Dir.'/.vim/autoload/plug.vim'))
 
         " autoload plug begin
-        call plug#begin(User_Dir.'/.vim/plug')
+        silent! call plug#begin(User_Dir.'/.vim/plug')
 
         if exists(":Plug")
 
@@ -64,14 +64,14 @@ if has("autocmd")
                 map <Leader>f :NERDTreeToggle<CR>
 
                 let g:ctrlp_dont_split = 'NERD'
-            endif
 
-            " https://github.com/vim-syntastic/syntastic
-            Plug 'scrooloose/syntastic'
-            let g:syntastic_always_populate_loc_list = 1
-            let g:syntastic_auto_loc_list = 1
-            let g:syntastic_check_on_open = 1
-            let g:syntastic_check_on_wq = 0
+                " https://github.com/vim-syntastic/syntastic
+                Plug 'scrooloose/syntastic'
+                let g:syntastic_always_populate_loc_list = 1
+                let g:syntastic_auto_loc_list = 1
+                let g:syntastic_check_on_open = 1
+                let g:syntastic_check_on_wq = 0
+            endif
 
             " https://github.com/tpope/vim-fugitive
             Plug 'tpope/vim-fugitive'
