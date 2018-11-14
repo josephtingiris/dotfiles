@@ -24,7 +24,9 @@ if [ "$dotfiles_src" == "" ]; then
 fi
 if [ "$dotfiles_src" != "" ] && [ -d "$dotfiles_src" ]; then
     rsync_args="-avp"
+    echo "rsync ${rsync_args} ${dotfiles_src}/ ${dotfiles_to}/"
     rsync ${rsync_args} ${dotfiles_src}/ ${dotfiles_to}/
+    echo "rsync ${rsync_args} --delete-after ${dotfiles_src}/.git/ ${dotfiles_to}/.git/"
     rsync ${rsync_args} --delete-after ${dotfiles_src}/.git/ ${dotfiles_to}/.git/
 else
     echo "this only works for/from src/dotfiles"
