@@ -35,8 +35,10 @@ if has("autocmd")
             " https://github.com/2072/PHP-Indenting-for-VIm
             Plug '2072/PHP-Indenting-for-VIm'
 
-            " https://github.com/chrisbra/vim-sh-indent
-            Plug 'chrisbra/vim-sh-indent'
+            if v:version >= 704
+                " https://github.com/chrisbra/vim-sh-indent
+                Plug 'chrisbra/vim-sh-indent'
+            endif
 
             " https://github.com/pearofducks/ansible-vim
             Plug 'pearofducks/ansible-vim'
@@ -64,14 +66,14 @@ if has("autocmd")
                 map <Leader>f :NERDTreeToggle<CR>
 
                 let g:ctrlp_dont_split = 'NERD'
-
-                " https://github.com/vim-syntastic/syntastic
-                Plug 'scrooloose/syntastic'
-                let g:syntastic_always_populate_loc_list = 1
-                let g:syntastic_auto_loc_list = 1
-                let g:syntastic_check_on_open = 1
-                let g:syntastic_check_on_wq = 0
             endif
+
+            " https://github.com/vim-syntastic/syntastic
+            Plug 'scrooloose/syntastic'
+            let g:syntastic_always_populate_loc_list = 1
+            let g:syntastic_auto_loc_list = 1
+            let g:syntastic_check_on_open = 1
+            let g:syntastic_check_on_wq = 0
 
             " https://github.com/tpope/vim-fugitive
             Plug 'tpope/vim-fugitive'
