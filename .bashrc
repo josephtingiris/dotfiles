@@ -292,12 +292,14 @@ bind '"\x18\x40\x73\x75":"'$USER'"' # Super+u
 ##
 
 if [ ${#TMUX} -gt 0 ]; then
+    # already in a tmux
     export Tmux_Bin=$(ps -ho command -p $(env | grep ^TMUX= | head -1 | awk -F, '{print $2}') | awk '{print $1}')
 else
+    # not in in a tmux
     export Tmux_Bin=$(which --skip-alias tmux 2> /dev/null)
 fi
 
-if [ -x $Tmux_Bin ]; then
+if [ ${#Tmux_Bin} -gt 0 ] && [ -x $Tmux_Bin ]; then
     if [ -r "${User_Dir}/.tmux.conf" ]; then
         Tmux_Info="[$Tmux_Bin] [${User_Dir}/.tmux.conf]"
         alias tmu=tmux
