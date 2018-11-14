@@ -20,10 +20,10 @@ export Uname_R=$(uname -r 2> /dev/null | awk -F\. '{print $(NF-1)"."$NF}' 2> /de
 ### determine true username
 ##
 
-if [ $(which --skip-alias logname 2> /dev/null) ]; then
+if type -P logname &> /dev/null; then
     export User_Name=$(logname 2> /dev/null)
 else
-    if [ $(which --skip-alias who 2> /dev/null) ]; then
+    if type -P who &> /dev/null; then
         export User_Name=$(who -m 2> /dev/null)
     fi
 fi
@@ -37,7 +37,7 @@ if [ ${#Who} -eq 0 ]; then
     export Who=UNKNOWN
     export User_Dir="/tmp"
 else
-    if [ $(which --skip-alias getent 2> /dev/null) ]; then
+    if type -P getent &> /dev/null; then
         export User_Dir=$(getent passwd $Who 2> /dev/null | awk -F: '{print $6}')
     fi
 fi
@@ -80,7 +80,7 @@ Find_Paths+=("/base")
 if [ -r ~/.Auto_Path ]; then
     while read Auto_Path_Line; do
         Find_Paths+=($(eval "echo $Auto_Path_Line"))
-    done <<< "$(cat ~/.Auto_Path | grep -v '^#')"
+    done <<< "$(grep -v '^#' ~/.Auto_Path 2> /dev/null)"
 fi
 
 for Find_Path in ${Find_Paths[@]}; do
@@ -100,7 +100,7 @@ if [ -d /opt/rh ] && [ -r ~/.Auto_Scl ]; then
     Rhscl_Roots=$(find /opt/rh/ -type f -name enable 2> /dev/null | sort -Vr)
     for Rhscl_Enable in $Rhscl_Roots; do
         if [ -r "$Rhscl_Enable" ] && [ "$Rhscl_Enable" != "" ]; then
-            Unset_Variables=$(cat "$Rhscl_Enable" | grep ^export 2> /dev/null | awk -F= '{print $1}' 2> /dev/null | awk '{print $2}' 2> /dev/null | grep -v ^PATH$ | sort -u)
+            Unset_Variables=$(grep ^export "$Rhscl_Enable" 2> /dev/null | awk -F= '{print $1}' 2> /dev/null | awk '{print $2}' 2> /dev/null | grep -v ^PATH$ | sort -u)
             for Unset_Variable in $Unset_Variables; do
                 eval "unset $Unset_Variable"
             done
@@ -293,10 +293,11 @@ bind '"\x18\x40\x73\x75":"'$USER'"' # Super+u
 
 if [ ${#TMUX} -gt 0 ]; then
     # already in a tmux
-    export Tmux_Bin=$(ps -ho command -p $(env | grep ^TMUX= | head -1 | awk -F, '{print $2}') | awk '{print $1}')
+    #export Tmux_Bin=$(ps -ho command -p $(env | grep ^TMUX= | head -1 | awk -F, '{print $2}') | awk '{print $1}')
+    export Tmux_Bin=$(ps -ho cmd -p $(ps -ho ppid -p $$ 2> /dev/null) 2> /dev/null | awk '{print $1}')
 else
     # not in in a tmux
-    export Tmux_Bin=$(which --skip-alias tmux 2> /dev/null)
+    export Tmux_Bin=$(type -P tmux 2> /dev/null)
 fi
 
 if [ ${#Tmux_Bin} -gt 0 ] && [ -x $Tmux_Bin ]; then
@@ -322,34 +323,56 @@ fi
 ### custom, color prompt
 ##
 
-if [ "$TERM" == "ansi" ] || [[ "$TERM" == *"color" ]] || [[ "$TERM" == *"xterm" ]]; then
-    #export PS1="\[$(tput setaf 0)\][\u@\h \w]$PS \[$(tput sgr0)\]" # black
-    #export PS1="\[$(tput setaf 1)\][\u@\h \w]$PS \[$(tput sgr0)\]" # dark red
-    #export PS1="\[$(tput setaf 2)\][\u@\h \w]$PS \[$(tput sgr0)\]" # dark green
-    #export PS1="\[$(tput setaf 3)\][\u@\h \w]$PS \[$(tput sgr0)\]" # dark yellow(ish)
-    #export PS1="\[$(tput setaf 4)\][\u@\h \w]$PS \[$(tput sgr0)\]" # dark blue
-    #export PS1="\[$(tput setaf 5)\][\u@\h \w]$PS \[$(tput sgr0)\]" # dark purple
-    #export PS1="\[$(tput setaf 6)\][\u@\h \w]$PS \[$(tput sgr0)\]" # dark cyan
-    #export PS1="\[$(tput setaf 7)\][\u@\h \w]$PS \[$(tput sgr0)\]" # grey
-    #export PS1="\[$(tput setaf 8)\][\u@\h \w]$PS \[$(tput sgr0)\]" # dark grey
-    #export PS1="\[$(tput setaf 9)\][\u@\h \w]$PS \[$(tput sgr0)\]" # bright red
-    #export PS1="\[$(tput setaf 10)\][\u@\h \w]$PS \[$(tput sgr0)\]" # bright green
-    #export PS1="\[$(tput setaf 11)\][\u@\h \w]$PS \[$(tput sgr0)\]" # bright yellow
-    #export PS1="\[$(tput setaf 12)\][\u@\h \w]$PS \[$(tput sgr0)\]" # bright blue
-    #export PS1="\[$(tput setaf 13)\][\u@\h \w]$PS \[$(tput sgr0)\]" # bright purble
-    #export PS1="\[$(tput setaf 14)\][\u@\h \w]$PS \[$(tput sgr0)\]" # bright cyan
-    #export PS1="\[$(tput setaf 15)\][\u@\h \w]$PS \[$(tput sgr0)\]" # white
-    #export PS1="\[$(tput setaf 17)\][\u@\h \w]$PS \[$(tput sgr0)\]" # really dark blue
-    if [ "$USER" == "root" ]; then
-        PS="#"
-        export PS1="\[$(tput setaf 11)\][\u@\h \w]$PS \[$(tput sgr0)\]" # bright yellow
-    else
-        PS="$"
-        export PS1="\[$(tput setaf 14)\][\u@\h \w]$PS \[$(tput sgr0)\]" # bright cyan
-    fi
-    unset PS
-    export PROMPT_COMMAND='printf "\033]0;%s\007" "$USER@$HOSTNAME:$PWD"'
-fi
+case "$TERM" in
+    ansi|*color|*xterm)
+        export PROMPT_COMMAND='printf "\033]0;%s\007" "${USER}@${HOSTNAME}:${PWD} [bash]"'
+
+        function bash_command_prompt_command() {
+            case "${BASH_COMMAND}" in
+                *\033]0*)
+                    # nested escapes can confuse the terminal, don't output them.
+                    ;;
+                *)
+                    printf "\033]0;%s\007" "${USER}@${HOSTNAME}:${PWD} [${BASH_COMMAND}]"
+                    ;;
+            esac
+        }
+
+        # trap function debug
+
+        trap bash_command_prompt_command DEBUG
+
+        #export PS1="\[$(tput setaf 0)\][\u@\h \w]$PS \[$(tput sgr0)\]" # black
+        #export PS1="\[$(tput setaf 1)\][\u@\h \w]$PS \[$(tput sgr0)\]" # dark red
+        #export PS1="\[$(tput setaf 2)\][\u@\h \w]$PS \[$(tput sgr0)\]" # dark green
+        #export PS1="\[$(tput setaf 3)\][\u@\h \w]$PS \[$(tput sgr0)\]" # dark yellow(ish)
+        #export PS1="\[$(tput setaf 4)\][\u@\h \w]$PS \[$(tput sgr0)\]" # dark blue
+        #export PS1="\[$(tput setaf 5)\][\u@\h \w]$PS \[$(tput sgr0)\]" # dark purple
+        #export PS1="\[$(tput setaf 6)\][\u@\h \w]$PS \[$(tput sgr0)\]" # dark cyan
+        #export PS1="\[$(tput setaf 7)\][\u@\h \w]$PS \[$(tput sgr0)\]" # grey
+        #export PS1="\[$(tput setaf 8)\][\u@\h \w]$PS \[$(tput sgr0)\]" # dark grey
+        #export PS1="\[$(tput setaf 9)\][\u@\h \w]$PS \[$(tput sgr0)\]" # bright red
+        #export PS1="\[$(tput setaf 10)\][\u@\h \w]$PS \[$(tput sgr0)\]" # bright green
+        #export PS1="\[$(tput setaf 11)\][\u@\h \w]$PS \[$(tput sgr0)\]" # bright yellow
+        #export PS1="\[$(tput setaf 12)\][\u@\h \w]$PS \[$(tput sgr0)\]" # bright blue
+        #export PS1="\[$(tput setaf 13)\][\u@\h \w]$PS \[$(tput sgr0)\]" # bright purble
+        #export PS1="\[$(tput setaf 14)\][\u@\h \w]$PS \[$(tput sgr0)\]" # bright cyan
+        #export PS1="\[$(tput setaf 15)\][\u@\h \w]$PS \[$(tput sgr0)\]" # white
+        #export PS1="\[$(tput setaf 17)\][\u@\h \w]$PS \[$(tput sgr0)\]" # really dark blue
+
+        if [ "$USER" == "root" ]; then
+            PS="#"
+            export PS1="\[$(tput setaf 11)\][\u@\h \w]$PS \[$(tput sgr0)\]" # bright yellow
+        else
+            PS="$"
+            export PS1="\[$(tput setaf 14)\][\u@\h \w]$PS \[$(tput sgr0)\]" # bright cyan
+        fi
+        unset PS
+
+        ;;
+    *)
+        ;;
+esac
 
 ##
 ### if needed then create .inputrc (with preferences)
@@ -416,19 +439,19 @@ if [ ${#HOME} -gt 0 ] && [ -d "${HOME}" ]; then
         if [ -r "${HOME}/.ssh/config" ]; then
             while read Ssh_Key_File; do
                 Ssh_Key_Files+=($Ssh_Key_File)
-            done <<< "$(cat "${HOME}/.ssh/config" | grep IdentityFile | awk '{print $NF}' | sort -u)"
+            done <<< "$(grep IdentityFile "${HOME}/.ssh/config" 2> /dev/null | awk '{print $NF}' | sort -u)"
         fi
 
         if [ -r "${HOME}/.git/GIT_SSH.config" ]; then
             while read Ssh_Key_File; do
                 Ssh_Key_Files+=($Ssh_Key_File)
-            done <<< "$(cat "${HOME}/.git/GIT_SSH.config" | grep IdentityFile | awk '{print $NF}' | sort -u)"
+            done <<< "$(grep IdentityFile "${HOME}/.git/GIT_SSH.config" 2> /dev/null | awk '{print $NF}' | sort -u)"
         fi
 
         if [ -r "${HOME}/.subversion/SVN_SSH.config" ]; then
             while read Ssh_Key_File; do
                 Ssh_Key_Files+=($Ssh_Key_File)
-            done <<< "$(cat "${HOME}/.subversion/SVN_SSH.config" 2> /dev/null | grep IdentityFile 2> /dev/null | awk '{print $NF}' 2> /dev/null | sort -u 2> /dev/null)"
+            done <<< "$(grep IdentityFile "${HOME}/.subversion/SVN_SSH.config" 2> /dev/null | awk '{print $NF}' 2> /dev/null | sort -u 2> /dev/null)"
         fi
 
         eval Ssh_Key_Files=($(printf "%q\n" "${Ssh_Key_Files[@]}" | sort -u))
@@ -437,7 +460,7 @@ if [ ${#HOME} -gt 0 ] && [ -d "${HOME}" ]; then
             Ssh_Agent_Key=""
             Ssh_Key_File_Pub=""
             if [ -r "${Ssh_Key_File}.pub" ]; then
-                Ssh_Key_File_Pub=$(cat "${Ssh_Key_File}.pub" 2> /dev/null | awk '{print $2}' 2> /dev/null)
+                Ssh_Key_File_Pub=$(awk '{print $2}' "${Ssh_Key_File}.pub" 2> /dev/null)
                 Ssh_Agent_Key=$($Ssh_Add -L  2> /dev/null | grep "$Ssh_Key_File_Pub" 2> /dev/null)
                 if [ "$Ssh_Agent_Key" != "" ]; then
                     continue
@@ -509,7 +532,7 @@ fi
 ### set ctags
 ##
 
-if [ $(which --skip-alias ctags 2> /dev/null) ]; then
+if type -P ctags &> /dev/null; then
     alias ctags="ctags --fields=+l --c-kinds=+p --c++-kinds=+p -f .tags"
 fi
 
@@ -520,8 +543,8 @@ fi
 unset EDITOR
 Editors=(nvim vim vi)
 for Editor in ${Editors[@]}; do
-    if [ $(which --skip-alias $Editor 2> /dev/null) ]; then
-        export EDITOR="$(which --skip-alias $Editor 2> /dev/null)"
+    if type -P $Editor &> /dev/null; then
+        export EDITOR="$(type -P $Editor 2> /dev/null)"
         if [ -r "${User_Dir}/.vimrc" ]; then
             alias vi="HOME=\"${User_Dir}\" $EDITOR --cmd \"let User_Name='$User_Name'\" --cmd \"let User_Dir='$User_Dir'\""
         else
@@ -548,7 +571,7 @@ fi
 ### set git
 ##
 
-if [ $(which --skip-alias git 2> /dev/null) ]; then
+if type -P git &> /dev/null; then
     export GIT_EDITOR=$EDITOR
     alias get=git
     alias gi=git
@@ -563,7 +586,7 @@ fi
 ### set more/less
 ##
 
-if [ $(which --skip-alias less 2> /dev/null) ]; then
+if type -P less &> /dev/null; then
     alias more='less -r -Ms -T.tags -U -x4'
 fi
 
@@ -571,7 +594,7 @@ fi
 ### set svn
 ##
 
-if [ $(which --skip-alias svn 2> /dev/null) ]; then
+if type -P svn &> /dev/null; then
     export SVN_EDITOR=$EDITOR
 fi
 
