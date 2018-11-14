@@ -1,6 +1,6 @@
 # .bashrc
 
-Bashrc_Version="20181031, joseph.tingiris@gmail.com"
+Bashrc_Version="20181114, joseph.tingiris@gmail.com"
 
 ##
 ### source global definitions
@@ -27,6 +27,8 @@ else
         export User_Name=$(who -m 2> /dev/null)
     fi
 fi
+if [ ${#User_Name} -eq 0 ] && [ ${#SUDO_USER} -ne 0 ]; then export User_Name=$SUDO_USER; fi
+if [ ${#User_Name} -eq 0 ]; then export User_Name=$USER; fi
 if [ ${#User_Name} -gt 0 ]; then export Who="${User_Name%% *}"; fi
 
 if [ ${#Who} -eq 0 ] && [ ${#USER} -eq 0 ]; then export Who=$USER; fi
@@ -59,6 +61,8 @@ export Base_User=$Apex_User
 ##
 ### set PATH automatically
 ##
+
+cd &> /dev/null
 
 unset Auto_Path
 
@@ -237,10 +241,12 @@ export TZ='America/New_York'
 ### returns to avoid interactive shell enhancements
 ##
 
-if [ ${#SUDO_COMMAND} -gt 0 ]; then
+if [[ "${SUDO_COMMAND}" == *"BECOME_SUCCESS"* ]]; then
+    # ansible
     return
 else
     if [ ${#SSH_CONNECTION} -gt 0 ] && [ ${#SSH_TTY} -eq 0 ]; then
+        # ssh, no tty
         return
     fi
 fi
@@ -254,7 +260,6 @@ fi
 ### global alias definitions
 ##
 
-
 alias cl='cd;clear'
 alias cp='cp -i'
 alias h='history'
@@ -263,10 +268,21 @@ alias l='ls -lFhart'
 alias ls='ls --color=tty'
 alias mv='mv -i'
 alias rm='rm -i'
-alias root='sudo su -'
+alias root="sudo -u root /bin/bash --login --init-file /home/$User_Name/.bashrc"
+alias suroot='sudo su -'
 alias s='source ~/.bashrc'
 alias sd='screen -S $(basename $(pwd))'
 alias noname="find . -ls 2> /dev/null | awk '{print \$5}' | sort -u | grep ^[0-9]"
+
+##
+### global key bindings
+##
+
+set -o vi
+
+# showkey -a
+bind '"\x18\x40\x73\x6c":"'$User_Name'"' # Super+l
+bind '"\x18\x40\x73\x75":"'$USER'"' # Super+u
 
 ##
 ### get tmux info
@@ -327,6 +343,7 @@ if [ "$TERM" == "ansi" ] || [[ "$TERM" == *"color" ]] || [[ "$TERM" == *"xterm" 
         export PS1="\[$(tput setaf 14)\][\u@\h \w]$PS \[$(tput sgr0)\]" # bright cyan
     fi
     unset PS
+    export PROMPT_COMMAND='printf "\033]0;%s\007" "$USER@$HOSTNAME:$PWD"'
 fi
 
 ##
