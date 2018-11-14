@@ -11,11 +11,11 @@ if [ "$1" != "" ]; then
     if [[ $(echo "$1" | grep : 2> /dev/null) ]]; then
         dotfiles_to="${1}"
     else
-        dotfiles_to="${1}:${HOME}"
+        dotfiles_to="${1}:~"
     fi
 fi
 if [ "$dotfiles_to" == "" ]; then
-    dotfiles_to="${HOME}"
+    dotfiles_to="~"
 fi
 
 dotfiles_src="$(dirname $(readlink -e . 2> /dev/null | grep \/src\/dotfiles\/) 2> /dev/null)"
