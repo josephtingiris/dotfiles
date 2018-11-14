@@ -251,11 +251,6 @@ else
     fi
 fi
 
-# ansible hack
-if [[ ! $(env 2> /dev/null | grep ^HOSTNAME=) ]]; then
-    return
-fi
-
 ##
 ### global alias definitions
 ##
