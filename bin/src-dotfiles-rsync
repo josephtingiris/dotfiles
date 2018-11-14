@@ -23,10 +23,17 @@ if [ "$dotfiles_src" == "" ]; then
     dotfiles_src="$(readlink -e . 2> /dev/null | grep \/src\/dotfiles)"
 fi
 if [ "$dotfiles_src" != "" ] && [ -d "$dotfiles_src" ]; then
+    cd ${dotfiles_src}
+    git pull || exit
     rsync_args="-avp"
+    echo
     echo "rsync ${rsync_args} ${dotfiles_src}/ ${dotfiles_to}/"
+    echo
     rsync ${rsync_args} ${dotfiles_src}/ ${dotfiles_to}/
+
+    echo
     echo "rsync ${rsync_args} --delete-after ${dotfiles_src}/.git/ ${dotfiles_to}/.git/"
+    echo
     rsync ${rsync_args} --delete-after ${dotfiles_src}/.git/ ${dotfiles_to}/.git/
 else
     echo "this only works for/from src/dotfiles"
