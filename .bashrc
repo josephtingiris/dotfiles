@@ -263,8 +263,16 @@ alias l='ls -lFhart'
 alias ls='ls --color=tty'
 alias mv='mv -i'
 alias rm='rm -i'
-alias root="sudo -u root /bin/bash --init-file ~${User_Name}/.bashrc"
 alias suroot='sudo su -'
+if [ ${BASH_VERSINFO[0]} -ge 4 ]; then
+    if [ ${BASH_VERSINFO[0]} -eq 4 ] && [ ${BASH_VERSINFO[1]} -lt 2 ]; then
+        alias root="sudo -u root /bin/bash --init-file ~${User_Name}/.bashrc # 4.0-4.1"
+    else
+        alias root="sudo -u root /bin/bash --login --init-file ~${User_Name}/.bashrc # 4.2+"
+    fi
+else
+    alias root=suroot
+fi
 alias s='source ~/.bashrc'
 alias sd='screen -S $(basename $(pwd))'
 alias noname="find . -ls 2> /dev/null | awk '{print \$5}' | sort -u | grep ^[0-9]"
