@@ -263,7 +263,7 @@ alias l='ls -lFhart'
 alias ls='ls --color=tty'
 alias mv='mv -i'
 alias rm='rm -i'
-alias root="sudo -u root /bin/bash --login --init-file /home/$User_Name/.bashrc"
+alias root="sudo -u root /bin/bash --init-file ~${User_Name}/.bashrc"
 alias suroot='sudo su -'
 alias s='source ~/.bashrc'
 alias sd='screen -S $(basename $(pwd))'

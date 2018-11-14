@@ -92,7 +92,10 @@ if has("autocmd")
             Plug 'Xuyuanp/nerdtree-git-plugin'
 
             if has('nvim')
-                " neovim compatible, only
+                " neovim, only
+
+                set undodir=~/.vim/undo                     " set undo directory location
+                set formatoptions=j                         " j=remove comment leader when joining lines
 
                 " https://github.com/euclio/vim-markdown-composer
                 function! BuildComposer(info)
@@ -288,7 +291,7 @@ set complete-=i                             " do not complete for included files
 set noerrorbells                            " turn off error bells
 set expandtab                               " use spaces for tabs, not <Tab>
 set exrc                                    " source .exrc in the current directory (use .exrc for both vim/nvim compatibility, not .vimrc or .nvimrc)
-set formatoptions=tcqj                      " t=auto-wrap text, c=auto-wrap comments, q=allow comments formatting with, j=remove comment leader when joining lines
+set formatoptions=tcq                       " t=auto-wrap text, c=auto-wrap comments, q=allow comments formatting with
 set hidden                                  " allow hidden buffers
 set history=1000                            " default = 8
 set laststatus=2                            " use the second statusline
@@ -298,7 +301,7 @@ set nocompatible                            " make vim behave in a more useful w
 "set number                                  " .ine numbers
 set ruler                                   " show the line and column number of the cursor position
 set secure                                  " shell and write commands are not allowed in .nvimrc and .exrc in the current directory
-set shiftwidth=0                            " return value for shiftwidth(); zero sets it to the value of tabstop
+set shiftwidth=4                            " return value for shiftwidth()
 set showcmd                                 " show (partial) command in the last line of the screen
 "set smartindent                             " smart autoindent when starting a new line; shouldn't use with filtetype indent
 set smarttab                                " when on a <Tab> in front of a line, insert blanks according to shiftwidth
@@ -306,7 +309,6 @@ set tabstop=4                               " default tabs are too big
 set softtabstop=4                           " default tabs are too big
 set textwidth=0                             " prevent vim from automatically inserting line breaks
 set ttyfast                                 " indicates a fast terminal connection
-set undodir=~/.vim/undo                     " set undo directory location
 set wildmenu                                " enhanced command-line completion
 set wrap                                    " turn on word wrapping
 set wrapmargin=0                            " number of characters from the right window border where wrapping starts
