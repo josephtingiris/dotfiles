@@ -44,7 +44,6 @@ if has("autocmd")
 
             " https://github.com/ctrlpvim/ctrlp.vim
             Plug 'ctrlpvim/ctrlp.vim'
-            let g:ctrlp_dont_split = 'NERD'
             let g:ctrlp_show_hidden = 1
 
             " https://github.com/Raimondi/delimitMate
@@ -56,12 +55,16 @@ if has("autocmd")
             Plug 'sbdchd/neoformat'
             "let g:neoformat_verbose = 1 " only affects the verbosity of Neoformat
 
-            " https://github.com/scrooloose/nerdtree
-            Plug 'scrooloose/nerdtree'
-            let NERDTreeShowHidden=1
-            autocmd StdinReadPre * let s:std_in=1
-            autocmd VimEnter * if argc() == 0 && !exists("s:std_in") | NERDTree | endif
-            map <Leader>f :NERDTreeToggle<CR>
+            if v:version >= 704
+                " https://github.com/scrooloose/nerdtree
+                Plug 'scrooloose/nerdtree'
+                let NERDTreeShowHidden=1
+                autocmd StdinReadPre * let s:std_in=1
+                autocmd VimEnter * if argc() == 0 && !exists("s:std_in") | NERDTree | endif
+                map <Leader>f :NERDTreeToggle<CR>
+
+                let g:ctrlp_dont_split = 'NERD'
+            endif
 
             " https://github.com/vim-syntastic/syntastic
             Plug 'scrooloose/syntastic'
@@ -93,9 +96,6 @@ if has("autocmd")
 
             if has('nvim')
                 " neovim, only
-
-                set undodir=~/.vim/undo                     " set undo directory location
-                set formatoptions=j                         " j=remove comment leader when joining lines
 
                 " https://github.com/euclio/vim-markdown-composer
                 function! BuildComposer(info)
@@ -292,6 +292,9 @@ set noerrorbells                            " turn off error bells
 set expandtab                               " use spaces for tabs, not <Tab>
 set exrc                                    " source .exrc in the current directory (use .exrc for both vim/nvim compatibility, not .vimrc or .nvimrc)
 set formatoptions=tcq                       " t=auto-wrap text, c=auto-wrap comments, q=allow comments formatting with
+if v:version >= 704
+    set formatoptions=j                     " j=remove comment leader when joining lines
+endif
 set hidden                                  " allow hidden buffers
 set history=1000                            " default = 8
 set laststatus=2                            " use the second statusline
@@ -305,10 +308,14 @@ set shiftwidth=4                            " return value for shiftwidth()
 set showcmd                                 " show (partial) command in the last line of the screen
 "set smartindent                             " smart autoindent when starting a new line; shouldn't use with filtetype indent
 set smarttab                                " when on a <Tab> in front of a line, insert blanks according to shiftwidth
-set tabstop=4                               " default tabs are too big
 set softtabstop=4                           " default tabs are too big
+set tabstop=4                               " default tabs are too big
 set textwidth=0                             " prevent vim from automatically inserting line breaks
 set ttyfast                                 " indicates a fast terminal connection
+if exists("&undodir")
+    set undodir=~/.vim/undo                 " set undo directory location
+endif
 set wildmenu                                " enhanced command-line completion
 set wrap                                    " turn on word wrapping
 set wrapmargin=0                            " number of characters from the right window border where wrapping starts
+
