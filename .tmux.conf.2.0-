@@ -1,6 +1,6 @@
 # specific settings for tmux 1.x - 2.0
 
-display-message 'sourced .tmux.conf-1.x-2.0'
+display-message 'sourced .tmux.conf.2.0-'
 
 ##
 #### bind-key

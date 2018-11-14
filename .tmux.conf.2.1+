@@ -1,6 +1,6 @@
 # 2.1+
 
-display-message 'sourced .tmux.conf-2.1+'
+display-message 'sourced .tmux.conf.2.1+'
 
 ##
 #### bind-key

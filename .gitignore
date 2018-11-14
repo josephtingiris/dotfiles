@@ -43,7 +43,7 @@
 
 # except .tmux.conf(s)
 !.tmux.conf
-!.tmux.conf-1.x-2.0
+!.tmux.conf-2.0-
 !.tmux.conf-2.1+
 
 # except .vimrc
