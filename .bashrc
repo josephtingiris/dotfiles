@@ -1,6 +1,6 @@
 # .bashrc
 
-Bashrc_Version="20181114, joseph.tingiris@gmail.com"
+Bashrc_Version="20181115, joseph.tingiris@gmail.com"
 
 ##
 ### source global definitions
@@ -64,7 +64,7 @@ export Base_User=${Apex_User}
 
 cd &> /dev/null
 
-unset Auto_Path
+unset -v Auto_Path
 
 # bin & sbin from the directories, in the following array, are automatically added in the order given
 Find_Paths=()
@@ -89,10 +89,10 @@ for Find_Path in ${Find_Paths[@]}; do
         for Find_Bin in ${Find_Bins}; do
             Auto_Path+=":${Find_Bin}"
         done
-        unset Find_Bin Find_Bins
+        unset -v Find_Bin Find_Bins
     fi
 done
-unset Find_Path Find_Paths
+unset -v Find_Path Find_Paths
 
 # after .Auto_Path, put /opt/rh bin & sbin directories in the path too
 # rhscl; see https://wiki.centos.org/SpecialInterestGroup/SCLo/CollectionsList
@@ -102,7 +102,7 @@ if [ -d /opt/rh ] && [ -r ~/.Auto_Scl ]; then
         if [ -r "${Rhscl_Root}" ] && [ "${Rhscl_Root}" != "" ]; then
             Unset_Variables=$(grep ^export "${Rhscl_Root}" 2> /dev/null | awk -F= '{print $1}' 2> /dev/null | awk '{print $2}' 2> /dev/null | grep -v ^PATH$ | sort -u)
             for Unset_Variable in ${Unset_Variables}; do
-                eval "unset ${Unset_Variable}"
+                eval "unset -v ${Unset_Variable}"
             done
         fi
     done
@@ -119,9 +119,9 @@ if [ -d /opt/rh ] && [ -r ~/.Auto_Scl ]; then
                 Auto_Path+=":${Rhscl_Root}/${Rhscl_Bin}"
             fi
         done
-        unset Rhscl_Bin Rhscl_Bins Rhscl_Root Rhscl_Root
+        unset -v Rhscl_Bin Rhscl_Bins Rhscl_Root Rhscl_Root
     done
-    unset Rhscl_Root Rhscl_Roots
+    unset -v Rhscl_Root Rhscl_Roots
 fi
 
 # finally, add these to the end of Auto_Path
@@ -129,7 +129,7 @@ Auto_Path+=":/usr/local/bin:/usr/local/sbin:/usr/bin:/usr/sbin:/bin:/sbin"
 
 export PATH=${Auto_Path}:${PATH}
 
-unset Auto_Path
+unset -v Auto_Path
 
 OIFS=${IFS}
 IFS=':' read -ra Auto_Path <<< "${PATH}"
@@ -141,12 +141,12 @@ for Dir_Path in "${Auto_Path[@]}"; do
         fi
     fi
 done
-unset Dir_Path
+unset -v Dir_Path
 IFS=${OIFS}
 
 export PATH="${Uniq_Path}"
 
-unset Uniq_Path
+unset -v Uniq_Path
 
 Man_Paths=()
 Man_Paths+=(/usr/local/share/man)
@@ -367,7 +367,7 @@ case "${TERM}" in
             PS="$"
             export PS1="\[$(tput setaf 14)\][\u@\h \w]${PS} \[$(tput sgr0)\]" # bright cyan
         fi
-        unset PS
+        unset -v PS
 
         ;;
     *)
@@ -383,29 +383,30 @@ if [ ! -f ~/.inputrc ]; then
 fi
 
 ##
-### check ssh, ssh-agent & add all potential keys (if they're not already added)
+### check ssh, ssh-agent, gnome-keyring-daemon & add all potential keys (if they're not already added)
 ##
 
-if [ ${#HOME} -gt 0 ] && [ -d "${HOME}" ]; then
+if [ -r "${HOME}/.ssh-keys" ]; then
 
     # if needed then generate an ssh key
 
-    Ssh_Keygen=/usr/bin/ssh-keygen
+    Ssh_Keygen=$(type -P ssh-keygen)
     if [ ! -d "${HOME}/.ssh" ]; then
         if [ -x ${Ssh_Keygen} ]; then
             ${Ssh_Keygen} -t ed25519 -b 4096
         fi
-        unset Ssh_Keygen
+        unset -v Ssh_Keygen
     fi
 
-    # this works in conjunction with .bash_logout
+    # note; this works in conjunction with .bash_logout
 
-    Ssh_Add=/usr/bin/ssh-add
-    Ssh_Agent=/usr/bin/ssh-agent
-    Ssh_Agent_File="${HOME}/.ssh-agent.${Who}@${HOSTNAME}"
-    Ssh_Agent_Timeout=86400
+    Ssh_Add=$(type -P ssh-add)
+    Ssh_Agent=$(type -P ssh-agent)
 
     if [ -x ${Ssh_Agent} ] && [ -x ${Ssh_Add} ] && [ -x ${Ssh_Keygen} ]; then
+
+        Ssh_Agent_File="${HOME}/.ssh-agent.${Who}@${HOSTNAME}"
+        Ssh_Agent_Timeout=86400
 
         ${Ssh_Add} -l &> /dev/null
         if [ $? -eq 2 ]; then
@@ -417,6 +418,7 @@ if [ ${#HOME} -gt 0 ] && [ -d "${HOME}" ]; then
             ${Ssh_Add} -l &> /dev/null
             if [ $? -eq 2 ]; then
                 # TODO: see if another ssh-agent is running by this user & use it rather than start a new one every time
+                printf "Creating Ssh_Agent_File '$Ssh_Agent_File'\n\n"
                 (umask 066; ${Ssh_Agent} -t ${Ssh_Agent_Timeout} 1> ${Ssh_Agent_File})
                 eval "$(<${Ssh_Agent_File})" &> /dev/null
             fi
@@ -482,26 +484,35 @@ if [ ${#HOME} -gt 0 ] && [ -d "${HOME}" ]; then
                         ${Ssh_Add} ${Ssh_Key_File} &> /dev/null
                     fi
                 fi
-                unset Ssh_Agent_Key
+                unset -v Ssh_Agent_Key
             fi
         done
-        unset Ssh_Agent_Key Ssh_Key_File Ssh_Key_File_Pub Ssh_Key_Files
+        unset -v Ssh_Agent_Key Ssh_Key_File Ssh_Key_File_Pub Ssh_Key_Files
 
+        # else ssh tools are not executable
     fi
 
-    unset Ssh_Add Ssh_Agent Ssh_Agent_File Ssh_Agent_Timeout
+    unset -v Ssh_Add Ssh_Agent Ssh_Agent_File Ssh_Agent_Timeout
 
-fi
+    # use the gnome keyring daemon (if it's available)
 
-##
-### use the gnome keyring daemon (if it's available)
-##
+    if [ -x /usr/bin/gnome-keyring-daemon ] && [ -r /etc/pam.d/kdm ]; then
+        # http://tuxrocket.com/2013/01/03/getting-gnome-keyring-to-work-under-kde-and-kdm/
+        # /etc/pam.d/kdm
+        # session include common-pamkeyring
+        /usr/bin/gnome-keyring-daemon start &> /dev/null
+    fi
 
-if [ -x /usr/bin/gnome-keyring-daemon ] && [ -r /etc/pam.d/kdm ]; then
-    # http://tuxrocket.com/2013/01/03/getting-gnome-keyring-to-work-under-kde-and-kdm/
-    # /etc/pam.d/kdm
-    # session include common-pamkeyring
-    /usr/bin/gnome-keyring-daemon start 1> /dev/null
+else
+    if [ -d "${HOME}/.ssh" ]; then
+        # remind me; these keys probably shouldn't be here
+        for Ssh_Key in "${HOME}/.ssh/id"*; do
+            if [ -f "$Ssh_Key" ]; then
+                printf "NOTICE: ssh key file on $HOSTNAME '$Ssh_Key'\n"
+            fi
+        done
+        unset -v Ssh_Key
+    fi
 fi
 
 ##
@@ -510,7 +521,7 @@ fi
 
 if  [ ${#HOME} -gt 0 ] && [ "${HOME}" != "/" ] && [ -d "${HOME}/etc/profile.d" ]; then
     SHELL=/bin/bash
-    # Only display echos from profile.d scripts if this is not a login shell
+    # Only display output from profile.d scripts if this is not a login shell
     # or is an interactive shell - otherwise just process them to set envvars
     for Home_Etc_Profile_D in ${HOME}/etc/profile.d/*.sh; do
         if [ -r "${Home_Etc_Profile_D}" ]; then
@@ -521,7 +532,7 @@ if  [ ${#HOME} -gt 0 ] && [ "${HOME}" != "/" ] && [ -d "${HOME}/etc/profile.d" ]
             fi
         fi
     done
-    unset Home_Etc_Profile_D
+    unset -v Home_Etc_Profile_D
 fi
 
 if [ "${USER}" != "root" ]; then
@@ -540,7 +551,7 @@ fi
 ### set EDITOR
 ##
 
-unset EDITOR
+unset -v EDITOR
 Editors=(nvim vim vi)
 for Editor in ${Editors[@]}; do
     if type -P ${Editor} &> /dev/null; then
@@ -553,7 +564,7 @@ for Editor in ${Editors[@]}; do
         break
     fi
 done
-unset Editor Editors
+unset -v Editor Editors
 
 ##
 ### set LD_LIRBARY_PATH
