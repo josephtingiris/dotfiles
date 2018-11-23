@@ -7,6 +7,7 @@ if [ ${#Who} -eq 0 ]; then
 fi
 
 Ssh_Agent_File="${HOME}/.ssh-agent.${Who}@${HOSTNAME}"
+Ssh_Agent_Timeout=86400
 
 if [ ${#SSH_AGENT_PID} -eq 0 ] && [ -r "${Ssh_Agent_File}" ]; then
     eval "$(<${Ssh_Agent_File})" &> /dev/null
@@ -19,16 +20,16 @@ if [ ${#SSH_AGENT_PID} -gt 0 ]; then
                 # if everything matches then leave it running (until it expires)
                 if ! grep "^SSH_AGENT_PID=${SSH_AGENT_PID}" "${Ssh_Agent_File}" &> /dev/null; then
                     rm -f "${Ssh_Agent_File}" &> /dev/null
-                    pkill -9 -u "${USER}" -f $(type -P ssh-agent) &> /dev/null
+                    pkill -9 -u "${USER}" -f $(type -P ssh-agent)\ -t\ ${Ssh_Agent_Timeout} &> /dev/null
                 fi
             else
                 # ssh-agent was started manually? should it be running?
                 rm -f "${Ssh_Agent_File}" &> /dev/null
-                pkill -9 -u "${USER}" -f $(type -P ssh-agent) &> /dev/null
+                pkill -9 -u "${USER}" -f $(type -P ssh-agent)\ -t\ ${Ssh_Agent_Timeout} &> /dev/null
             fi
         else
             # should it be running without an agent file?
-            pkill -9 -u "${USER}" -f $(type -P ssh-agent) &> /dev/null
+            pkill -9 -u "${USER}" -f $(type -P ssh-agent)\ -t\ ${Ssh_Agent_Timeout} &> /dev/null
         fi
     fi
 else
