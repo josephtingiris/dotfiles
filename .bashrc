@@ -1,6 +1,35 @@
 # .bashrc
 
-Bashrc_Version="20181115, joseph.tingiris@gmail.com"
+Bashrc_Version="20181126, joseph.tingiris@gmail.com"
+
+##
+### returns to avoid interactive shell enhancements
+##
+
+case $- in
+    *i*)
+        # interactive shell (OK)
+        ;;
+    *)
+        # non-interactive shell
+        return
+        ;;
+esac
+
+if [ ${#PS1} -le 0 ]; then
+    # no prompt
+    return
+fi
+
+if [ ${#SSH_CONNECTION} -gt 0 ] && [ ${#SSH_TTY} -eq 0 ]; then
+    # ssh, no tty
+    return
+fi
+
+# non-login shells will *not* execute .bash_logout, and I want to know ...
+if ! shopt -q login_shell &> /dev/null; then
+    printf "\nNOTICE: interactive, but not a login shell\n"
+fi
 
 ##
 ### source global definitions
@@ -200,21 +229,16 @@ function githubDotfiles() {
 
         git fetch &> /dev/null
 
-        local git_head_upstream=$(git rev-parse HEAD@{u})
-        local git_head_working=$(git rev-parse HEAD)
+        local git_head_upstream=$(git rev-parse HEAD@{u} 2> /dev/null)
+        local git_head_working=$(git rev-parse HEAD 2> /dev/null)
 
         if [ "${git_head_upstream}" != "${git_head_working}" ]; then
             # need to pull
-
             echo "git_head_upstream   = ${git_head_upstream}"
             echo "git_head_working    = ${git_head_working}"
             echo
 
-            if [ ${#PS1} -gt 0 ]; then
-                git pull
-            else
-                git pull &> /dev/null
-            fi
+            git pull
         fi
 
     else
@@ -231,25 +255,80 @@ function githubDotfiles() {
     cd "${cwd}"
 }
 
+# ssh-agent check
+function sshAgentKill() {
+
+    #env | grep -i ssh | LC_COLLATE=C sort
+    #echo after
+    #pgrep -a -u "${USER}" -f ${Ssh_Agent}\ -t\ ${Ssh_Agent_Timeout}
+
+    if [ ${#Ssh_Agent} -eq 0 ]; then
+        export Ssh_Agent=$(type -P ssh-agent)
+    fi
+
+    if [ ${#SSH_AGENT_PID} -eq 0 ] && [ ${#Ssh_Agent_File} -gt 0 ] && [ -r "${Ssh_Agent_File}" ]; then
+        eval "$(<${Ssh_Agent_File})" &> /dev/null
+    fi
+
+    local ssh_agent_kill=1
+
+    if [ ${#SSH_AGENT_PID} -gt 0 ]; then
+        if [ -d /proc/${SSH_AGENT_PID} ]; then
+            if [ ${#Ssh_Agent_File} -gt 0 ] && [ -r "${Ssh_Agent_File}" ]; then
+                if [ -r "${HOME}/.ssh-keys" ]; then
+                    if [ ${#SSH_AUTH_SOCK} -gt 0 ] && [ ${#SSH_AGENT_PID} -gt 0 ]; then
+                        # if everything matches then leave it running (until it expires)
+                        if ! grep -q "^SSH_AGENT_PID=$SSH_AGENT_PID;" "${Ssh_Agent_File}" &> /dev/null; then
+                            # if it's running but everything doesn't match then update Ssh_Agent_File
+                            printf "SSH_AUTH_SOCK=%s; export SSH_AUTH_SOCK;\n" "$SSH_AUTH_SOCK" > "${Ssh_Agent_File}"
+                            printf "SSH_AGENT_PID=%s; export SSH_AGENT_PID;\n" "$SSH_AGENT_PID" >> "${Ssh_Agent_File}"
+                            printf "echo Agent pid %s\n" "$SSH_AGENT_PID" >> "${Ssh_Agent_File}"
+                        fi
+                    else
+                        echo "rm 1"
+                        ssh_agent_kill=0
+                    fi
+                else
+                    # ssh-agent was started manually? should it be running?
+                    ssh_agent_kill=0
+                fi
+            else
+                # should it be running without an agent file?
+                ssh_agent_kill=0
+            fi
+        else
+            # SSH_AGENT_PID is set but the process isn't running
+            ssh_agent_kill=0
+        fi
+    else
+        # SSH_AGENT_PID is not set
+        ssh_agent_kill=0
+    fi
+
+    if [ $ssh_agent_kill -eq 0 ]; then
+        pkill -9 -u "${USER}" -f ${Ssh_Agent}\ -t\ ${Ssh_Agent_Timeout} &> /dev/null
+        if [ ${#Ssh_Agent_File} -gt 0 ] && [ -r "${Ssh_Agent_File}" ]; then
+            rm -f "${Ssh_Agent_File}" &> /dev/null
+        fi
+    fi
+
+    local pid
+    for pid in $(pgrep -u "${USER}" -f ${Ssh_Agent}\ -t\ ${Ssh_Agent_Timeout} 2> /dev/null); do
+        if [ ${#SSH_AGENT_PID} -gt 0 ]; then
+            if [ "${SSH_AGENT_PID}" == "$pid" ]; then
+                continue
+            fi
+        fi
+        kill -9 $pid &> /dev/null
+    done
+
+}
+
 ##
 ### set default timezone
 ##
 
 export TZ='America/New_York'
-
-##
-### returns to avoid interactive shell enhancements
-##
-
-if [[ "${SUDO_COMMAND}" == *"BECOME_SUCCESS"* ]]; then
-    # ansible
-    return
-else
-    if [ ${#SSH_CONNECTION} -gt 0 ] && [ ${#SSH_TTY} -eq 0 ]; then
-        # ssh, no tty
-        return
-    fi
-fi
 
 ##
 ### global alias definitions
@@ -355,7 +434,7 @@ case "${TERM}" in
         #export PS1="\[$(tput setaf 10)\][\u@\h \w]${PS} \[$(tput sgr0)\]" # bright green
         #export PS1="\[$(tput setaf 11)\][\u@\h \w]${PS} \[$(tput sgr0)\]" # bright yellow
         #export PS1="\[$(tput setaf 12)\][\u@\h \w]${PS} \[$(tput sgr0)\]" # bright blue
-        #export PS1="\[$(tput setaf 13)\][\u@\h \w]${PS} \[$(tput sgr0)\]" # bright purble
+        #export PS1="\[$(tput setaf 13)\][\u@\h \w]${PS} \[$(tput sgr0)\]" # bright purple
         #export PS1="\[$(tput setaf 14)\][\u@\h \w]${PS} \[$(tput sgr0)\]" # bright cyan
         #export PS1="\[$(tput setaf 15)\][\u@\h \w]${PS} \[$(tput sgr0)\]" # white
         #export PS1="\[$(tput setaf 17)\][\u@\h \w]${PS} \[$(tput sgr0)\]" # really dark blue
@@ -388,47 +467,39 @@ fi
 
 if [ -r "${HOME}/.ssh-keys" ]; then
 
-    # if needed then generate an ssh key
-
-    Ssh_Keygen=$(type -P ssh-keygen)
-    if [ ! -d "${HOME}/.ssh" ]; then
-        if [ -x ${Ssh_Keygen} ]; then
-            ${Ssh_Keygen} -t ed25519 -b 4096
-        fi
-        unset -v Ssh_Keygen
-    fi
-
     # note; this works in conjunction with .bash_logout
 
-    Ssh_Add=$(type -P ssh-add)
-    Ssh_Agent=$(type -P ssh-agent)
+    # if needed then generate an ssh key
+
+    export Ssh_Add=$(type -P ssh-add)
+    export Ssh_Agent=$(type -P ssh-agent)
+    export Ssh_Agent_File="${HOME}/.ssh-agent.${Who}@${HOSTNAME}"
+    export Ssh_Agent_Timeout=86400
+    export Ssh_Keygen=$(type -P ssh-keygen)
 
     if [ -x ${Ssh_Agent} ] && [ -x ${Ssh_Add} ] && [ -x ${Ssh_Keygen} ]; then
 
-        Ssh_Agent_File="${HOME}/.ssh-agent.${Who}@${HOSTNAME}"
-        Ssh_Agent_Timeout=86400
+        if [ ! -d "${HOME}/.ssh" ]; then
+            ${Ssh_Keygen} -t ed25519 -b 4096
+        fi
 
+        sshAgentKill
+
+        # ensure ssh-agent works
         ${Ssh_Add} -l &> /dev/null
         if [ $? -eq 2 ]; then
-
-            if [ -r "${Ssh_Agent_File}" ]; then
-                eval "$(<${Ssh_Agent_File})" &> /dev/null
-            fi
-
-            ${Ssh_Add} -l &> /dev/null
-            if [ $? -eq 2 ]; then
-                # TODO: see if another ssh-agent is running by this user & use it rather than start a new one every time
-                printf "Creating Ssh_Agent_File '$Ssh_Agent_File'\n\n"
-                (umask 066; ${Ssh_Agent} -t ${Ssh_Agent_Timeout} 1> ${Ssh_Agent_File})
-                eval "$(<${Ssh_Agent_File})" &> /dev/null
-            fi
-
+            (umask 066; ${Ssh_Agent} -t ${Ssh_Agent_Timeout} 1> ${Ssh_Agent_File})
+            eval "$(<${Ssh_Agent_File})" &> /dev/null
         fi
+
+        # enable agent forwarding
+        alias ssh='ssh -A'
+
+        Ssh_Key_Files=()
 
         Ssh_Dirs=()
         Ssh_Dirs+=(${HOME})
         Ssh_Dirs+=(${User_Dir})
-        Ssh_Key_Files=()
 
         for Ssh_Dir in ${Ssh_Dirs[@]}; do
             if [ -r "${Ssh_Dir}/.ssh" ] && [ -d "${Ssh_Dir}/.ssh" ]; then
@@ -438,23 +509,23 @@ if [ -r "${HOME}/.ssh-keys" ]; then
             fi
         done
 
-        if [ -r "${HOME}/.ssh/config" ]; then
-            while read Ssh_Key_File; do
-                Ssh_Key_Files+=(${Ssh_Key_File})
-            done <<< "$(grep IdentityFile "${HOME}/.ssh/config" 2> /dev/null | awk '{print $NF}' | sort -u)"
-        fi
+        Ssh_Configs=()
+        Ssh_Configs+=("${HOME}/.ssh/config")
+        Ssh_Configs+=("${User_Dir}/.ssh/config")
+        Ssh_Configs+=("${HOME}/.git/GIT_SSH.config")
+        Ssh_Configs+=("${User_Dir}/.git/GIT_SSH.config")
+        Ssh_Configs+=("${HOME}/.subversion/SVN_SSH.config")
+        Ssh_Configs+=("${User_Dir}/.subversion/SVN_SSH.config")
 
-        if [ -r "${HOME}/.git/GIT_SSH.config" ]; then
-            while read Ssh_Key_File; do
-                Ssh_Key_Files+=($Ssh_Key_File)
-            done <<< "$(grep IdentityFile "${HOME}/.git/GIT_SSH.config" 2> /dev/null | awk '{print $NF}' | sort -u)"
-        fi
-
-        if [ -r "${HOME}/.subversion/SVN_SSH.config" ]; then
-            while read Ssh_Key_File; do
-                Ssh_Key_Files+=(${Ssh_Key_File})
-            done <<< "$(grep IdentityFile "${HOME}/.subversion/SVN_SSH.config" 2> /dev/null | awk '{print $NF}' 2> /dev/null | sort -u 2> /dev/null)"
-        fi
+        for Ssh_Config in ${Ssh_Configs[@]}; do
+            if [ -r "${Ssh_Config}" ]; then
+                while read Ssh_Key_File; do
+                    Ssh_Key_Files+=(${Ssh_Key_File})
+                done <<< "$(grep IdentityFile "${Ssh_Config}" 2> /dev/null | awk '{print $NF}' | sort -u)"
+                unset -v Ssh_Key_File
+            fi
+        done
+        unset -v Ssh_Config Ssh_Configs
 
         eval Ssh_Key_Files=($(printf "%q\n" "${Ssh_Key_Files[@]}" | sort -u))
 
@@ -478,11 +549,7 @@ if [ -r "${HOME}/.ssh-keys" ]; then
             if [ -r "${Ssh_Key_File}" ]; then
                 Ssh_Agent_Key=$(${Ssh_Add} -l 2> /dev/null | grep ${Ssh_Key_File} 2> /dev/null)
                 if [ "${Ssh_Agent_Key}" == "" ]; then
-                    if [ ${#PS1} -gt 0 ]; then
-                        ${Ssh_Add} ${Ssh_Key_File}
-                    else
-                        ${Ssh_Add} ${Ssh_Key_File} &> /dev/null
-                    fi
+                    ${Ssh_Add} ${Ssh_Key_File}
                 fi
                 unset -v Ssh_Agent_Key
             fi
@@ -491,8 +558,6 @@ if [ -r "${HOME}/.ssh-keys" ]; then
 
         # else ssh tools are not executable
     fi
-
-    unset -v Ssh_Add Ssh_Agent Ssh_Agent_File Ssh_Agent_Timeout
 
     # use the gnome keyring daemon (if it's available)
 
@@ -507,8 +572,8 @@ else
     if [ -d "${HOME}/.ssh" ]; then
         # remind me; these keys probably shouldn't be here
         for Ssh_Key in "${HOME}/.ssh/id"*; do
-            if [ -f "$Ssh_Key" ]; then
-                printf "NOTICE: ssh key file on $HOSTNAME '$Ssh_Key'\n"
+            if [ -r "$Ssh_Key" ]; then
+                printf "NOTICE: no ${HOME}/.ssh-keys; found ssh key file on $HOSTNAME '$Ssh_Key'\n"
             fi
         done
         unset -v Ssh_Key
@@ -525,11 +590,7 @@ if  [ ${#HOME} -gt 0 ] && [ "${HOME}" != "/" ] && [ -d "${HOME}/etc/profile.d" ]
     # or is an interactive shell - otherwise just process them to set envvars
     for Home_Etc_Profile_D in ${HOME}/etc/profile.d/*.sh; do
         if [ -r "${Home_Etc_Profile_D}" ]; then
-            if [ "${PS1}" ]; then
-                . "${Home_Etc_Profile_D}"
-            else
-                . "${Home_Etc_Profile_D}" >/dev/null
-            fi
+            . "${Home_Etc_Profile_D}"
         fi
     done
     unset -v Home_Etc_Profile_D
@@ -613,19 +674,14 @@ fi
 ### display some useful information
 ##
 
-if [ "${PS1}" != "" ]; then
-    echo
+printf "\n"
 
-    if [ -r /etc/redhat-release ]; then
-        cat /etc/redhat-release
-        echo
-    fi
-
-    echo "${User_Dir}/.bashrc ${Bashrc_Version}"
-    if [ "${TMUX}" ]; then
-        echo
-        echo "${Tmux_Info} [${TMUX}]"
-    fi
-    echo
+if [ -r /etc/redhat-release ]; then
+    cat /etc/redhat-release
+    printf "\n"
 fi
 
+printf "${User_Dir}/.bashrc ${Bashrc_Version}\n\n"
+if [ "${TMUX}" ]; then
+    printf "${Tmux_Info} [${TMUX}]\n\n"
+fi
