@@ -276,7 +276,7 @@ function sshAgent() {
                 eval "$(<${Ssh_Agent_Hostname})" &> /dev/null
             fi
             ${Ssh_Add} -l &> /dev/null
-            if [ $? -ne 0 ]; then
+            if [ $? -gt 1 ]; then
                 # starting ssh-agent failed
                 return 1
             fi
