@@ -330,11 +330,12 @@ function sshAgent() {
 
         for Ssh_Key_File in ${Ssh_Key_Files[@]}; do
             Ssh_Agent_Key=""
-            Ssh_Key_File_Pub=""
+            Ssh_Key_Public=""
             if [ -r "${Ssh_Key_File}.pub" ]; then
-                Ssh_Key_File_Pub=$(awk '{print $2}' "${Ssh_Key_File}.pub" 2> /dev/null)
-                Ssh_Agent_Key=$(${Ssh_Add} -L  2> /dev/null | grep "${Ssh_Key_File_Pub}" 2> /dev/null)
+                Ssh_Key_Public=$(awk '{print $2}' "${Ssh_Key_File}.pub" 2> /dev/null)
+                Ssh_Agent_Key=$(${Ssh_Add} -L  2> /dev/null | grep "${Ssh_Key_Public}" 2> /dev/null)
                 if [ "${Ssh_Agent_Key}" != "" ]; then
+                    # public key is already in the agent
                     continue
                 fi
                 ${Ssh_Keygen} -l -f "${Ssh_Key_File}.pub" &> /dev/null
@@ -346,14 +347,15 @@ function sshAgent() {
                 continue
             fi
             if [ -r "${Ssh_Key_File}" ]; then
-                Ssh_Agent_Key=$(${Ssh_Add} -l 2> /dev/null | grep ${Ssh_Key_File} 2> /dev/null)
+                Ssh_Key_Private=$(${Ssh_Keygen} -l -f "${Ssh_Key_File}.pub" 2> /dev/null | awk '{print $2}')
+                Ssh_Agent_Key=$(${Ssh_Add} -l 2> /dev/null | grep ${Ssh_Key_Private} 2> /dev/null)
                 if [ "${Ssh_Agent_Key}" == "" ]; then
                     ${Ssh_Add} ${Ssh_Key_File}
                 fi
                 unset -v Ssh_Agent_Key
             fi
         done
-        unset -v Ssh_Agent_Key Ssh_Key_File Ssh_Key_File_Pub Ssh_Key_Files
+        unset -v Ssh_Agent_Key Ssh_Key_File Ssh_Key_Private Ssh_Key_Public Ssh_Key_Files
 
         # else ssh tools are not executable
     fi
