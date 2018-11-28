@@ -404,14 +404,11 @@ function sshAgentValidate() {
         fi
     fi
 
-    local ssh_agent_kill=1
+    local ssh_agent_clean=1
 
     if [ ${#SSH_AGENT_PID} -eq 0 ]; then
         # SSH_AGENT_PID is not set
-        if [ ${#SSH_AUTH_SOCK} -eq 0 ]; then
-            # SSH_AUTH_SOCK is not set
-            ssh_agent_kill=0
-        fi
+        ssh_agent_clean=0
     else
         if [ -d /proc/${SSH_AGENT_PID} ]; then
             if [ ${#Ssh_Agent_Hostname} -gt 0 ]; then
@@ -425,26 +422,23 @@ function sshAgentValidate() {
                             printf "echo Agent pid %s\n" "$SSH_AGENT_PID" >> "${Ssh_Agent_Hostname}"
                         fi
                     else
-                        ssh_agent_kill=0
+                        ssh_agent_clean=0
                     fi
                 else
                     # ssh-agent was started manually? should it be running?
-                    ssh_agent_kill=0
+                    ssh_agent_clean=0
                 fi
             else
                 # should it be running without an agent hostname file?
-                ssh_agent_kill=0
+                ssh_agent_clean=0
             fi
         else
             # SSH_AGENT_PID is set but the process isn't running
-            ssh_agent_kill=0
+            ssh_agent_clean=0
         fi
     fi
 
-    if [ $ssh_agent_kill -eq 0 ]; then
-        if [ ${#SSH_AUTH_SOCK} -gt 0 ] && [ -r "${SSH_AUTH_SOCK}" ]; then
-            rm -f "${SSH_AUTH_SOCK}" &> /dev/null
-        fi
+    if [ $ssh_agent_clean -eq 0 ]; then
         if [ ${#Ssh_Agent_Hostname} -gt 0 ] && [ -r "${Ssh_Agent_Hostname}" ]; then
             rm -f "${Ssh_Agent_Hostname}" &> /dev/null
         fi
@@ -454,7 +448,7 @@ function sshAgentValidate() {
     for pid in $(pgrep -u "${USER}" -f ${Ssh_Agent}\ -t\ ${Ssh_Agent_Timeout} 2> /dev/null); do
         if [ ${#SSH_AGENT_PID} -gt 0 ]; then
             if [ "${SSH_AGENT_PID}" == "$pid" ]; then
-                if [ $ssh_agent_kill -eq 1 ]; then
+                if [ $ssh_agent_clean -eq 1 ]; then
                     # don't kill a valid agent
                     continue
                 fi
@@ -489,9 +483,9 @@ alias rm='rm -i'
 alias suroot='sudo su -'
 if [ ${BASH_VERSINFO[0]} -ge 4 ]; then
     if [ ${BASH_VERSINFO[0]} -eq 4 ] && [ ${BASH_VERSINFO[1]} -lt 2 ]; then
-        alias root="sudo SSH_AUTH_SOCK=$SSH_AUTH_SOCK -u root /bin/bash --init-file ~${User_Name}/.bashrc # 4.0-4.1"
+        alias root="sudo SSH_AGENT_PID=$SSH_AGENT_PID SSH_AUTH_SOCK=$SSH_AUTH_SOCK -u root /bin/bash --init-file ~${User_Name}/.bashrc # 4.0-4.1"
     else
-        alias root="sudo SSH_AUTH_SOCK=$SSH_AUTH_SOCK -u root /bin/bash --login --init-file ~${User_Name}/.bashrc # 4.2+"
+        alias root="sudo SSH_AGENT_PID=$SSH_AGENT_PID SSH_AUTH_SOCK=$SSH_AUTH_SOCK -u root /bin/bash --login --init-file ~${User_Name}/.bashrc # 4.2+"
     fi
 else
     alias root=suroot
