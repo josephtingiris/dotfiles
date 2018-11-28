@@ -264,7 +264,7 @@ endif
 "
 
 " color preferences
-colorscheme elflord
+silent! colorscheme elflord
 set background=dark
 set t_Co=256
 syntax on

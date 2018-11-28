@@ -1,6 +1,6 @@
 # .bashrc
 
-Bashrc_Version="20181126, joseph.tingiris@gmail.com"
+Bashrc_Version="20181127, joseph.tingiris@gmail.com"
 
 ##
 ### returns to avoid interactive shell enhancements
