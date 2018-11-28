@@ -284,7 +284,7 @@ function sshAgent() {
             #if [ ${#Ssh_Agent_Home} -gt 0 ] && [ -r "${Ssh_Agent_Home}" ]; then
             # ssh-agent works; ssh agent forwarding is on .. start another/local agent anyway?
             #if [ ${#SSH_AUTH_SOCK} -gt 0 ]; then
-            #printf "NOTICE: SSH_AUTH_SOCK=$SSH_AUTH_SOCK\n"
+            #printf "NOTICE: SSH_AUTH_SOCK=${SSH_AUTH_SOCK}\n"
             #fi
             #fi
         fi
@@ -357,6 +357,40 @@ function sshAgent() {
         done
         unset -v Ssh_Agent_Key Ssh_Key_File Ssh_Key_Private Ssh_Key_Public Ssh_Key_Files
 
+        # hmm .. https://serverfault.com/questions/401737/choose-identity-from-ssh-agent-by-file-name
+        # this will convert the stored ssh-keys to public files that can be used with IdentitiesOnly
+        Md5sum=$(type -P md5sum)
+        if [ -x "${Md5sum}" ] && [ -w "${HOME}/.ssh" ] && [ "${USER}" != "root" ]; then
+            Ssh_Identities_Dir="${HOME}/.ssh/identity"
+
+            if [ ! -d "${Ssh_Identities_Dir}" ]; then
+                mkdir -p "${Ssh_Identities_Dir}"
+                if [ $? -ne 0 ]; then
+                    return 1
+                fi
+            fi
+
+            chmod 0700 "${Ssh_Identities_Dir}" &> /dev/null
+            if [ $? -ne 0 ]; then
+                return 1
+            fi
+
+            while read Ssh_Public_Key; do
+                Ssh_Public_Key_Md5sum=$(echo "${Ssh_Public_Key}" | awk '{print $2}' | ${Md5sum} | awk '{print $1}')
+                if [ "${Ssh_Public_Key_Md5sum}" != "" ]; then
+                    if [ -f "${Ssh_Identities_Dir}/${Ssh_Public_Key_Md5sum}.pub" ]; then
+                        continue
+                    fi
+                    echo "${Ssh_Public_Key}" > "${Ssh_Identities_Dir}/${Ssh_Public_Key_Md5sum}.pub"
+                    chmod 0400 "${Ssh_Identities_Dir}/${Ssh_Public_Key_Md5sum}.pub" &> /dev/null
+                    if [ $? -ne 0 ]; then
+                        return 1
+                    fi
+                fi
+                unset -v Ssh_Public_Key_Md5sum
+            done <<< "$(${Ssh_Add} -L)"
+            unset -v Ssh_Public_Key
+        fi
         # else ssh tools are not executable
     fi
 
@@ -415,11 +449,11 @@ function sshAgentValidate() {
                 if [ ${#Ssh_Agent_Home} -gt 0 ] && [ -r "${Ssh_Agent_Home}" ]; then
                     if [ ${#SSH_AUTH_SOCK} -gt 0 ] && [ ${#SSH_AGENT_PID} -gt 0 ]; then
                         # if everything matches then leave it running (until it expires)
-                        if ! grep -q "^SSH_AGENT_PID=$SSH_AGENT_PID;" "${Ssh_Agent_Hostname}" &> /dev/null; then
+                        if ! grep -q "^SSH_AGENT_PID=${SSH_AGENT_PID};" "${Ssh_Agent_Hostname}" &> /dev/null; then
                             # if it's running but everything doesn't match then update Ssh_Agent_Hostname
-                            printf "SSH_AUTH_SOCK=%s; export SSH_AUTH_SOCK;\n" "$SSH_AUTH_SOCK" > "${Ssh_Agent_Hostname}"
-                            printf "SSH_AGENT_PID=%s; export SSH_AGENT_PID;\n" "$SSH_AGENT_PID" >> "${Ssh_Agent_Hostname}"
-                            printf "echo Agent pid %s\n" "$SSH_AGENT_PID" >> "${Ssh_Agent_Hostname}"
+                            printf "SSH_AUTH_SOCK=%s; export SSH_AUTH_SOCK;\n" "${SSH_AUTH_SOCK}" > "${Ssh_Agent_Hostname}"
+                            printf "SSH_AGENT_PID=%s; export SSH_AGENT_PID;\n" "${SSH_AGENT_PID}" >> "${Ssh_Agent_Hostname}"
+                            printf "echo Agent pid %s\n" "${SSH_AGENT_PID}" >> "${Ssh_Agent_Hostname}"
                         fi
                     else
                         ssh_agent_clean=0
@@ -483,9 +517,9 @@ alias rm='rm -i'
 alias suroot='sudo su -'
 if [ ${BASH_VERSINFO[0]} -ge 4 ]; then
     if [ ${BASH_VERSINFO[0]} -eq 4 ] && [ ${BASH_VERSINFO[1]} -lt 2 ]; then
-        alias root="sudo SSH_AGENT_PID=$SSH_AGENT_PID SSH_AUTH_SOCK=$SSH_AUTH_SOCK -u root /bin/bash --init-file ~${User_Name}/.bashrc # 4.0-4.1"
+        alias root="sudo SSH_AGENT_PID=${SSH_AGENT_PID} SSH_AUTH_SOCK=${SSH_AUTH_SOCK} -u root /bin/bash --init-file ~${User_Name}/.bashrc # 4.0-4.1"
     else
-        alias root="sudo SSH_AGENT_PID=$SSH_AGENT_PID SSH_AUTH_SOCK=$SSH_AUTH_SOCK -u root /bin/bash --login --init-file ~${User_Name}/.bashrc # 4.2+"
+        alias root="sudo SSH_AGENT_PID=${SSH_AGENT_PID} SSH_AUTH_SOCK=${SSH_AUTH_SOCK} -u root /bin/bash --login --init-file ~${User_Name}/.bashrc # 4.2+"
     fi
 else
     alias root=suroot
@@ -612,15 +646,15 @@ else
         if [ -d "${HOME}/.ssh" ]; then
             # remind me; these keys probably shouldn't be here
             for Ssh_Key in "${HOME}/.ssh/id"*; do
-                if [ -r "$Ssh_Key" ]; then
-                    printf "NOTICE: no ${Ssh_Agent_Home}; found ssh key file on $HOSTNAME '$Ssh_Key'\n"
+                if [ -r "${Ssh_Key}" ]; then
+                    printf "NOTICE: no ${Ssh_Agent_Home}; found ssh key file on ${HOSTNAME} '${Ssh_Key}'\n"
                 fi
             done
             unset -v Ssh_Key
         fi
     else
         if [ ${#SSH_AUTH_SOCK} -gt 0 ] && [ -r "${SSH_AUTH_SOCK}" ]; then
-            #printf "NOTICE: no ${Ssh_Agent_Home}; found readable SSH_AUTH_SOCK='$SSH_AUTH_SOCK'\n"
+            #printf "NOTICE: no ${Ssh_Agent_Home}; found readable SSH_AUTH_SOCK='${SSH_AUTH_SOCK}'\n"
             # ssh agent forwarding is probably on; load local keys anyway?
             sshAgent
         fi
