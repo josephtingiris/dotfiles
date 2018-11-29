@@ -262,18 +262,21 @@ function sshAgent() {
         return 1
     fi
 
-    #echo "$FUNCNAME SSH_AGENT_PID=$SSH_AGENT_PID"
-    #echo "$FUNCNAME SSH_AUTH_SOCK=$SSH_AUTH_SOCK"
+    #echo "${FUNCNAME} SSH_AGENT_PID=${SSH_AGENT_PID}"
+    #echo "${FUNCNAME} SSH_AUTH_SOCK=${SSH_AUTH_SOCK}"
 
     if [ ${#Ssh_Agent_Home} -gt 0 ]; then
-        if [ -d "${HOME}/.ssh" ]; then
-            # remind me; these keys probably shouldn't be here
-            for Ssh_Key in "${HOME}/.ssh/id"*; do
-                if [ -r "${Ssh_Key}" ]; then
-                    printf "NOTICE: no ${Ssh_Agent_Home}; found ssh key file on ${HOSTNAME} '${Ssh_Key}'\n"
-                fi
-            done
-            unset -v Ssh_Key
+
+        if [ ! -r "${Ssh_Agent_Home}" ]; then
+            if [ -d "${HOME}/.ssh" ]; then
+                # remind me; these keys probably shouldn't be here
+                for Ssh_Key in "${HOME}/.ssh/id"*; do
+                    if [ -r "${Ssh_Key}" ]; then
+                        printf "NOTICE: no ${Ssh_Agent_Home}; found ssh key file on ${HOSTNAME} '${Ssh_Key}'\n"
+                    fi
+                done
+                unset -v Ssh_Key
+            fi
         fi
 
         if [ ${#SSH_AUTH_SOCK} -eq 0 ]; then
@@ -473,7 +476,7 @@ function sshAgentClean() {
     local ssh_agent_socket_command
     if [ ${#SSH_AGENT_PID} -gt 0 ]; then
         ssh_agent_socket_command=$(ps -h -o comm -p ${SSH_AGENT_PID} 2> /dev/null)
-        if [ "$ssh_agent_socket_command" != "ssh-agent" ] && [ "$ssh_agent_socket_command" != "sshd" ]; then
+        if [ "${ssh_agent_socket_command}" != "ssh-agent" ] && [ "${ssh_agent_socket_command}" != "sshd" ]; then
             printf "WARNING: SSH_AGENT_PID=${SSH_AGENT_PID} process not found\n"
             unset -v SSH_AGENT_PID
         fi
@@ -526,8 +529,8 @@ function sshAgentClean() {
                 continue
             fi
         fi
-        printf "WARNING: killing old ssh_agent_pid='$ssh_agent_pid'\n"
-        kill $ssh_agent_pid &> /dev/null
+        printf "WARNING: killing old ssh_agent_pid='${ssh_agent_pid}'\n"
+        kill ${ssh_agent_pid} &> /dev/null
     done
     unset -v ssh_agent_pid ssh_agent_hostname_pid
 
@@ -537,7 +540,7 @@ function sshAgentClean() {
         ssh_agent_socket_pid=""
         ssh_agent_socket_command=""
 
-        if [ "$ssh_agent_socket" == "" ] || [ ! -w "$ssh_agent_socket" ]; then
+        if [ "${ssh_agent_socket}" == "" ] || [ ! -w "${ssh_agent_socket}" ]; then
             continue
         fi
 
@@ -546,13 +549,13 @@ function sshAgentClean() {
 
             ssh_agent_socket_command=$(ps -h -o comm -p ${ssh_agent_socket_pid} 2> /dev/null)
 
-            if [ "$ssh_agent_socket_command" != "sshd" ]; then
+            if [ "${ssh_agent_socket_command}" != "sshd" ]; then
                 ((++ssh_agent_socket_pid))
                 ssh_agent_socket_command=$(ps -h -o comm -p ${ssh_agent_socket_pid} 2> /dev/null)
             fi
         fi
 
-        if [ "$ssh_agent_socket_command" == "ssh-agent" ] || [ "$ssh_agent_socket_command" == "sshd" ]; then
+        if [ "${ssh_agent_socket_command}" == "ssh-agent" ] || [ "${ssh_agent_socket_command}" == "sshd" ]; then
             SSH_AUTH_SOCK=${ssh_agent_socket} ${Ssh_Add} -l ${ssh_agent_socket} &> /dev/null
             if [ $? -gt 1 ]; then
                 # definite error
