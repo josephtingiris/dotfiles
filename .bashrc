@@ -589,7 +589,7 @@ function bverbose() {
 
     local verbose_level verbose_message
     verbose_message=(${verbose_arguments[@]}) # preserve verbose_arguments
-    verbose_level=${verbose_message[-1]}
+    verbose_level=$verbose_message[${#verbose_message[@]}-1]
 
     # if it's not an integer then set verbose_level to zero
     if [[ ${verbose_level} =~ ^[0-9]+$ ]]; then
