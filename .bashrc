@@ -326,10 +326,10 @@ function sshAgent() {
         return 1
     else
         # ssh-add apparently works; ssh agent forwarding is apparently on .. start another/local agent anyway?
-        if [ ${#Ssh_Agent_Home} -gt 0 ] && [ -r "${Ssh_Agent_Home}" ]; then
-            bverbose "ALERT: ignoring ${Ssh_Agent_Home}"
-        fi
         if [ ${#SSH_AGENT_PID} -eq 0 ] && [ ${#SSH_AUTH_SOCK} -gt 0 ]; then
+            if [ ${#Ssh_Agent_Home} -gt 0 ] && [ -r "${Ssh_Agent_Home}" ]; then
+                bverbose "ALERT: ignoring ${Ssh_Agent_Home}"
+            fi
             bverbose "ALERT: ssh agent forwarding via SSH_AUTH_SOCK=${SSH_AUTH_SOCK}"
         fi
     fi
