@@ -6,6 +6,11 @@ Bashrc_Version="20181128, joseph.tingiris@gmail.com"
 ### returns to avoid interactive shell enhancements
 ##
 
+if [ "$BASH_SOURCE" == "$0" ]; then
+    # not meant to be run, only sourced
+    exit
+fi
+
 case $- in
     *i*)
         # interactive shell (OK)
@@ -26,9 +31,22 @@ if [ ${#SSH_CONNECTION} -gt 0 ] && [ ${#SSH_TTY} -eq 0 ]; then
     return
 fi
 
+# todo; create a bashrcDebug function
+if [ -r "${HOME}/.bashrc.debug" ]; then
+    Bashrc_Debug=true
+else
+    Bashrc_Debug=false
+fi
+
+if $Bashrc_Debug; then
+    printf "\nNOTICE: debug is on\n"
+fi
+
 # non-login shells will *not* execute .bash_logout, and I want to know ...
 if ! shopt -q login_shell &> /dev/null; then
-    printf "\nNOTICE: interactive, but not a login shell\n"
+    if $Bashrc_Debug; then
+        printf "\nNOTICE: interactive, but not a login shell\n"
+    fi
 fi
 
 ##
@@ -48,6 +66,10 @@ export Uname_R=$(uname -r 2> /dev/null | awk -F\. '{print $(NF-1)"."$NF}' 2> /de
 ##
 ### determine true username
 ##
+
+if [ "$EUID" == "0" ]; then
+    USER="root"
+fi
 
 if type -P logname &> /dev/null; then
     export User_Name=$(logname 2> /dev/null)
@@ -109,7 +131,7 @@ Find_Paths+=("/base")
 if [ -r ~/.Auto_Path ]; then
     while read Auto_Path_Line; do
         Find_Paths+=($(eval "echo ${Auto_Path_Line}"))
-    done <<< "$(grep -v '^#' ~/.Auto_Path 2> /dev/null)"
+    done <<< "$(grep -v '^#' ${User_Dir}/.Auto_Path 2> /dev/null)"
 fi
 
 for Find_Path in ${Find_Paths[@]}; do
@@ -125,7 +147,7 @@ unset -v Find_Path Find_Paths
 
 # after .Auto_Path, put /opt/rh bin & sbin directories in the path too
 # rhscl; see https://wiki.centos.org/SpecialInterestGroup/SCLo/CollectionsList
-if [ -d /opt/rh ] && [ -r ~/.Auto_Scl ]; then
+if [ -d /opt/rh ] && [ -r ${User_Dir}/.Auto_Scl ]; then
     Rhscl_Roots=$(find /opt/rh/ -type f -name enable 2> /dev/null | sort -Vr)
     for Rhscl_Root in ${Rhscl_Roots}; do
         if [ -r "${Rhscl_Root}" ] && [ "${Rhscl_Root}" != "" ]; then
@@ -223,9 +245,9 @@ function gitConfig() {
 function githubDotfiles() {
 
     local cwd=$(/usr/bin/pwd 2> /dev/null)
-    cd ~
+    cd ${User_Dir}
 
-    if [ -d ~/.git ]; then
+    if [ -d ${User_Dir}/.git ]; then
 
         git fetch &> /dev/null
 
@@ -258,7 +280,9 @@ function githubDotfiles() {
 function sshAgent() {
 
     if ! sshAgentClean; then
-        printf "ERROR: sshAgentClean failed\n"
+        if $Bashrc_Debug; then
+            printf "ERROR: sshAgentClean failed\n"
+        fi
         return 1
     fi
 
@@ -595,20 +619,17 @@ alias l='ls -lFhart'
 alias ls='ls --color=tty'
 alias mv='mv -i'
 alias rm='rm -i'
-alias suroot='sudo su -'
-if [ ${BASH_VERSINFO[0]} -ge 4 ]; then
-    if [ ${BASH_VERSINFO[0]} -eq 4 ] && [ ${BASH_VERSINFO[1]} -lt 2 ]; then
-        #alias root="sudo SSH_AGENT_PID=${SSH_AGENT_PID} SSH_AUTH_SOCK=${SSH_AUTH_SOCK} -u root /bin/bash --init-file ~${User_Name}/.bashrc # 4.0-4.1"
-        alias root="sudo SSH_AUTH_SOCK=${SSH_AUTH_SOCK} -u root /bin/bash --init-file ~${User_Name}/.bashrc # 4.0-4.1"
-    else
-        #alias root="sudo SSH_AGENT_PID=${SSH_AGENT_PID} SSH_AUTH_SOCK=${SSH_AUTH_SOCK} -u root /bin/bash --login --init-file ~${User_Name}/.bashrc # 4.2+"
-        alias root="sudo SSH_AUTH_SOCK=${SSH_AUTH_SOCK} -u root /bin/bash --login --init-file ~${User_Name}/.bashrc # 4.2+"
-    fi
+alias s="source ${User_Dir}/.bashrc"
+if [ -x $(type -P sudo) ]; then
+    alias root="sudo SSH_AUTH_SOCK=${SSH_AUTH_SOCK} -u root /bin/bash --init-file ${User_Dir}/.bashrc"
+    alias suroot='sudo su -'
 else
-    alias root=suroot
+    alias root="su - root -c '/bin/bash --init-file /home/jtingiris/.bashrc'"
+    alias suroot='su -'
 fi
-alias s='source ~/.bashrc'
-alias sd='screen -S $(basename $(pwd))'
+if [ -x $(type -P screen) ]; then
+    alias sd='screen -S $(basename $(pwd))'
+fi
 alias nouser="find . -nouser 2> /dev/null"
 
 ##
@@ -712,8 +733,8 @@ esac
 ### if needed then create .inputrc (with preferences)
 ##
 
-if [ ! -f ~/.inputrc ]; then
-    echo "set bell-style none" > ~/.inputrc
+if [ ! -f ${User_Dir}/.inputrc ]; then
+    echo "set bell-style none" > ${User_Dir}/.inputrc
 fi
 
 ##
@@ -826,4 +847,14 @@ fi
 printf "${User_Dir}/.bashrc ${Bashrc_Version}\n\n"
 if [ "${TMUX}" ]; then
     printf "${Tmux_Info} [${TMUX}]\n\n"
+fi
+
+if [ "${User_Dir}" != "${HOME}" ]; then
+    if [ -f "${User_Dir}/.bash_logout" ]; then
+        trap "source ${User_Dir}/.bash_logout" EXIT
+    else
+        if [ -f "${HOME}/.bash_logout" ]; then
+            trap "source ${HOME}/.bash_logout" EXIT
+        fi
+    fi
 fi
