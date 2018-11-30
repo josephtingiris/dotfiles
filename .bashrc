@@ -1,6 +1,6 @@
 # .bashrc
 
-Bashrc_Version="20181128, joseph.tingiris@gmail.com"
+Bashrc_Version="20181130, joseph.tingiris@gmail.com"
 
 ##
 ### returns to avoid interactive shell enhancements
@@ -29,24 +29,6 @@ fi
 if [ ${#SSH_CONNECTION} -gt 0 ] && [ ${#SSH_TTY} -eq 0 ]; then
     # ssh, no tty
     return
-fi
-
-# todo; create a bashrcDebug function
-if [ -r "${HOME}/.bashrc.debug" ]; then
-    Bashrc_Debug=true
-else
-    Bashrc_Debug=false
-fi
-
-if $Bashrc_Debug; then
-    printf "\nNOTICE: debug is on\n"
-fi
-
-# non-login shells will *not* execute .bash_logout, and I want to know ...
-if ! shopt -q login_shell &> /dev/null; then
-    if $Bashrc_Debug; then
-        printf "\nNOTICE: interactive, but not a login shell\n"
-    fi
 fi
 
 ##
@@ -280,14 +262,12 @@ function githubDotfiles() {
 function sshAgent() {
 
     if ! sshAgentClean; then
-        if $Bashrc_Debug; then
-            printf "ERROR: sshAgentClean failed\n"
-        fi
+        bverbose "EMERGENCY: sshAgentClean failed"
         return 1
     fi
 
-    #echo "${FUNCNAME} SSH_AGENT_PID=${SSH_AGENT_PID}"
-    #echo "${FUNCNAME} SSH_AUTH_SOCK=${SSH_AUTH_SOCK}"
+    bverbose "DEBUG: ${FUNCNAME} start SSH_AGENT_PID=${SSH_AGENT_PID}"
+    bverbose "DEBUG: ${FUNCNAME} start SSH_AUTH_SOCK=${SSH_AUTH_SOCK}"
 
     if [ ${#Ssh_Agent_Home} -gt 0 ]; then
 
@@ -296,7 +276,7 @@ function sshAgent() {
                 # remind me; these keys probably shouldn't be here
                 for Ssh_Key in "${HOME}/.ssh/id"*; do
                     if [ -r "${Ssh_Key}" ]; then
-                        printf "NOTICE: no ${Ssh_Agent_Home}; found ssh key file on ${HOSTNAME} '${Ssh_Key}'\n"
+                        bverbose "ALERT: no ${Ssh_Agent_Home}; found ssh key file on ${HOSTNAME} '${Ssh_Key}'"
                     fi
                 done
                 unset -v Ssh_Key
@@ -306,7 +286,7 @@ function sshAgent() {
         if [ ${#SSH_AUTH_SOCK} -eq 0 ]; then
             if [ ! -r "${Ssh_Agent_Home}" ]; then
                 # there's no .ssh-agent file and ssh agent forwarding is apparently off
-                printf "NOTICE: no ${Ssh_Agent_Home}; ssh agent forwarding is apparently off\n"
+                bverbose "ALERT: no ${Ssh_Agent_Home}; ssh agent forwarding is apparently off"
                 return 1
             fi
         fi
@@ -314,13 +294,13 @@ function sshAgent() {
 
     export Ssh_Agent=$(type -P ssh-agent)
     if [ ${#Ssh_Agent} -eq 0 ] || [ ! -x ${Ssh_Agent} ]; then
-        echo "ERROR: ssh-agent not usable"
+        bverbose "EMERGENCY: ssh-agent not usable"
         return 1
     fi
 
     export Ssh_Keygen=$(type -P ssh-keygen)
     if [ ${#Ssh_Keygen} -eq 0 ] || [ ! -x ${Ssh_Keygen} ]; then
-        echo "ERROR: ssh-keygen not usable"
+        bverbose "EMERGENCY: ssh-keygen not usable"
         return 1
     fi
 
@@ -342,13 +322,13 @@ function sshAgent() {
     Ssh_Add_Rc=$?
     if [ $? -gt 1 ]; then
         # starting ssh-add failed
-        printf "ERROR: ssh-add failed with SSH_AGENT_PID=${SSH_AGENT_PID}, SSH_AUTH_SOCK=${SSH_AUTH_SOCK}, ssh-add return code is ${Ssh_Add_Rc}\n"
+        bverbose "EMERGENCY: ssh-add failed with SSH_AGENT_PID=${SSH_AGENT_PID}, SSH_AUTH_SOCK=${SSH_AUTH_SOCK}, ssh-add return code is ${Ssh_Add_Rc}"
         return 1
     else
         if [ ${#Ssh_Agent_Home} -gt 0 ] && [ -r "${Ssh_Agent_Home}" ]; then
             # ssh-add apparently works; ssh agent forwarding is apparently on .. start another/local agent anyway?
             if [ ${#SSH_AGENT_PID} -eq 0 ] && [ ${#SSH_AUTH_SOCK} -gt 0 ]; then
-                printf "NOTICE: ignoring ${Ssh_Agent_Home}; ssh agent forwarding via SSH_AUTH_SOCK=${SSH_AUTH_SOCK}\n"
+                bverbose "ALERT: ignoring ${Ssh_Agent_Home}; ssh agent forwarding via SSH_AUTH_SOCK=${SSH_AUTH_SOCK}"
             fi
         fi
     fi
@@ -441,12 +421,12 @@ function sshAgent() {
         fi
 
         while read Ssh_Public_Key; do
-            Ssh_Public_Key_Md5sum=$(echo "${Ssh_Public_Key}" | awk '{print $2}' | ${Md5sum} | awk '{print $1}')
+            Ssh_Public_Key_Md5sum=$(printf "${Ssh_Public_Key}" | awk '{print $2}' | ${Md5sum} | awk '{print $1}')
             if [ "${Ssh_Public_Key_Md5sum}" != "" ]; then
                 if [ -f "${Ssh_Identities_Dir}/${Ssh_Public_Key_Md5sum}.pub" ]; then
                     continue
                 fi
-                echo "${Ssh_Public_Key}" > "${Ssh_Identities_Dir}/${Ssh_Public_Key_Md5sum}.pub"
+                printf "${Ssh_Public_Key}" > "${Ssh_Identities_Dir}/${Ssh_Public_Key_Md5sum}.pub"
                 chmod 0400 "${Ssh_Identities_Dir}/${Ssh_Public_Key_Md5sum}.pub" &> /dev/null
                 if [ $? -ne 0 ]; then
                     return 1
@@ -464,7 +444,7 @@ function sshAgentClean() {
     export Ssh_Add=$(type -P ssh-add)
     if [ ${#Ssh_Add} -eq 0 ] || [ ! -x ${Ssh_Add} ]; then
         pkill ssh-agent &> /dev/nulll
-        printf "ERROR: ssh-add not usable\n"
+        bverbose "EMERGENCY: ssh-add not usable"
         return 1
     fi
 
@@ -486,7 +466,7 @@ function sshAgentClean() {
         fi
     else
         if [ -f "${Ssh_Agent_Hostname}" ]; then
-            printf "WARNING: removing empty ${Ssh_Agent_Hostname}\n"
+            bverbose "ALERT: removing empty ${Ssh_Agent_Hostname}"
             rm -f "${Ssh_Agent_Hostname}" &> /dev/null
         else
             if [ ${#SSH_AGENT_PID} -gt 0 ] && [ ${#SSH_AUTH_SOCK} -gt 0 ]; then
@@ -502,7 +482,7 @@ function sshAgentClean() {
     if [ ${#SSH_AGENT_PID} -gt 0 ]; then
         ssh_agent_socket_command=$(ps -h -o comm -p ${SSH_AGENT_PID} 2> /dev/null)
         if [ "${ssh_agent_socket_command}" != "ssh-agent" ] && [ "${ssh_agent_socket_command}" != "sshd" ]; then
-            printf "WARNING: SSH_AGENT_PID=${SSH_AGENT_PID} process not found\n"
+            bverbose "WARNING: SSH_AGENT_PID=${SSH_AGENT_PID} process not found"
             unset -v SSH_AGENT_PID
         fi
     fi
@@ -510,7 +490,7 @@ function sshAgentClean() {
     if [ ${#SSH_AUTH_SOCK} -gt 0 ]; then
         if [ -S "${SSH_AUTH_SOCK}" ]; then
             if [ ! -w "${SSH_AUTH_SOCK}" ]; then
-                printf "WARNING: ${SSH_AUTH_SOCK} socket not found writable\n"
+                bverbose "WARNING: ${SSH_AUTH_SOCK} socket not found writable"
                 unset -v SSH_AUTH_SOCK
                 if [ ${#SSH_AGENT_PID} -gt 0 ]; then
                     kill ${SSH_AGENT_PID} &> /dev/null
@@ -519,7 +499,7 @@ function sshAgentClean() {
             fi
         else
             # SSH_AUTH_SOCK is not a socket
-            printf "WARNING: ${SSH_AUTH_SOCK} is not a socket\n"
+            bverbose "WARNING: ${SSH_AUTH_SOCK} is not a socket"
             unset -v SSH_AUTH_SOCK
             if [ ${#SSH_AGENT_PID} -gt 0 ]; then
                 kill ${SSH_AGENT_PID} &> /dev/null
@@ -530,7 +510,7 @@ function sshAgentClean() {
 
     if [ ${#SSH_AGENT_PID} -eq 0 ] && [ ${#SSH_AUTH_SOCK} -eq 0 ]; then
         if [ -s "${Ssh_Agent_Hostname}" ]; then
-            printf "WARNING: removing invalid ${Ssh_Agent_Hostname}\n"
+            bverbose "ALERT: removing invalid ${Ssh_Agent_Hostname}"
             rm -f "${Ssh_Agent_Hostname}" &> /dev/null
         fi
     fi
@@ -554,7 +534,7 @@ function sshAgentClean() {
                 continue
             fi
         fi
-        printf "WARNING: killing old ssh_agent_pid='${ssh_agent_pid}'\n"
+        bverbose "ALERT: killing old ssh_agent_pid='${ssh_agent_pid}'"
         kill ${ssh_agent_pid} &> /dev/null
     done
     unset -v ssh_agent_pid ssh_agent_hostname_pid
@@ -585,14 +565,14 @@ function sshAgentClean() {
             SSH_AUTH_SOCK=${ssh_agent_socket} ${Ssh_Add} -l ${ssh_agent_socket} &> /dev/null
             if [ $? -gt 1 ]; then
                 # definite error
-                printf "WARNING: (1) removing unusable ssh_agent_socket ${ssh_agent_socket}, comm=${ssh_agent_socket_command}, pid=${ssh_agent_socket_pid}\n"
+                bverbose "ALERT: (1) removing unusable ssh_agent_socket ${ssh_agent_socket}, comm=${ssh_agent_socket_command}, pid=${ssh_agent_socket_pid}"
                 rm -f ${ssh_agent_socket} &> /dev/null
             else
                 # don't remove sockets with running ssh processes
                 continue
             fi
         else
-            printf "WARNING: (2) removing dead ssh_agent_socket ${ssh_agent_socket}, comm=${ssh_agent_socket_command}, pid=${ssh_agent_socket_pid}\n"
+            bverbose "ALERT: (2) removing dead ssh_agent_socket ${ssh_agent_socket}, comm=${ssh_agent_socket_command}, pid=${ssh_agent_socket_pid}"
             rm -f ${ssh_agent_socket} &> /dev/null
         fi
         # also find really old sockets & remove them regardless if they still work or not?
@@ -600,6 +580,142 @@ function sshAgentClean() {
     SSH_AUTH_SOCK=$ssh_auth_sock
     unset -v ssh_agent_socket ssh_agent_socket_pid ssh_agent_socket_command ssh_auth_sock
 }
+
+# output more verbose messages based on a verbosity level set in the environment or a specific file
+function bverbose() {
+    # verbose level is always the last argument
+    local verbose_arguments=($@)
+
+    local verbose_level verbose_message
+    verbose_message=(${verbose_arguments[@]}) # preserve verbose_arguments
+    verbose_level=${verbose_message[-1]}
+
+    # if it's not an integer then set verbose_level to zero
+    if [[ ${verbose_level} =~ ^[0-9]+$ ]]; then
+        # given verbose_level is always used
+        # remove the last (integer) element (verbose_level) from the array & convert verbose_message to a string
+        unset 'verbose_message[${#verbose_message[@]}-1]'
+        verbose_message="${verbose_message[@]}"
+    else
+        # don't change the array, convert it to a string, and explicitly set verbose_level so the message gets displayed
+        verbose_message="${verbose_message[@]}"
+
+        # 0 EMERGENCY, 1 ALERT, 2 CRIT(ICAL), 3 ERROR, 4 WARN(ING), 5 NOTICE, 6 INFO(RMATIONAL), 7 DEBUG
+        # convert verbose_message to uppercase & check for presence of keywords
+        if [[ "${verbose_message^^}" == *"ALERT"* ]]; then
+            verbose_level=1
+        else
+            if [[ "${verbose_message^^}" == *"CRIT"* ]]; then
+                verbose_level=2
+            else
+                if [[ "${verbose_message^^}" == *"ERROR"* ]]; then
+                    verbose_level=3
+                else
+                    if [[ "${verbose_message^^}" == *"WARN"* ]]; then
+                        verbose_level=4
+                    else
+                        if [[ "${verbose_message^^}" == *"NOTICE"* ]]; then
+                            verbose_level=5
+                        else
+                            if [[ "${verbose_message^^}" == *"INFO"* ]]; then
+                                verbose_level=6
+                            else
+                                if [[ "${verbose_message^^}" == *"DEBUG"* ]]; then
+                                    verbose_level=7
+                                else
+                                    # EMERGENCY (always gets displayed)
+                                    verbose_level=0
+                                fi
+                            fi
+                        fi
+                    fi
+                fi
+            fi
+        fi
+    fi
+
+    local -i verbosity
+    verbosity=0
+
+    # if these values are set with an integer that will be honored, otherwise a verbosity value of 1 will be set
+    if [ ${#Verbose} -gt 0 ]; then
+        # if it's an integer then use that value, otherwise set verbosity to one
+        if [[ ${Verbose} =~ ^[0-9]+$ ]]; then
+            verbosity=${Verbose}
+        else
+            verbosity=1
+        fi
+    else
+        if [ ${#VERBOSE} -gt 0 ]; then
+            # if it's an integer then use that value, otherwise set verbosity to one
+            if [[ ${VERBOSE} =~ ^[0-9]+$ ]]; then
+                verbosity=${VERBOSE}
+            else
+                verbosity=1
+            fi
+        else
+            for verbose_file in "${HOME}/.verbose" "${HOME}/.bashrc.verbose"; do
+                if [ -r "${verbose_file}" ]; then
+                    # get digits only from the first line; if they're not digits then set verbosity to one
+                    verbosity=$(head -1 "${verbose_file}" 2> /dev/null | sed 's/[^0-9]*//g')
+                    if [ ${#verbosity} -eq 0 ]; then
+                        verbosity=1
+                    fi
+                    break
+                fi
+            done
+        fi
+    fi
+
+    # be pendantic; ensure there's an integer value to avoid any possibility of comparison errors
+    if [ ${#verbosity} -eq 0 ]; then
+        verbosity=0
+    fi
+
+    if [ ${#verbose_level} -eq 0 ]; then
+        verbose_level=0
+    fi
+
+    if [ ${verbosity} -ge ${verbose_level} ]; then
+        if [ -x $(type -P tput) ]; then
+            if [ ${verbose_level} -eq 0 ]; then
+                # EMERGENCY (0), black is special; standout mode with white background color
+                verbose_message="$(tput smso)$(tput setaf 8)${verbose_message}$(tput sgr0)"
+            else
+                verbose_message="$(tput bold)$(tput setaf ${verbose_level})${verbose_message}$(tput sgr0)"
+            fi
+        fi
+        #printf "[$verbosity:$verbose_level] %b\n" "${verbose_message}"
+        printf "%b\n" "${verbose_message}"
+    fi
+
+    unset -v verbose_level verbosity
+}
+
+##
+### main
+##
+
+bverbose "\nALERT: verbose is on\n"
+
+##
+### trap EXIT to ensure .bash_logout gets called, regardless of whether or not it's a login shell
+##
+
+# non-login shells will *not* execute .bash_logout, and I want to know ...
+if ! shopt -q login_shell &> /dev/null; then
+    bverbose "\nINFO: interactive, but not a login shell\n"
+fi
+
+if [ "${User_Dir}" != "${HOME}" ]; then
+    if [ -f "${User_Dir}/.bash_logout" ]; then
+        trap "source ${User_Dir}/.bash_logout" EXIT
+    else
+        if [ -f "${HOME}/.bash_logout" ]; then
+            trap "source ${HOME}/.bash_logout" EXIT
+        fi
+    fi
+fi
 
 ##
 ### set default timezone
@@ -693,7 +809,7 @@ case "${TERM}" in
             esac
         }
 
-        # trap function debug
+        # trap DEBUG to update window titles
 
         trap bash_command_prompt_command DEBUG
 
@@ -734,7 +850,7 @@ esac
 ##
 
 if [ ! -f ${User_Dir}/.inputrc ]; then
-    echo "set bell-style none" > ${User_Dir}/.inputrc
+    printf "set bell-style none\n" > ${User_Dir}/.inputrc
 fi
 
 ##
@@ -847,14 +963,4 @@ fi
 printf "${User_Dir}/.bashrc ${Bashrc_Version}\n\n"
 if [ "${TMUX}" ]; then
     printf "${Tmux_Info} [${TMUX}]\n\n"
-fi
-
-if [ "${User_Dir}" != "${HOME}" ]; then
-    if [ -f "${User_Dir}/.bash_logout" ]; then
-        trap "source ${User_Dir}/.bash_logout" EXIT
-    else
-        if [ -f "${HOME}/.bash_logout" ]; then
-            trap "source ${HOME}/.bash_logout" EXIT
-        fi
-    fi
 fi
