@@ -439,6 +439,7 @@ function sshAgentClean() {
 
     export Ssh_Add=$(type -P ssh-add)
     if [ ${#Ssh_Add} -eq 0 ] || [ ! -x ${Ssh_Add} ]; then
+        pkill ssh-agent &> /dev/nulll
         printf "ERROR: ssh-add not usable\n"
         return 1
     fi
@@ -535,7 +536,8 @@ function sshAgentClean() {
     unset -v ssh_agent_pid ssh_agent_hostname_pid
 
     # remove old ssh_agent_sockets as safely as possible
-    local ssh_agent_socket ssh_agent_socket_pid
+    local ssh_agent_socket ssh_agent_socket_pid ssh_auth_sock
+    ssh_auth_sock=$SSH_AUTH_SOCK
     while read ssh_agent_socket; do
         ssh_agent_socket_pid=""
         ssh_agent_socket_command=""
@@ -569,8 +571,10 @@ function sshAgentClean() {
             printf "WARNING: (2) removing dead ssh_agent_socket ${ssh_agent_socket}, comm=${ssh_agent_socket_command}, pid=${ssh_agent_socket_pid}\n"
             rm -f ${ssh_agent_socket} &> /dev/null
         fi
+        # also find really old sockets & remove them regardless if they still work or not?
     done <<<"$(find /tmp -type s -name "agent\.*" 2> /dev/null)"
-    unset -v ssh_agent_socket ssh_agent_socket_pid ssh_agent_socket_command
+    SSH_AUTH_SOCK=$ssh_auth_sock
+    unset -v ssh_agent_socket ssh_agent_socket_pid ssh_agent_socket_command ssh_auth_sock
 }
 
 ##
