@@ -325,11 +325,12 @@ function sshAgent() {
         bverbose "EMERGENCY: ssh-add failed with SSH_AGENT_PID=${SSH_AGENT_PID}, SSH_AUTH_SOCK=${SSH_AUTH_SOCK}, ssh-add return code is ${Ssh_Add_Rc}"
         return 1
     else
+        # ssh-add apparently works; ssh agent forwarding is apparently on .. start another/local agent anyway?
         if [ ${#Ssh_Agent_Home} -gt 0 ] && [ -r "${Ssh_Agent_Home}" ]; then
-            # ssh-add apparently works; ssh agent forwarding is apparently on .. start another/local agent anyway?
-            if [ ${#SSH_AGENT_PID} -eq 0 ] && [ ${#SSH_AUTH_SOCK} -gt 0 ]; then
-                bverbose "ALERT: ignoring ${Ssh_Agent_Home}; ssh agent forwarding via SSH_AUTH_SOCK=${SSH_AUTH_SOCK}"
-            fi
+            bverbose "ALERT: ignoring ${Ssh_Agent_Home}"
+        fi
+        if [ ${#SSH_AGENT_PID} -eq 0 ] && [ ${#SSH_AUTH_SOCK} -gt 0 ]; then
+            bverbose "ALERT: ssh agent forwarding via SSH_AUTH_SOCK=${SSH_AUTH_SOCK}"
         fi
     fi
     unset -v Ssh_Add_Rc
