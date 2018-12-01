@@ -1,6 +1,6 @@
 # .bashrc
 
-Bashrc_Version="20181130, joseph.tingiris@gmail.com"
+Bashrc_Version="20181201, joseph.tingiris@gmail.com"
 
 ##
 ### returns to avoid interactive shell enhancements
@@ -681,9 +681,11 @@ function bverbose() {
         if [ -x $(type -P tput) ]; then
             if [ ${verbose_level} -eq 0 ]; then
                 # EMERGENCY (0), black is special; standout mode with white background color
-                verbose_message="$(tput smso)$(tput setaf 8)${verbose_message}$(tput sgr0)"
+                verbose_message="${TPUT_SMSO}${TPUT_SETAF_8}${verbose_message}${TPUT_SGR0}"
             else
-                verbose_message="$(tput bold)$(tput setaf ${verbose_level})${verbose_message}$(tput sgr0)"
+                local tput_set_af_v="TPUT_SETAF_${verbose_level}"
+                verbose_message="${TPUT_BOLD}${!tput_set_af_v}${verbose_message}${TPUT_SGR0}"
+                unset -v tput_set_af_v
             fi
         fi
         #printf "[$verbosity:$verbose_level] %b\n" "${verbose_message}"
@@ -697,6 +699,25 @@ function bverbose() {
 ### main
 ##
 
+# this is mainly for performance; as long as TERM doesn't change then there's no need to run tput every time
+if [ "$TERM" != "$TPUT_TERM" ]; then
+    if [ -x $(type -P tput) ]; then
+        export TPUT_TERM=$TERM
+        export TPUT_BOLD="$(tput bold)"
+        export TPUT_SETAF_0="$(tput setaf 0)"
+        export TPUT_SETAF_1="$(tput setaf 1)"
+        export TPUT_SETAF_2="$(tput setaf 2)"
+        export TPUT_SETAF_3="$(tput setaf 3)"
+        export TPUT_SETAF_4="$(tput setaf 4)"
+        export TPUT_SETAF_5="$(tput setaf 5)"
+        export TPUT_SETAF_6="$(tput setaf 6)"
+        export TPUT_SETAF_7="$(tput setaf 7)"
+        export TPUT_SETAF_8="$(tput setaf 8)"
+        export TPUT_SGR0="$(tput sgr0)"
+        export TPUT_SMSO="$(tput smso)"
+    fi
+fi
+
 bverbose "\nALERT: verbose is on\n"
 
 ##
@@ -705,16 +726,14 @@ bverbose "\nALERT: verbose is on\n"
 
 # non-login shells will *not* execute .bash_logout, and I want to know ...
 if ! shopt -q login_shell &> /dev/null; then
-    bverbose "\nINFO: interactive, but not a login shell\n"
+    bverbose "INFO: interactive, but not a login shell\n"
 fi
 
-if [ "${User_Dir}" != "${HOME}" ]; then
-    if [ -f "${User_Dir}/.bash_logout" ]; then
-        trap "source ${User_Dir}/.bash_logout" EXIT
-    else
-        if [ -f "${HOME}/.bash_logout" ]; then
-            trap "source ${HOME}/.bash_logout" EXIT
-        fi
+if [ -r "${User_Dir}/.bash_logout" ]; then
+    trap "source ${User_Dir}/.bash_logout" EXIT
+else
+    if [ -r "${HOME}/.bash_logout" ]; then
+        trap "source ${HOME}/.bash_logout" EXIT
     fi
 fi
 
@@ -736,7 +755,11 @@ alias l='ls -lFhart'
 alias ls='ls --color=tty'
 alias mv='mv -i'
 alias rm='rm -i'
-alias s="source ${User_Dir}/.bashrc"
+if [ -r "${User_Dir}/.bashrc" ]; then
+    alias s="source ${User_Dir}/.bashrc"
+else
+    alias s="source ${HOME}/.bashrc"
+fi
 if [ -x $(type -P sudo) ]; then
     alias root="sudo SSH_AUTH_SOCK=${SSH_AUTH_SOCK} -u root /bin/bash --init-file ${User_Dir}/.bashrc"
     alias suroot='sudo su -'
@@ -796,7 +819,7 @@ fi
 ##
 
 case "${TERM}" in
-    ansi|*color|*xterm)
+    ansi|*color|*xterm|linux)
         export PROMPT_COMMAND='printf "\033]0;%s\007" "${USER}@${HOSTNAME}:${PWD} [bash]"'
 
         function bash_command_prompt_command() {
@@ -814,44 +837,37 @@ case "${TERM}" in
 
         trap bash_command_prompt_command DEBUG
 
-        #export PS1="\[$(tput setaf 0)\][\u@\h \w]${PS} \[$(tput sgr0)\]" # black
-        #export PS1="\[$(tput setaf 1)\][\u@\h \w]${PS} \[$(tput sgr0)\]" # dark red
-        #export PS1="\[$(tput setaf 2)\][\u@\h \w]${PS} \[$(tput sgr0)\]" # dark green
-        #export PS1="\[$(tput setaf 3)\][\u@\h \w]${PS} \[$(tput sgr0)\]" # dark yellow(ish)
-        #export PS1="\[$(tput setaf 4)\][\u@\h \w]${PS} \[$(tput sgr0)\]" # dark blue
-        #export PS1="\[$(tput setaf 5)\][\u@\h \w]${PS} \[$(tput sgr0)\]" # dark purple
-        #export PS1="\[$(tput setaf 6)\][\u@\h \w]${PS} \[$(tput sgr0)\]" # dark cyan
-        #export PS1="\[$(tput setaf 7)\][\u@\h \w]${PS} \[$(tput sgr0)\]" # grey
-        #export PS1="\[$(tput setaf 8)\][\u@\h \w]${PS} \[$(tput sgr0)\]" # dark grey
-        #export PS1="\[$(tput setaf 9)\][\u@\h \w]${PS} \[$(tput sgr0)\]" # bright red
-        #export PS1="\[$(tput setaf 10)\][\u@\h \w]${PS} \[$(tput sgr0)\]" # bright green
-        #export PS1="\[$(tput setaf 11)\][\u@\h \w]${PS} \[$(tput sgr0)\]" # bright yellow
-        #export PS1="\[$(tput setaf 12)\][\u@\h \w]${PS} \[$(tput sgr0)\]" # bright blue
-        #export PS1="\[$(tput setaf 13)\][\u@\h \w]${PS} \[$(tput sgr0)\]" # bright purple
-        #export PS1="\[$(tput setaf 14)\][\u@\h \w]${PS} \[$(tput sgr0)\]" # bright cyan
-        #export PS1="\[$(tput setaf 15)\][\u@\h \w]${PS} \[$(tput sgr0)\]" # white
-        #export PS1="\[$(tput setaf 17)\][\u@\h \w]${PS} \[$(tput sgr0)\]" # really dark blue
+    # linux term only supports 8 colors (and bold)
+    #export PS1="\[${TPUT_SETAF_0}\][\u@\h \w]${PS} \[${TPUT_SGR0}\]" # black
+    #export PS1="\[${TPUT_SETAF_1}\][\u@\h \w]${PS} \[${TPUT_SGR0}\]" # dark red
+    #export PS1="\[${TPUT_SETAF_2}\][\u@\h \w]${PS} \[${TPUT_SGR0}\]" # dark green
+    #export PS1="\[${TPUT_SETAF_3}\][\u@\h \w]${PS} \[${TPUT_SGR0}\]" # dark yellow(ish)
+    #export PS1="\[${TPUT_SETAF_4}\][\u@\h \w]${PS} \[${TPUT_SGR0}\]" # dark blue
+    #export PS1="\[${TPUT_SETAF_5}\][\u@\h \w]${PS} \[${TPUT_SGR0}\]" # dark purple
+    #export PS1="\[${TPUT_SETAF_6}\][\u@\h \w]${PS} \[${TPUT_SGR0}\]" # dark cyan
+    #export PS1="\[${TPUT_SETAF_7}\][\u@\h \w]${PS} \[${TPUT_SGR0}\]" # grey
 
-        if [ "${USER}" == "root" ]; then
-            PS="#"
-            export PS1="\[$(tput setaf 11)\][\u@\h \w]${PS} \[$(tput sgr0)\]" # bright yellow
-        else
-            PS="$"
-            export PS1="\[$(tput setaf 14)\][\u@\h \w]${PS} \[$(tput sgr0)\]" # bright cyan
-        fi
-        unset -v PS
+    if [ "${USER}" == "root" ]; then
+        PS="#"
+        export PS1="\[${TPUT_BOLD}${TPUT_SETAF_3}\][\u@\h \w]${PS} \[${TPUT_SGR0}\]" # bold yellow
+    else
+        PS="$"
+        export PS1="\[${TPUT_BOLD}${TPUT_SETAF_6}\][\u@\h \w]${PS} \[${TPUT_SGR0}\]" # bold cyan
+    fi
+    unset -v PS
 
-        ;;
-    *)
-        ;;
+    ;;
+*)
+    echo TERM=$TERM
+    ;;
 esac
 
 ##
 ### if needed then create .inputrc (with preferences)
 ##
 
-if [ ! -f ${User_Dir}/.inputrc ]; then
-    printf "set bell-style none\n" > ${User_Dir}/.inputrc
+if [ ! -f ${HOME}/.inputrc ]; then
+    printf "set bell-style none\n" > ${HOME}/.inputrc
 fi
 
 ##
