@@ -325,21 +325,29 @@ function sshAgent() {
     # ensure ssh-add works or output an error message
     ${Ssh_Add} -l &> /dev/null
     Ssh_Add_Rc=$?
-    if [ ${Ssh_Add_Rc} -gt 1 ]; then
-        # starting ssh-add failed
-        bverbose "EMERGENCY: ssh-add failed with SSH_AGENT_PID=${SSH_AGENT_PID}, SSH_AUTH_SOCK=${SSH_AUTH_SOCK}, rc=${Ssh_Add_Rc}"
-        return 1
-    else
-        # ssh-add apparently works; ssh agent forwarding is apparently on .. start another/local agent anyway?
+    if [ ${Ssh_Add_Rc} -eq 0 ]; then
         if [ ${#SSH_AGENT_PID} -eq 0 ] && [ ${#SSH_AUTH_SOCK} -gt 0 ]; then
+            # ssh-add apparently works; ssh agent forwarding is apparently on .. start another/local agent anyway?
             if [ ${#Ssh_Agent_Home} -gt 0 ] && [ -r "${Ssh_Agent_Home}" ]; then
                 bverbose "ALERT: ignoring ${Ssh_Agent_Home}"
             fi
             bverbose "ALERT: ssh agent forwarding via SSH_AUTH_SOCK=${SSH_AUTH_SOCK}"
         fi
+    else
+        # starting ssh-add failed
+        bverbose "EMERGENCY: '${Ssh_Add}' failed with SSH_AGENT_PID=${SSH_AGENT_PID}, SSH_AUTH_SOCK=${SSH_AUTH_SOCK}, rc=${Ssh_Add_Rc}"
+        if [ ${#SSH_AGENT_PID} -gt 0 ] && [ ${#SSH_AUTH_SOCK} -eq 0 ]; then
+            # it's a bad SSH_AGENT_PID
+            unset -v SSH_AGENT_PID
+        fi
+        if [ ${#SSH_AGENT_PID} -eq 0 ] && [ ${#SSH_AUTH_SOCK} -gt 0 ]; then
+            # it's a bad SSH_AUTH_SOCK
+            unset -v SSH_AUTH_SOCK
+        fi
+        return 1
     fi
 
-    # enable agent forwarding?
+    # always enable agent forwarding?
     if [ "${#SSH_AUTH_SOCK}" -gt 0 ]; then
         alias ssh='ssh -A'
     fi
@@ -726,7 +734,7 @@ function bverbose() {
         if [ -x $(type -P tput) ]; then
             if [ ${verbose_level} -eq 0 ]; then
                 # EMERGENCY (0), black is special; standout mode with white background color
-                verbose_message="${TPUT_SMSO}${TPUT_SETAF_8}${verbose_message}${TPUT_SGR0}"
+                verbose_message="\n${TPUT_SMSO}${TPUT_SETAF_8}${verbose_message}${TPUT_SGR0}\n"
             else
                 local tput_set_af_v="TPUT_SETAF_${verbose_level}"
                 verbose_message="${TPUT_BOLD}${!tput_set_af_v}${verbose_message}${TPUT_SGR0}"
@@ -919,7 +927,11 @@ fi
 ### check ssh, ssh-agent, & add all potential keys (if they're not already added)
 ##
 
-sshAgent
+# try twice
+if ! sshAgent; then
+    bverbose "ALERT: sshAgent failed, retrying ..."
+    sshAgent
+fi
 
 ##
 ### mimic /etc/profile.d in home etc/profile.d directory
