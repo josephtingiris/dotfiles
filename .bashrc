@@ -1,6 +1,6 @@
 # .bashrc
 
-Bashrc_Version="20181201, joseph.tingiris@gmail.com"
+Bashrc_Version="20181203, joseph.tingiris@gmail.com"
 
 ##
 ### returns to avoid interactive shell enhancements
@@ -201,6 +201,11 @@ function gitConfig() {
 
     if [ -f ~/.gitconfig.lock  ]; then
         rm -f ~/.gitconfig.local &> /dev/null
+        Rm_Rc=$?
+        if [ ${Rm_Rc} -ne 0 ]; then
+            bverbose "ALERT: failed to 'rm -f ~/.gitconfig.local', rc=${Rm_Rc}"
+        fi
+        unset -v Rm_Rc
     fi
 
     git config --global alias.info 'remote -v' &> /dev/null
@@ -287,7 +292,7 @@ function sshAgent() {
             if [ ! -r "${Ssh_Agent_Home}" ]; then
                 # there's no .ssh-agent file and ssh agent forwarding is apparently off
                 bverbose "ALERT: no ${Ssh_Agent_Home}; ssh agent forwarding is apparently off"
-                return 1
+                return 0
             fi
         fi
     fi
@@ -320,9 +325,9 @@ function sshAgent() {
     # ensure ssh-add works or output an error message
     ${Ssh_Add} -l &> /dev/null
     Ssh_Add_Rc=$?
-    if [ $? -gt 1 ]; then
+    if [ ${Ssh_Add_Rc} -gt 1 ]; then
         # starting ssh-add failed
-        bverbose "EMERGENCY: ssh-add failed with SSH_AGENT_PID=${SSH_AGENT_PID}, SSH_AUTH_SOCK=${SSH_AUTH_SOCK}, ssh-add return code is ${Ssh_Add_Rc}"
+        bverbose "EMERGENCY: ssh-add failed with SSH_AGENT_PID=${SSH_AGENT_PID}, SSH_AUTH_SOCK=${SSH_AUTH_SOCK}, rc=${Ssh_Add_Rc}"
         return 1
     else
         # ssh-add apparently works; ssh agent forwarding is apparently on .. start another/local agent anyway?
@@ -333,7 +338,6 @@ function sshAgent() {
             bverbose "ALERT: ssh agent forwarding via SSH_AUTH_SOCK=${SSH_AUTH_SOCK}"
         fi
     fi
-    unset -v Ssh_Add_Rc
 
     # enable agent forwarding?
     if [ "${#SSH_AUTH_SOCK}" -gt 0 ]; then
@@ -353,6 +357,7 @@ function sshAgent() {
             done <<< "$(find "${Ssh_Dir}/.ssh/" -name "*id_dsa" -o -name "*id_rsa" -o -name "*ecdsa_key" -o -name "*id_ed25519" 2> /dev/null)"
         fi
     done
+    unset -v Ssh_Add_Rc
 
     Ssh_Configs=()
     Ssh_Configs+=("${HOME}/.ssh/config")
@@ -385,10 +390,13 @@ function sshAgent() {
                 continue
             fi
             ${Ssh_Keygen} -l -f "${Ssh_Key_File}.pub" &> /dev/null
-            if [ $? -ne 0 ]; then
+            Ssh_Keygen_Rc=$?
+            if [ ${Ssh_Keygen_Rc} -ne 0 ]; then
                 # unsupported key type
+                bverbose "WARNING: ${Ssh_Key_File}.pub is of an unsupported key type"
                 continue
             fi
+            unset -v Ssh_Keygen_Rc
         else
             continue
         fi
@@ -397,6 +405,12 @@ function sshAgent() {
             Ssh_Agent_Key=$(${Ssh_Add} -l 2> /dev/null | grep ${Ssh_Key_Private} 2> /dev/null)
             if [ "${Ssh_Agent_Key}" == "" ]; then
                 ${Ssh_Add} ${Ssh_Key_File}
+                Ssh_Add_Rc=$?
+                if [ ${Ssh_Add_Rc} -ne 0 ]; then
+                    bverbose "ALERT: '${Ssh_Add} ${Ssh_Key_File}', rc=${Ssh_Add_Rc}"
+                fi
+                unset -v Ssh_Add_Rc
+
             fi
             unset -v Ssh_Agent_Key
         fi
@@ -411,15 +425,21 @@ function sshAgent() {
 
         if [ ! -d "${Ssh_Identities_Dir}" ]; then
             mkdir -p "${Ssh_Identities_Dir}"
-            if [ $? -ne 0 ]; then
+            Mkdir_Rc=$?
+            if [ ${Mkdir_Rc} -ne 0 ]; then
+                bverbose "EMERGENCY: failed to 'mkdir -p ${Ssh_Identities_Dir}', rc=${Mkdir_Rc}"
                 return 1
             fi
+            unset -v Mkdir_Rc
         fi
 
         chmod 0700 "${Ssh_Identities_Dir}" &> /dev/null
-        if [ $? -ne 0 ]; then
+        Chmod_Rc=$?
+        if [ ${Chmod_Rc} -ne 0 ]; then
+            bverbose "EMERGENCY: failed to 'chmod -700 ${Ssh_Identities_Dir}', rc=${Chmod_Rc}"
             return 1
         fi
+        unset -v Chmod_Rc
 
         while read Ssh_Public_Key; do
             Ssh_Public_Key_Md5sum=$(printf "${Ssh_Public_Key}" | awk '{print $2}' | ${Md5sum} | awk '{print $1}')
@@ -429,9 +449,12 @@ function sshAgent() {
                 fi
                 printf "${Ssh_Public_Key}" > "${Ssh_Identities_Dir}/${Ssh_Public_Key_Md5sum}.pub"
                 chmod 0400 "${Ssh_Identities_Dir}/${Ssh_Public_Key_Md5sum}.pub" &> /dev/null
-                if [ $? -ne 0 ]; then
+                Chmod_Rc=$?
+                if [ ${Chmod_Rc} -ne 0 ]; then
+                    bverbose "EMERGENCY: failed to 'chmod 0400 ${Ssh_Identities_Dir}/${Ssh_Public_Key_Md5sum}.pub', rc=${Chmod_Rc}"
                     return 1
                 fi
+                unset -v Chmod_Rc
             fi
             unset -v Ssh_Public_Key_Md5sum
         done <<< "$(${Ssh_Add} -L)"
@@ -469,6 +492,11 @@ function sshAgentClean() {
         if [ -f "${Ssh_Agent_Hostname}" ]; then
             bverbose "ALERT: removing empty ${Ssh_Agent_Hostname}"
             rm -f "${Ssh_Agent_Hostname}" &> /dev/null
+            Rm_Rc=$?
+            if [ ${Rm_Rc} -ne 0 ]; then
+                bverbose "ALERT: failed to 'rm -f ${Ssh_Agent_Hostname}', rc=${Rm_Rc}"
+            fi
+            unset -v Rm_Rc
         else
             if [ ${#SSH_AGENT_PID} -gt 0 ] && [ ${#SSH_AUTH_SOCK} -gt 0 ]; then
                 # missing Ssh_Agent_Hostname; create one
@@ -513,6 +541,11 @@ function sshAgentClean() {
         if [ -s "${Ssh_Agent_Hostname}" ]; then
             bverbose "ALERT: removing invalid ${Ssh_Agent_Hostname}"
             rm -f "${Ssh_Agent_Hostname}" &> /dev/null
+            Rm_Rc=$?
+            if [ ${Rm_Rc} -ne 0 ]; then
+                bverbose "ALERT: failed to 'rm -f ${Ssh_Agent_Hostname}', rc=${Rm_Rc}"
+            fi
+            unset -v Rm_Rc
         fi
     fi
 
@@ -564,17 +597,29 @@ function sshAgentClean() {
 
         if [ "${ssh_agent_socket_command}" == "ssh-agent" ] || [ "${ssh_agent_socket_command}" == "sshd" ]; then
             SSH_AUTH_SOCK=${ssh_agent_socket} ${Ssh_Add} -l ${ssh_agent_socket} &> /dev/null
-            if [ $? -gt 1 ]; then
+            Ssh_Add_Rc=$?
+            if [ ${Ssh_Add_Rc} -gt 1 ]; then
                 # definite error
-                bverbose "ALERT: (1) removing unusable ssh_agent_socket ${ssh_agent_socket}, comm=${ssh_agent_socket_command}, pid=${ssh_agent_socket_pid}"
+                bverbose "ALERT: (1) removing unusable ssh_agent_socket ${ssh_agent_socket}, comm=${ssh_agent_socket_command}, pid=${ssh_agent_socket_pid}, ${Ssh_Add} rc = ${Ssh_Add_Rc}"
                 rm -f ${ssh_agent_socket} &> /dev/null
+                Rm_Rc=$?
+                if [ ${Rm_Rc} -ne 0 ]; then
+                    bverbose "ALERT: failed to 'rm -f ${ssh_agent_socket}', rc=${Rm_Rc}"
+                fi
+                unset -v Rm_Rc
             else
                 # don't remove sockets with running ssh processes
                 continue
             fi
+            unset -v Ssh_Add_Rc
         else
             bverbose "ALERT: (2) removing dead ssh_agent_socket ${ssh_agent_socket}, comm=${ssh_agent_socket_command}, pid=${ssh_agent_socket_pid}"
             rm -f ${ssh_agent_socket} &> /dev/null
+            Rm_Rc=$?
+            if [ ${Rm_Rc} -ne 0 ]; then
+                bverbose "ALERT: failed to 'rm -f ${ssh_agent_socket}', rc=${Rm_Rc}"
+            fi
+            unset -v Rm_Rc
         fi
         # also find really old sockets & remove them regardless if they still work or not?
     done <<<"$(find /tmp -type s -name "agent\.*" 2> /dev/null)"
