@@ -1,40 +1,111 @@
 #!/bin/bash
 
-dotfiles_rsync=$(which rsync 2> /dev/null)
-if [ ! -x $dotfiles_srync ]; then
+dotfiles_rsync=$(type -P rsync)
+if [ ! -x ${dotfiles_rsync} ]; then
     echo "can't find executable rsync"
     exit 1
 fi
 
-dotfiles_to=""
-if [ "$1" != "" ]; then
-    if [[ $(echo "$1" | grep : 2> /dev/null) ]]; then
-        dotfiles_to="${1}"
+HERE=$(pwd)
+
+remote_host=false
+
+dotfiles_to="${1}"
+if [ "${dotfiles_to}" == "" ]; then
+    echo
+    echo "usage: $0 <host>"
+    echo
+    exit 1
+else
+    dotfiles_to_dir=""
+    dotfiles_to_host=""
+    if [[ "${dotfiles_to}" == *":"* ]]; then
+        dotfiles_to_dir=${1##*:}
+        dotfiles_to_host=${1%%:*}
     else
-        dotfiles_to="${1}:~"
+        if ping -c 1 "${1}" &> /dev/null; then
+            remote_host=true
+            dotfiles_to_host="${1}"
+            dotfiles_to_dir="~"
+        else
+            if [ -d "${1}" ]; then
+                dotfiles_to_host=${HOSTNAME}
+                dotfiles_to_dir="${1}"
+            else
+                echo "${1} directory not found"
+                exit 1
+            fi
+        fi
     fi
 fi
-if [ "$dotfiles_to" == "" ]; then
-    dotfiles_to="~"
-fi
 
-dotfiles_src="$(dirname $(readlink -e . 2> /dev/null | grep \/src\/dotfiles\/) 2> /dev/null)"
-if [ "$dotfiles_src" == "" ]; then
-    dotfiles_src="$(readlink -e . 2> /dev/null | grep \/src\/dotfiles)"
-fi
-if [ "$dotfiles_src" != "" ] && [ -d "$dotfiles_src" ]; then
-    cd ${dotfiles_src}
-    git pull || exit
-    rsync_args="-avp"
-    echo
-    echo "rsync ${rsync_args} ${dotfiles_src}/ ${dotfiles_to}/"
-    echo
-    rsync ${rsync_args} ${dotfiles_src}/ ${dotfiles_to}/
-
-    echo
-    echo "rsync ${rsync_args} --delete-after ${dotfiles_src}/.git/ ${dotfiles_to}/.git/"
-    echo
-    rsync ${rsync_args} --delete-after ${dotfiles_src}/.git/ ${dotfiles_to}/.git/
+if [ "${dotfiles_to_host}" == "" ] ;then
+    dotfiles_to=${dotfiles_to_dir}
 else
-    echo "this only works for/from src/dotfiles"
+    if [ "${dotfiles_to_host}" == "${HOSTNAME}" ]; then
+        remote_host=false
+        dotfiles_to=${dotfiles_to_dir}
+        if [ "${dotfiles_to_dir}" == "~" ]; then
+            dotfiles_to="${HOME}"
+        fi
+    else
+        if ping -c 1 "${dotfiles_to_host}" &> /dev/null; then
+            remote_host=true
+            dotfiles_to=${dotfiles_to_host}:${dotfiles_to_dir}
+        else
+            echo "${dotfiles_to_host} is dead"
+            exit 1
+        fi
+    fi
 fi
+
+echo
+echo "dotfiles_to_host  = ${dotfiles_to_host}"
+echo "dotfiles_to_dir   = ${dotfiles_to_dir}"
+echo "dotfiles_to       = ${dotfiles_to}"
+echo
+
+home_src_dotfiles="${HOME}/src/dotfiles"
+
+if ! ${remote_host}; then
+    if [ "${HERE}" != "${home_src_dotfiles}" ]; then
+        if ! git status | grep nothing\ to\ commit 2> /dev/null; then
+            git status
+
+            echo
+            echo "take care of that and try again"
+            echo
+
+            exit
+        fi
+    fi
+fi
+
+if [ "${home_src_dotfiles}" != "" ] && [ -d "${home_src_dotfiles}" ]; then
+    echo
+    echo "${HOME}/src/dotfiles directory found"
+    echo
+
+    cd "${HOME}/src/dotfiles"
+
+    git pull || exit
+
+    rsync_args="-avp"
+
+    echo
+    echo "rsync ${rsync_args} ${home_src_dotfiles}/ ${dotfiles_to}/"
+    echo
+    rsync ${rsync_args} ${home_src_dotfiles}/ ${dotfiles_to}/
+
+    echo
+    echo "rsync ${rsync_args} --delete-after ${home_src_dotfiles}/.git/ ${dotfiles_to}/.git/"
+    echo
+    rsync ${rsync_args} --delete-after ${home_src_dotfiles}/.git/ ${dotfiles_to}/.git/
+
+else
+    echo "${HOME}/src/dotfiles directory not found"
+fi
+
+cd "${HERE}"
+
+exit
