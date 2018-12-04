@@ -587,23 +587,25 @@ function sshAgentClean() {
     if [ -s "${Ssh_Agent_Hostname}" ]; then
         ssh_agent_hostname_pid=$(grep "^SSH_AGENT_PID=" "${Ssh_Agent_Hostname}" 2> /dev/null | awk -F\; '{print $1}' | awk -F= '{print $NF}')
     fi
-    for ssh_agent_pid in $(pgrep -u "${USER}" -f ${Ssh_Agent}\ -t\ ${Ssh_Agent_Timeout} 2> /dev/null); do
-        if [ ${#SSH_AGENT_PID} -gt 0 ]; then
-            if [ "${ssh_agent_pid}" == "${SSH_AGENT_PID}" ]; then
-                # don't kill a running agent
-                continue
+    if [ ${#Ssh_Agent} -gt 0 ]; then
+        for ssh_agent_pid in $(pgrep -u "${USER}" -f ${Ssh_Agent} -P 1 2> /dev/null); do
+            if [ ${#SSH_AGENT_PID} -gt 0 ]; then
+                if [ "${ssh_agent_pid}" == "${SSH_AGENT_PID}" ]; then
+                    # don't kill a running agent
+                    continue
+                fi
             fi
-        fi
-        if [ ${#ssh_agent_hostname_pid} -gt 0 ]; then
-            if [ "${ssh_agent_pid}" == "${ssh_agent_hostname_pid}" ]; then
-                # don't kill a running agent
-                continue
+            if [ ${#ssh_agent_hostname_pid} -gt 0 ]; then
+                if [ "${ssh_agent_pid}" == "${ssh_agent_hostname_pid}" ]; then
+                    # don't kill a running agent
+                    continue
+                fi
             fi
-        fi
-        bverbose "ALERT: killing old ssh_agent_pid='${ssh_agent_pid}'"
-        kill ${ssh_agent_pid} &> /dev/null
-    done
-    unset -v ssh_agent_pid ssh_agent_hostname_pid
+            bverbose "ALERT: killing old ssh_agent_pid='${ssh_agent_pid}'"
+            kill ${ssh_agent_pid} &> /dev/null
+        done
+        unset -v ssh_agent_pid ssh_agent_hostname_pid
+    fi
 
     # remove old ssh_agent_sockets as safely as possible
     local ssh_agent_socket ssh_agent_socket_pid ssh_auth_sock
@@ -621,13 +623,13 @@ function sshAgentClean() {
 
             ssh_agent_socket_command=$(ps -h -o comm -p ${ssh_agent_socket_pid} 2> /dev/null)
 
-            if [ "${ssh_agent_socket_command}" != "sshd" ]; then
+            if [ "${ssh_agent_socket_command}" != "startkde" ] && [ "${ssh_agent_socket_command}" != "sshd" ]; then
                 ((++ssh_agent_socket_pid))
                 ssh_agent_socket_command=$(ps -h -o comm -p ${ssh_agent_socket_pid} 2> /dev/null)
             fi
         fi
 
-        if [ "${ssh_agent_socket_command}" == "ssh-agent" ] || [ "${ssh_agent_socket_command}" == "sshd" ]; then
+        if [ "${ssh_agent_socket_command}" == "startkde" ] || [ "${ssh_agent_socket_command}" == "sshd" ] || [ "${ssh_agent_socket_command}" == "ssh-agent" ]; then
             SSH_AUTH_SOCK=${ssh_agent_socket} ${Ssh_Add} -l ${ssh_agent_socket} &> /dev/null
             Ssh_Add_Rc=$?
             if [ ${Ssh_Add_Rc} -gt 1 ]; then
@@ -659,6 +661,11 @@ function sshAgentClean() {
     done <<<"$(find /tmp -type s -name "agent\.*" 2> /dev/null)"
     SSH_AUTH_SOCK=$ssh_auth_sock
     unset -v ssh_agent_socket ssh_agent_socket_pid ssh_agent_socket_command ssh_auth_sock
+
+    # it's possible this condition could happen (again) if a socket's removed
+    if [ ${#SSH_AGENT_PID} -gt 0 ] && [ ${#SSH_AUTH_SOCK} -eq 0 ]; then
+        unset -v SSH_AGENT_PID
+    fi
 }
 
 # output more verbose messages based on a verbosity level set in the environment or a specific file
@@ -901,7 +908,19 @@ fi
 ##
 
 case "${TERM}" in
-    ansi|*color|*xterm|linux)
+    # linux term only supports 8 colors (and bold)
+    #export PS1="\[${TPUT_SETAF_0}\][\u@\h \w]${PS} \[${TPUT_SGR0}\]" # black
+    #export PS1="\[${TPUT_SETAF_1}\][\u@\h \w]${PS} \[${TPUT_SGR0}\]" # red
+    #export PS1="\[${TPUT_SETAF_2}\][\u@\h \w]${PS} \[${TPUT_SGR0}\]" # green
+    #export PS1="\[${TPUT_SETAF_3}\][\u@\h \w]${PS} \[${TPUT_SGR0}\]" # yellow(ish)
+    #export PS1="\[${TPUT_SETAF_4}\][\u@\h \w]${PS} \[${TPUT_SGR0}\]" # blue
+    #export PS1="\[${TPUT_SETAF_5}\][\u@\h \w]${PS} \[${TPUT_SGR0}\]" # purple
+    #export PS1="\[${TPUT_SETAF_6}\][\u@\h \w]${PS} \[${TPUT_SGR0}\]" # cyan
+    #export PS1="\[${TPUT_SETAF_7}\][\u@\h \w]${PS} \[${TPUT_SGR0}\]" # grey
+
+    ansi|*color|*xterm)
+
+        # default PROMPT_COMMAND
         export PROMPT_COMMAND='printf "\033]0;%s\007" "${USER}@${HOSTNAME}:${PWD} [bash]"'
 
         function bash_command_prompt_command() {
@@ -919,30 +938,25 @@ case "${TERM}" in
 
         trap bash_command_prompt_command DEBUG
 
-    # linux term only supports 8 colors (and bold)
-    #export PS1="\[${TPUT_SETAF_0}\][\u@\h \w]${PS} \[${TPUT_SGR0}\]" # black
-    #export PS1="\[${TPUT_SETAF_1}\][\u@\h \w]${PS} \[${TPUT_SGR0}\]" # dark red
-    #export PS1="\[${TPUT_SETAF_2}\][\u@\h \w]${PS} \[${TPUT_SGR0}\]" # dark green
-    #export PS1="\[${TPUT_SETAF_3}\][\u@\h \w]${PS} \[${TPUT_SGR0}\]" # dark yellow(ish)
-    #export PS1="\[${TPUT_SETAF_4}\][\u@\h \w]${PS} \[${TPUT_SGR0}\]" # dark blue
-    #export PS1="\[${TPUT_SETAF_5}\][\u@\h \w]${PS} \[${TPUT_SGR0}\]" # dark purple
-    #export PS1="\[${TPUT_SETAF_6}\][\u@\h \w]${PS} \[${TPUT_SGR0}\]" # dark cyan
-    #export PS1="\[${TPUT_SETAF_7}\][\u@\h \w]${PS} \[${TPUT_SGR0}\]" # grey
 
-    if [ "${USER}" == "root" ]; then
-        PS="#"
-        export PS1="\[${TPUT_BOLD}${TPUT_SETAF_3}\][\u@\h \w]${PS} \[${TPUT_SGR0}\]" # bold yellow
-    else
-        PS="$"
-        export PS1="\[${TPUT_BOLD}${TPUT_SETAF_6}\][\u@\h \w]${PS} \[${TPUT_SGR0}\]" # bold cyan
-    fi
-    unset -v PS
-
-    ;;
-*)
-    echo TERM=$TERM
-    ;;
+        ;;
+    *)
+        echo TERM=$TERM
+        ;;
 esac
+
+PS="[\u@\h \w]"
+if [ "${USER}" == "root" ]; then
+    PS+="# "
+    PS1="\[${TPUT_BOLD}${TPUT_SETAF_3}\]${PS}\[${TPUT_SGR0}\]" # bold yellow
+else
+    PS+="$ "
+    PS1="\[${TPUT_BOLD}${TPUT_SETAF_6}\]${PS}\[${TPUT_SGR0}\]" # bold cyan
+fi
+if [ ${#TPUT_BOLD} -eq 0 ]; then
+    PS1=$PS
+fi
+unset -v PS
 
 ##
 ### if needed then create .inputrc (with preferences)
