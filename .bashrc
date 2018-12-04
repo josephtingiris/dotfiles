@@ -26,8 +26,8 @@ if [ ${#PS1} -le 0 ]; then
     return
 fi
 
-if [ ${#SSH_CONNECTION} -gt 0 ] && [ ${#SSH_TTY} -eq 0 ]; then
-    # ssh, no tty
+if [ ${#SSH_CONNECTION} -gt 0 ] && [ ${#SSH_TTY} -eq 0 ] && [ ${#TMUX} -eq 0 ]; then
+    # ssh, no tty, no tmux
     return
 fi
 
