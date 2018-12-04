@@ -2,7 +2,6 @@
 
 Bash_Logout_Message="$(date) ${USER}@${HOSTNAME}"
 
-
 # prep sshAgentClean to clean up when the last $USER is logging out
 export Bash_Count=$(pgrep -u $USER bash | wc -l) # this creates a subshell, so 2=1
 Bash_Logout_Message+=" Bash_Count=$Bash_Count"
