@@ -357,6 +357,7 @@ function sshAgent() {
 
     # always enable agent forwarding?
     if [ "${#SSH_AUTH_SOCK}" -gt 0 ]; then
+        alias sal='ssh-add -l'
         alias ssh='ssh -A'
     fi
 
@@ -661,7 +662,7 @@ function bverbose() {
 
     local verbose_level verbose_message
     verbose_message=(${verbose_arguments[@]}) # preserve verbose_arguments
-    verbose_level=$verbose_message[${#verbose_message[@]}-1]
+    verbose_level=${verbose_message[${#verbose_message[@]}-1]}
 
     # if it's not an integer then set verbose_level to zero
     if [[ ${verbose_level} =~ ^[0-9]+$ ]]; then
@@ -669,6 +670,9 @@ function bverbose() {
         # remove the last (integer) element (verbose_level) from the array & convert verbose_message to a string
         unset 'verbose_message[${#verbose_message[@]}-1]'
         verbose_message="${verbose_message[@]}"
+
+        #echo "verbose_message='$verbose_message' (${#verbose_message[@]}) [$verbose_level]"
+
     else
         # don't change the array, convert it to a string, and explicitly set verbose_level so the message gets displayed
         verbose_message="${verbose_message[@]}"
@@ -1053,7 +1057,7 @@ if [ -r /etc/redhat-release ]; then
     printf "\n"
 fi
 
-printf "${User_Dir}/.bashrc ${Bashrc_Version}\n\n"
+bverbose "${User_Dir}/.bashrc ${Bashrc_Version}\n" 2
 if [ "${TMUX}" ]; then
-    printf "${Tmux_Info} [${TMUX}]\n\n"
+    bverbose "${Tmux_Info} [${TMUX}]\n" 4
 fi
