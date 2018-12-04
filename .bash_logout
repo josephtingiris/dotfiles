@@ -12,7 +12,6 @@ else
     echo "$(date) ${USER}@${HOSTNAME} Bash_Count=$Bash_Count"
 fi
 
-
 # this is logic in .bashrc
 if [ "$(type -t sshAgentClean)" == "function" ]; then
     sshAgentClean

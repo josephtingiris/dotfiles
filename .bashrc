@@ -345,10 +345,14 @@ function sshAgent() {
             if [ ${#SSH_AGENT_PID} -gt 0 ] && [ ${#SSH_AUTH_SOCK} -eq 0 ]; then
                 # it's a bad SSH_AGENT_PID
                 unset -v SSH_AGENT_PID
-            fi
-            if [ ${#SSH_AGENT_PID} -eq 0 ] && [ ${#SSH_AUTH_SOCK} -gt 0 ]; then
-                # it's a bad SSH_AUTH_SOCK
-                unset -v SSH_AUTH_SOCK
+            else
+                if [ ${#SSH_AGENT_PID} -eq 0 ] && [ ${#SSH_AUTH_SOCK} -gt 0 ]; then
+                    # it's a bad SSH_AUTH_SOCK
+                    unset -v SSH_AUTH_SOCK
+                else
+                    unset -v SSH_AGENT_PID
+                    unset -v SSH_AUTH_SOCK
+                fi
             fi
             return 1
         fi
