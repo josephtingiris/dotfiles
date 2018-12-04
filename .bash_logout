@@ -3,9 +3,9 @@
 Bash_Logout_Message="$(date) ${USER}@${HOSTNAME}"
 
 # prep sshAgentClean to clean up when the last $USER is logging out
-export Bash_Count=$(pgrep -u $USER bash | wc -l) # this creates a subshell, so 2=1
+export Bash_Count=$(pgrep -u ${USER} bash | wc -l) # this creates a subshell, so 2=1
 Bash_Logout_Message+=" Bash_Count=$Bash_Count"
-if [ $Bash_Count -le 2 ]; then
+if [ ${Bash_Count} -le 2 ]; then
     Bash_Logout_Message+=" (last login)"
     unset -v SSH_AGENT_PID SSH_AUTH_SOCK
     if [ -f "${Ssh_Agent_Hostname}" ]; then
