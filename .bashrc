@@ -1,6 +1,6 @@
 # .bashrc
 
-Bashrc_Version="20181203, joseph.tingiris@gmail.com"
+Bashrc_Version="20181204, joseph.tingiris@gmail.com"
 
 ##
 ### returns to avoid interactive shell enhancements
@@ -281,7 +281,7 @@ function sshAgent() {
                 # remind me; these keys probably shouldn't be here
                 for Ssh_Key in "${HOME}/.ssh/id"*; do
                     if [ -r "${Ssh_Key}" ]; then
-                        bverbose "ALERT: no ${Ssh_Agent_Home}; found ssh key file on ${HOSTNAME} '${Ssh_Key}'"
+                        bverbose "WARNING: no ${Ssh_Agent_Home}; found ssh key file on ${HOSTNAME} '${Ssh_Key}'"
                     fi
                 done
                 unset -v Ssh_Key
@@ -322,8 +322,8 @@ function sshAgent() {
         fi
     fi
 
-    # ensure ssh-add works or output an error message
-    ${Ssh_Add} -l &> /dev/null
+    # ensure ssh-add works or output an error message & return
+    Ssh_Add_Out=$(${Ssh_Add} -l 2> /dev/null)
     Ssh_Add_Rc=$?
     if [ ${Ssh_Add_Rc} -eq 0 ]; then
         if [ ${#SSH_AGENT_PID} -eq 0 ] && [ ${#SSH_AUTH_SOCK} -gt 0 ]; then
@@ -334,18 +334,26 @@ function sshAgent() {
             bverbose "ALERT: ssh agent forwarding via SSH_AUTH_SOCK=${SSH_AUTH_SOCK}"
         fi
     else
-        # starting ssh-add failed
-        bverbose "EMERGENCY: '${Ssh_Add}' failed with SSH_AGENT_PID=${SSH_AGENT_PID}, SSH_AUTH_SOCK=${SSH_AUTH_SOCK}, rc=${Ssh_Add_Rc}"
-        if [ ${#SSH_AGENT_PID} -gt 0 ] && [ ${#SSH_AUTH_SOCK} -eq 0 ]; then
-            # it's a bad SSH_AGENT_PID
-            unset -v SSH_AGENT_PID
+        # starting ssh-add failed (the first time)
+        if [ ${#Ssh_Add_Rc} -eq 1 ]; then
+            # rc=1 means 'failure', it's unspecified and may just be that it has no identities
+            if [[ "${Ssh_Add_Out}" != *"agent has no identities"* ]]; then
+                bverbose "ALERT: '${Ssh_Add}' failed with SSH_AGENT_PID=${SSH_AGENT_PID}, SSH_AUTH_SOCK=${SSH_AUTH_SOCK}, output='${Ssh_Add_Out}', rc=${Ssh_Add_Rc}"
+            fi
+        else
+            bverbose "EMERGENCY: '${Ssh_Add}' failed with SSH_AGENT_PID=${SSH_AGENT_PID}, SSH_AUTH_SOCK=${SSH_AUTH_SOCK}, output='${Ssh_Add_Out}' rc=${Ssh_Add_Rc}"
+            if [ ${#SSH_AGENT_PID} -gt 0 ] && [ ${#SSH_AUTH_SOCK} -eq 0 ]; then
+                # it's a bad SSH_AGENT_PID
+                unset -v SSH_AGENT_PID
+            fi
+            if [ ${#SSH_AGENT_PID} -eq 0 ] && [ ${#SSH_AUTH_SOCK} -gt 0 ]; then
+                # it's a bad SSH_AUTH_SOCK
+                unset -v SSH_AUTH_SOCK
+            fi
+            return 1
         fi
-        if [ ${#SSH_AGENT_PID} -eq 0 ] && [ ${#SSH_AUTH_SOCK} -gt 0 ]; then
-            # it's a bad SSH_AUTH_SOCK
-            unset -v SSH_AUTH_SOCK
-        fi
-        return 1
     fi
+    unset -v Ssh_Add_Out Ssh_Add_Rc
 
     # always enable agent forwarding?
     if [ "${#SSH_AUTH_SOCK}" -gt 0 ]; then
@@ -390,13 +398,18 @@ function sshAgent() {
     for Ssh_Key_File in ${Ssh_Key_Files[@]}; do
         Ssh_Agent_Key=""
         Ssh_Key_Public=""
+        Ssh_Key_Private=""
+
         if [ -r "${Ssh_Key_File}.pub" ]; then
             Ssh_Key_Public=$(awk '{print $2}' "${Ssh_Key_File}.pub" 2> /dev/null)
             Ssh_Agent_Key=$(${Ssh_Add} -L  2> /dev/null | grep "${Ssh_Key_Public}" 2> /dev/null)
+
             if [ "${Ssh_Agent_Key}" != "" ]; then
                 # public key is already in the agent
                 continue
             fi
+
+            # ensure the agent supports this key type
             ${Ssh_Keygen} -l -f "${Ssh_Key_File}.pub" &> /dev/null
             Ssh_Keygen_Rc=$?
             if [ ${Ssh_Keygen_Rc} -ne 0 ]; then
@@ -405,13 +418,19 @@ function sshAgent() {
                 continue
             fi
             unset -v Ssh_Keygen_Rc
+
         else
+            # key file is not readable
             continue
         fi
+
         if [ -r "${Ssh_Key_File}" ]; then
             Ssh_Key_Private=$(${Ssh_Keygen} -l -f "${Ssh_Key_File}.pub" 2> /dev/null | awk '{print $2}')
             Ssh_Agent_Key=$(${Ssh_Add} -l 2> /dev/null | grep ${Ssh_Key_Private} 2> /dev/null)
             if [ "${Ssh_Agent_Key}" == "" ]; then
+
+                # add the key to the agent
+                printf "\n"
                 ${Ssh_Add} ${Ssh_Key_File}
                 Ssh_Add_Rc=$?
                 if [ ${Ssh_Add_Rc} -ne 0 ]; then
