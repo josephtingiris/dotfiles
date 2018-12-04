@@ -632,12 +632,13 @@ function sshAgentClean() {
             Ssh_Add_Rc=$?
             if [ ${Ssh_Add_Rc} -gt 1 ]; then
                 # definite error
-                bverbose "ALERT: (1) removing unusable ssh_agent_socket ${ssh_agent_socket}, comm=${ssh_agent_socket_command}, pid=${ssh_agent_socket_pid}, ${Ssh_Add} rc = ${Ssh_Add_Rc}"
+                bverbose "ALERT: (1) removing unusable ssh_agent_socket ${ssh_agent_socket}, comm=${ssh_agent_socket_command}, pid=${ssh_agent_socket_pid}, ${Ssh_Add} rc=${Ssh_Add_Rc}"
                 rm -f ${ssh_agent_socket} &> /dev/null
                 Rm_Rc=$?
                 if [ ${Rm_Rc} -ne 0 ]; then
                     bverbose "ALERT: failed to 'rm -f ${ssh_agent_socket}', rc=${Rm_Rc}"
                 fi
+                unset -v ssh_auth_sock
                 unset -v Rm_Rc
             else
                 # don't remove sockets with running ssh processes
@@ -645,12 +646,13 @@ function sshAgentClean() {
             fi
             unset -v Ssh_Add_Rc
         else
-            bverbose "ALERT: (2) removing dead ssh_agent_socket ${ssh_agent_socket}, comm=${ssh_agent_socket_command}, pid=${ssh_agent_socket_pid}"
+            bverbose "ALERT: (2) removing dead ssh_agent_socket ${ssh_agent_socket}, comm=${ssh_agent_socket_command}, pid=${ssh_agent_socket_pid}, ${Ssh_Add} rc=${Ssh_Add_Rc}"
             rm -f ${ssh_agent_socket} &> /dev/null
             Rm_Rc=$?
             if [ ${Rm_Rc} -ne 0 ]; then
                 bverbose "ALERT: failed to 'rm -f ${ssh_agent_socket}', rc=${Rm_Rc}"
             fi
+            unset -v ssh_auth_sock
             unset -v Rm_Rc
         fi
         # also find really old sockets & remove them regardless if they still work or not?
