@@ -1,6 +1,6 @@
 # .bashrc
 
-Bashrc_Version="20181204, joseph.tingiris@gmail.com"
+Bashrc_Version="20181205, joseph.tingiris@gmail.com"
 
 ##
 ### returns to avoid interactive shell enhancements
@@ -361,7 +361,7 @@ function sshAgent() {
 
     # always enable agent forwarding?
     if [ "${#SSH_AUTH_SOCK}" -gt 0 ]; then
-        alias sal='ssh-add -l'
+        alias sal='pgrep -a ssh-agent && echo && env | grep -i ssh | sort -V && echo && ssh-add -l'
         alias ssh='ssh -A'
     fi
 
