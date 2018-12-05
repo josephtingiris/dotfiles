@@ -361,7 +361,6 @@ function sshAgent() {
 
     # always enable agent forwarding?
     if [ "${#SSH_AUTH_SOCK}" -gt 0 ]; then
-        alias sal='pgrep -a ssh-agent && echo && env | grep -i ssh | sort -V && echo && ssh-add -l'
         alias ssh='ssh -A'
     fi
 
@@ -833,7 +832,7 @@ fi
 export TZ='America/New_York'
 
 ##
-### global alias definitions
+### static alias definitions
 ##
 
 alias cl='cd;clear'
@@ -844,6 +843,13 @@ alias l='ls -lFhart'
 alias ls='ls --color=tty'
 alias mv='mv -i'
 alias rm='rm -i'
+alias nouser="find . -nouser 2> /dev/null"
+alias sal='pgrep -a ssh-agent && echo && env | grep -i ssh | sort -V && echo && ssh-add -l'
+
+##
+### conditional alias definitions
+##
+
 if [ -r "${User_Dir}/.bashrc" ]; then
     alias s="source ${User_Dir}/.bashrc"
 else
@@ -859,7 +865,6 @@ fi
 if [ -x $(type -P screen) ]; then
     alias sd='screen -S $(basename $(pwd))'
 fi
-alias nouser="find . -nouser 2> /dev/null"
 
 ##
 ### global key bindings
@@ -872,7 +877,7 @@ bind '"\x18\x40\x73\x6c":"'${User_Name}'"' # Super+l
 bind '"\x18\x40\x73\x75":"'${USER}'"' # Super+u
 
 ##
-### get tmux info
+### tmux info
 ##
 
 if [ ${#TMUX} -gt 0 ]; then
