@@ -317,8 +317,8 @@ function sshAgent() {
     # (re)start ssh-agent if necessary
     if [ ${#SSH_AGENT_PID} -eq 0 ] && [ ${#SSH_AUTH_SOCK} -eq 0 ]; then
         if [ ${#Ssh_Agent_Home} -gt 0 ] && [ -r "${Ssh_Agent_Home}" ]; then
-            (umask 066; ${Ssh_Agent} -t ${Ssh_Agent_Timeout} 1> ${Ssh_Agent_Hostname})
-            eval "$(<${Ssh_Agent_Hostname})" &> /dev/null
+            (umask 066; ${Ssh_Agent} -t ${Ssh_Agent_Timeout} 1> ${Ssh_Agent_State})
+            eval "$(<${Ssh_Agent_State})" &> /dev/null
         fi
     fi
 
@@ -504,36 +504,36 @@ function sshAgentClean() {
     fi
 
     export Ssh_Agent_Home="${HOME}/.ssh-agent"
-    export Ssh_Agent_Hostname="${Ssh_Agent_Home}.${Who}@${HOSTNAME}"
+    export Ssh_Agent_State="${Ssh_Agent_Home}.${Who}@${HOSTNAME}"
     export Ssh_Agent_Timeout=86400
 
-    if [ -s "${Ssh_Agent_Hostname}" ]; then
+    if [ -s "${Ssh_Agent_State}" ]; then
         if [ ${#SSH_AGENT_PID} -gt 0 ] || [ ${#SSH_AUTH_SOCK} -eq 0 ]; then
             # SSH_AUTH_SOCK may not yet be set
-            eval "$(<${Ssh_Agent_Hostname})" &> /dev/null
+            eval "$(<${Ssh_Agent_State})" &> /dev/null
         else
             if [ ${#SSH_AUTH_SOCK} -gt 0 ]; then
-                if grep -q "^SSH_AUTH_SOCK=${SSH_AUTH_SOCK};" "${Ssh_Agent_Hostname}"; then
+                if grep -q "^SSH_AUTH_SOCK=${SSH_AUTH_SOCK};" "${Ssh_Agent_State}"; then
                     # SSH_AGENT_PID got unset somehow
-                    eval "$(<${Ssh_Agent_Hostname})" &> /dev/null
+                    eval "$(<${Ssh_Agent_State})" &> /dev/null
                 fi
             fi
         fi
     else
-        if [ -f "${Ssh_Agent_Hostname}" ]; then
-            bverbose "ALERT: removing empty ${Ssh_Agent_Hostname}"
-            rm -f "${Ssh_Agent_Hostname}" &> /dev/null
+        if [ -f "${Ssh_Agent_State}" ]; then
+            bverbose "ALERT: removing empty ${Ssh_Agent_State}"
+            rm -f "${Ssh_Agent_State}" &> /dev/null
             Rm_Rc=$?
             if [ ${Rm_Rc} -ne 0 ]; then
-                bverbose "ALERT: failed to 'rm -f ${Ssh_Agent_Hostname}', rc=${Rm_Rc}"
+                bverbose "ALERT: failed to 'rm -f ${Ssh_Agent_State}', rc=${Rm_Rc}"
             fi
             unset -v Rm_Rc
         else
             if [ ${#SSH_AGENT_PID} -gt 0 ] && [ ${#SSH_AUTH_SOCK} -gt 0 ]; then
-                # missing Ssh_Agent_Hostname; create one
-                printf "SSH_AUTH_SOCK=%s; export SSH_AUTH_SOCK;\n" "${SSH_AUTH_SOCK}" > "${Ssh_Agent_Hostname}"
-                printf "SSH_AGENT_PID=%s; export SSH_AGENT_PID;\n" "${SSH_AGENT_PID}" >> "${Ssh_Agent_Hostname}"
-                printf "echo Agent pid %s\n" "${SSH_AGENT_PID}" >> "${Ssh_Agent_Hostname}"
+                # missing Ssh_Agent_State; create one
+                printf "SSH_AUTH_SOCK=%s; export SSH_AUTH_SOCK;\n" "${SSH_AUTH_SOCK}" > "${Ssh_Agent_State}"
+                printf "SSH_AGENT_PID=%s; export SSH_AGENT_PID;\n" "${SSH_AGENT_PID}" >> "${Ssh_Agent_State}"
+                printf "echo Agent pid %s\n" "${SSH_AGENT_PID}" >> "${Ssh_Agent_State}"
             fi
         fi
     fi
@@ -569,22 +569,22 @@ function sshAgentClean() {
     fi
 
     if [ ${#SSH_AGENT_PID} -eq 0 ] && [ ${#SSH_AUTH_SOCK} -eq 0 ]; then
-        if [ -s "${Ssh_Agent_Hostname}" ]; then
-            bverbose "ALERT: removing invalid ${Ssh_Agent_Hostname}"
-            rm -f "${Ssh_Agent_Hostname}" &> /dev/null
+        if [ -s "${Ssh_Agent_State}" ]; then
+            bverbose "ALERT: removing invalid ${Ssh_Agent_State}"
+            rm -f "${Ssh_Agent_State}" &> /dev/null
             Rm_Rc=$?
             if [ ${Rm_Rc} -ne 0 ]; then
-                bverbose "ALERT: failed to 'rm -f ${Ssh_Agent_Hostname}', rc=${Rm_Rc}"
+                bverbose "ALERT: failed to 'rm -f ${Ssh_Agent_State}', rc=${Rm_Rc}"
             fi
             unset -v Rm_Rc
         fi
     fi
 
     # remove old ssh_agent_pids as safely as possible
-    local ssh_agent_pid ssh_agent_hostname_pid
-    # don't kill the Ssh_Agent_Hostname
-    if [ -s "${Ssh_Agent_Hostname}" ]; then
-        ssh_agent_hostname_pid=$(grep "^SSH_AGENT_PID=" "${Ssh_Agent_Hostname}" 2> /dev/null | awk -F\; '{print $1}' | awk -F= '{print $NF}')
+    local ssh_agent_pid ssh_agent_state_pid
+    # don't kill the Ssh_Agent_State
+    if [ -s "${Ssh_Agent_State}" ]; then
+        ssh_agent_state_pid=$(grep "^SSH_AGENT_PID=" "${Ssh_Agent_State}" 2> /dev/null | awk -F\; '{print $1}' | awk -F= '{print $NF}')
     fi
     if [ ${#Ssh_Agent} -gt 0 ]; then
         for ssh_agent_pid in $(pgrep -u "${USER}" -f ${Ssh_Agent} -P 1 2> /dev/null); do
@@ -594,8 +594,8 @@ function sshAgentClean() {
                     continue
                 fi
             fi
-            if [ ${#ssh_agent_hostname_pid} -gt 0 ]; then
-                if [ "${ssh_agent_pid}" == "${ssh_agent_hostname_pid}" ]; then
+            if [ ${#ssh_agent_state_pid} -gt 0 ]; then
+                if [ "${ssh_agent_pid}" == "${ssh_agent_state_pid}" ]; then
                     # don't kill a running agent
                     continue
                 fi
@@ -603,7 +603,7 @@ function sshAgentClean() {
             bverbose "ALERT: killing old ssh_agent_pid='${ssh_agent_pid}'"
             kill ${ssh_agent_pid} &> /dev/null
         done
-        unset -v ssh_agent_pid ssh_agent_hostname_pid
+        unset -v ssh_agent_pid ssh_agent_state_pid
     fi
 
     # remove old ssh_agent_sockets as safely as possible

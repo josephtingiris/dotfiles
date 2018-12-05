@@ -8,8 +8,8 @@ Bash_Logout_Message+=" Bash_Count=$Bash_Count"
 if [ ${Bash_Count} -le 2 ]; then
     Bash_Logout_Message+=" (last login)"
     unset -v SSH_AGENT_PID SSH_AUTH_SOCK
-    if [ -f "${Ssh_Agent_Hostname}" ]; then
-        rm -f "${Ssh_Agent_Hostname}" &> /dev/null
+    if [ -f "${Ssh_Agent_State}" ]; then
+        rm -f "${Ssh_Agent_State}" &> /dev/null
     fi
     bverbose_level=3
 else
