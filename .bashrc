@@ -1,6 +1,6 @@
 # .bashrc
 
-Bashrc_Version="20181205, joseph.tingiris@gmail.com"
+Bashrc_Version="20181214, joseph.tingiris@gmail.com"
 
 ##
 ### returns to avoid interactive shell enhancements
@@ -536,6 +536,10 @@ function sshAgentClean() {
                 printf "echo Agent pid %s\n" "${SSH_AGENT_PID}" >> "${Ssh_Agent_State}"
             fi
         fi
+    fi
+
+    if [ -w "${Ssh_Agent_State}" ]; then
+        chmod 0600 "${Ssh_Agent_State}" &> /dev/null
     fi
 
     local ssh_agent_socket_command
