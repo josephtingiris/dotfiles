@@ -822,10 +822,18 @@ if ! shopt -q login_shell &> /dev/null; then
 fi
 
 if [ -r "${User_Dir}/.bash_logout" ]; then
-    trap "source ${User_Dir}/.bash_logout" EXIT
+    if [ ${#TMUX_PANE} -eq 0 ]; then
+        trap "source ${User_Dir}/.bash_logout" EXIT
+    else
+        trap "source ${User_Dir}/.bash_logout;tmux kill-pane -t ${TMUX_PANE}" EXIT
+    fi
 else
     if [ -r "${HOME}/.bash_logout" ]; then
-        trap "source ${HOME}/.bash_logout" EXIT
+        if [ ${#TMUX_PANE} -eq 0 ]; then
+            trap "source ${HOME}/.bash_logout" EXIT
+        else
+            trap "source ${User_Dir}/.bash_logout;tmux kill-pane -t ${TMUX_PANE}" EXIT
+        fi
     fi
 fi
 
@@ -898,7 +906,7 @@ if [ ${#Tmux_Bin} -gt 0 ] && [ -x ${Tmux_Bin} ]; then
         Tmux_Info="[${Tmux_Bin}] [${User_Dir}/.tmux.conf]"
         alias tmu=tmux
         alias tmus=tmux
-        alias tmux="${Tmux_Bin} -l -f ${User_Dir}/.tmux.conf -u"
+        alias tmux="${Tmux_Bin} -f ${User_Dir}/.tmux.conf -u"
     fi
 fi
 
