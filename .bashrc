@@ -793,7 +793,7 @@ function bverbose() {
             fi
         fi
         #printf "[$verbosity:$verbose_level] %b\n" "${verbose_message}"
-        printf "%b\n" "${verbose_message}"
+        (>&2 printf "%b\n" "${verbose_message}")
     fi
 
     unset -v verbose_level verbosity
