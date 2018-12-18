@@ -1,6 +1,6 @@
 # .bashrc
 
-Bashrc_Version="20181214, joseph.tingiris@gmail.com"
+Bashrc_Version="20181218, joseph.tingiris@gmail.com"
 
 ##
 ### returns to avoid interactive shell enhancements
@@ -676,6 +676,7 @@ function bverbose() {
     # verbose level is always the last argument
     local verbose_arguments=($@)
 
+    local -i verbose_color
     local verbose_level verbose_message
     verbose_message=(${verbose_arguments[@]}) # preserve verbose_arguments
     verbose_level=${verbose_message[${#verbose_message[@]}-1]}
@@ -697,27 +698,35 @@ function bverbose() {
         # convert verbose_message to uppercase & check for presence of keywords
         if [[ "${verbose_message^^}" == *"ALERT"* ]]; then
             verbose_level=1
+            verbose_color=2
         else
             if [[ "${verbose_message^^}" == *"CRIT"* ]]; then
                 verbose_level=2
+                verbose_color=5
             else
                 if [[ "${verbose_message^^}" == *"ERROR"* ]]; then
                     verbose_level=3
+                    verbose_color=1
                 else
                     if [[ "${verbose_message^^}" == *"WARN"* ]]; then
                         verbose_level=4
+                        verbose_color=3
                     else
                         if [[ "${verbose_message^^}" == *"NOTICE"* ]]; then
                             verbose_level=5
+                            verbose_color=6
                         else
                             if [[ "${verbose_message^^}" == *"INFO"* ]]; then
                                 verbose_level=6
+                                verbose_color=4
                             else
                                 if [[ "${verbose_message^^}" == *"DEBUG"* ]]; then
                                     verbose_level=7
+                                    verbose_color=7
                                 else
                                     # EMERGENCY (always gets displayed)
                                     verbose_level=0
+                                    verbose_color=8
                                 fi
                             fi
                         fi
@@ -775,7 +784,10 @@ function bverbose() {
                 # EMERGENCY (0), black is special; standout mode with white background color
                 verbose_message="\n${TPUT_SMSO}${TPUT_SETAF_8}${verbose_message}${TPUT_SGR0}\n"
             else
-                local tput_set_af_v="TPUT_SETAF_${verbose_level}"
+                if [ ${#verbose_color} -eq 0 ]; then
+                    verbose_color=${verbose_level}
+                fi
+                local tput_set_af_v="TPUT_SETAF_${verbose_color}"
                 verbose_message="${TPUT_BOLD}${!tput_set_af_v}${verbose_message}${TPUT_SGR0}"
                 unset -v tput_set_af_v
             fi

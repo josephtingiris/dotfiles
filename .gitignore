@@ -67,6 +67,7 @@
 !/bin/mysql-kill
 !/bin/passwd.master
 !/bin/src-dotfiles-rsync
+!/bin/test-loop
 
 # except specific files in the etc/profile.d directory
 !/etc/
