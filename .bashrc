@@ -698,19 +698,19 @@ function bverbose() {
         # convert verbose_message to uppercase & check for presence of keywords
         if [[ "${verbose_message^^}" == *"ALERT"* ]]; then
             verbose_level=1
-            verbose_color=2
+            verbose_color=1
         else
             if [[ "${verbose_message^^}" == *"CRIT"* ]]; then
                 verbose_level=2
-                verbose_color=5
+                verbose_color=3
             else
                 if [[ "${verbose_message^^}" == *"ERROR"* ]]; then
                     verbose_level=3
-                    verbose_color=1
+                    verbose_color=5
                 else
                     if [[ "${verbose_message^^}" == *"WARN"* ]]; then
                         verbose_level=4
-                        verbose_color=3
+                        verbose_color=2
                     else
                         if [[ "${verbose_message^^}" == *"NOTICE"* ]]; then
                             verbose_level=5
