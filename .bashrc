@@ -1,6 +1,6 @@
 # .bashrc
 
-Bashrc_Version="20181218, joseph.tingiris@gmail.com"
+Bashrc_Version="20190104, joseph.tingiris@gmail.com"
 
 ##
 ### returns to avoid interactive shell enhancements
@@ -678,14 +678,22 @@ function bverbose() {
 
     local -i verbose_color
     local verbose_level verbose_message
-    verbose_message=(${verbose_arguments[@]}) # preserve verbose_arguments
-    verbose_level=${verbose_message[${#verbose_message[@]}-1]}
+
+    if [ ${#2} -gt 0 ]; then
+        verbose_message=(${verbose_arguments[@]}) # preserve verbose_arguments
+        verbose_level=${verbose_message[${#verbose_message[@]}-1]}
+    else
+        verbose_message="${1}"
+        verbose_level=""
+    fi
 
     # if it's not an integer then set verbose_level to zero
     if [[ ${verbose_level} =~ ^[0-9]+$ ]]; then
         # given verbose_level is always used
-        # remove the last (integer) element (verbose_level) from the array & convert verbose_message to a string
-        unset 'verbose_message[${#verbose_message[@]}-1]'
+        if [ ${#2} -gt 0 ]; then
+            # remove the last (integer) element (verbose_level) from the array & convert verbose_message to a string
+            unset 'verbose_message[${#verbose_message[@]}-1]'
+        fi
         verbose_message="${verbose_message[@]}"
 
         #echo "verbose_message='$verbose_message' (${#verbose_message[@]}) [$verbose_level]"
