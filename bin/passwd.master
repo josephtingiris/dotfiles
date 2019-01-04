@@ -11,6 +11,7 @@
 # joseph.tingiris@gmail.com, 20180801 ... created
 # joseph.tingiris@gmail.com, 20180818 ... alpha (centos 7, fedora 28)
 # joseph.tingiris@gmail.com, 20181220 ... beta (centos 7, fedora 28)
+# joseph.tingiris@gmail.com, 20190104 ... rc1 (centos 7, fedora 28)
 
 ###########
 # Globals #
@@ -594,6 +595,18 @@ function updatePGM() {
 
                     find_args="/ -path /dev -prune -or -path /proc -prune -or -path /run/user -prune -or -path /sys -prune -or"
 
+                    # under no circumstances change root uid files
+                    if [ "${uid}" == "0" ] || [ "${uid}" == "" ]; then
+                        debug "passwd_line = '${passwd_line}'"
+                        aborting "${passwd} ${username}:x:${uid}:${gid} != ${master_passwd} ${username} root uid=${uid}?"
+                    fi
+
+                    # under no circumstances change root gid files
+                    if [ "${gid}" == "0" ] || [ "${gid}" == "" ]; then
+                        debug "passwd_line = '${passwd_line}'"
+                        aborting "${passwd} ${username}:x:${uid}:${gid} != ${master_passwd} ${username} root gid=${gid}?"
+                    fi
+
                     if [ "${uid}" != "${master_uid}" ] && [ "${gid}" != "${master_gid}" ]; then
                         pprint "${master_passwd} ${master_username}:x:${master_uid}:${master_gid} uid and gid will change from ${uid}:${gid} to ${master_uid}:${master_gid}" "QUEUE #${Queue_Count}"
                         # only need to do this once; it *should* fix everything
@@ -748,6 +761,21 @@ else
 fi
 isAccessible "${Active_Passwd}"
 
+if [ "${Active_Passwd}" == "/etc/passwd" ]; then
+    pwconv
+    if ! pwck -q -r "${Active_Passwd}" &> /dev/null; then
+        pprint
+        pwck -r "${Active_Passwd}"
+        pprint
+        pprint "Consider trying this ..." SUGGEST
+        pprint "" SUGGEST
+        pprint "1) pwconv" SUGGEST
+        pprint "2) pwck" SUGGEST
+        aborting "${Active_Passwd} failed syntax check"
+    fi
+    pwck -s
+fi
+
 if [ "$ACTIVE_GROUP" != "" ]; then
     Active_Group=$(readlink -e "$ACTIVE_GROUP" 2> /dev/null)
 else
@@ -758,6 +786,22 @@ else
     fi
 fi
 isAccessible "${Active_Group}"
+
+if [ "${Active_Group}" == "/etc/group" ]; then
+    grpconv
+    if ! grpck -r "${Active_Group}" &> /dev/null; then
+        pprint
+        grpck -r "${group}"
+        pprint
+        pprint "Consider trying this ..." SUGGEST
+        pprint "" SUGGEST
+        pprint "1) grpconv" SUGGEST
+        pprint "2) grpck" SUGGEST
+        aborting "${Active_Group} failed syntax check"
+    fi
+    grpck -s
+fi
+
 
 #
 # The 'master' passwd & group; use files in pwd by default, if they exist then use what's in /etc else make them the same as active
@@ -869,60 +913,60 @@ if [ ${Sync_Flag} -eq 0 ]; then
 
     let Resort=1
 
-#
-# sync all 'new' users from the active passwd and put them in the master passwd
-#
+    #
+    # sync all 'new' users from the active passwd and put them in the master passwd
+    #
 
-if [ "${Active_Passwd}" != "${Master_Passwd}" ]; then
-    if [ -w "${Master_Passwd}" ]; then
-        for username in $(awk -F: '{print $1}' "${Active_Passwd}"); do
-            Master_Passwd_Username=$(grep ^${username}:x: "${Master_Passwd}")
-            if [ "${Master_Passwd_Username}" == "" ]; then
-                pprint "${Master_Passwd} add username '${username}' from ${Active_Passwd}" "QUEUE #${Queue_Count}"
-                Queue_Commands+=("grep \"^${username}:x:\" \"${Active_Passwd}\" | head -1 >> \"${Master_Passwd}\"")
-                let Resort=0
-            fi
-        done
+    if [ "${Active_Passwd}" != "${Master_Passwd}" ]; then
+        if [ -w "${Master_Passwd}" ]; then
+            for username in $(awk -F: '{print $1}' "${Active_Passwd}"); do
+                Master_Passwd_Username=$(grep ^${username}:x: "${Master_Passwd}")
+                if [ "${Master_Passwd_Username}" == "" ]; then
+                    pprint "${Master_Passwd} add username '${username}' from ${Active_Passwd}" "QUEUE #${Queue_Count}"
+                    Queue_Commands+=("grep \"^${username}:x:\" \"${Active_Passwd}\" | head -1 >> \"${Master_Passwd}\"")
+                    let Resort=0
+                fi
+            done
+        fi
     fi
-fi
 
-#
-# sync all 'new' groups from the active group and put them in the master group
-#
+    #
+    # sync all 'new' groups from the active group and put them in the master group
+    #
 
-if [ "${Active_Group}" != "${Master_Group}" ]; then
-    if [ -w "${Master_Group}" ]; then
-        for groupname in $(awk -F: '{print $1}' "${Active_Group}"); do
-            Master_Group_Username=$(grep ^${groupname}:x: "${Master_Group}")
-            if [ "${Master_Group_Username}" == "" ]; then
-                pprint "${Master_Group} add groupname '${groupname}' from ${Active_Group}" "QUEUE #${Queue_Count}"
-                Queue_Commands+=("grep \"^${groupname}:x:\" \"${Active_Group}\" | head -1 >> \"${Master_Group}\"")
-                let Resort=0
-            fi
-        done
+    if [ "${Active_Group}" != "${Master_Group}" ]; then
+        if [ -w "${Master_Group}" ]; then
+            for groupname in $(awk -F: '{print $1}' "${Active_Group}"); do
+                Master_Group_Username=$(grep ^${groupname}:x: "${Master_Group}")
+                if [ "${Master_Group_Username}" == "" ]; then
+                    pprint "${Master_Group} add groupname '${groupname}' from ${Active_Group}" "QUEUE #${Queue_Count}"
+                    Queue_Commands+=("grep \"^${groupname}:x:\" \"${Active_Group}\" | head -1 >> \"${Master_Group}\"")
+                    let Resort=0
+                fi
+            done
+        fi
     fi
-fi
 
-if [ ${Resort} -eq 0 ]; then
-    pprint "backup re-sort ${Master_Passwd} to ${Master_Passwd}.${Branded}" "QUEUE #${Queue_Count}"
-    Queue_Commands+=("cp \"${Master_Passwd}\" \"${Master_Passwd}.${Branded}\"")
-    pprint "backup re-sort ${Master_Group} to ${Master_Group}.${Branded}" "QUEUE #${Queue_Count}"
-    Queue_Commands+=("cp \"${Master_Group}\" \"${Master_Group}.${Branded}\"")
+    if [ ${Resort} -eq 0 ]; then
+        pprint "backup re-sort ${Master_Passwd} to ${Master_Passwd}.${Branded}" "QUEUE #${Queue_Count}"
+        Queue_Commands+=("cp \"${Master_Passwd}\" \"${Master_Passwd}.${Branded}\"")
+        pprint "backup re-sort ${Master_Group} to ${Master_Group}.${Branded}" "QUEUE #${Queue_Count}"
+        Queue_Commands+=("cp \"${Master_Group}\" \"${Master_Group}.${Branded}\"")
 
-    pprint "${Master_Passwd} re-sort" "QUEUE #${Queue_Count}"
-    Queue_Commands+=("sort -u -t: -k 3n,4n \"${Master_Passwd}\" -o \"${Master_Passwd}\"")
-    pprint "${Master_Group} re-sort" "QUEUE #${Queue_Count}"
-    Queue_Commands+=("sort -u -t: -k 3n,4n \"${Master_Group}\" -o \"${Master_Group}\"")
+        pprint "${Master_Passwd} re-sort" "QUEUE #${Queue_Count}"
+        Queue_Commands+=("sort -u -t: -k 3n,4n \"${Master_Passwd}\" -o \"${Master_Passwd}\"")
+        pprint "${Master_Group} re-sort" "QUEUE #${Queue_Count}"
+        Queue_Commands+=("sort -u -t: -k 3n,4n \"${Master_Group}\" -o \"${Master_Group}\"")
 
-else
-    pprint "${Active_Passwd} & ${Active_Group} users and groups are in sync" OK
-fi
+    else
+        pprint "${Active_Passwd} & ${Active_Group} users and groups are in sync" OK
+    fi
 
-if [ ${Yes_Flag} -ne 0 ]; then
-    queueEval "0"
-    ((++Queue_Count))
-    exit
-fi
+    if [ ${Yes_Flag} -ne 0 ]; then
+        queueEval "0"
+        ((++Queue_Count))
+        exit
+    fi
 fi
 
 # at this point, nothing in the command queue should be irreversible
@@ -931,40 +975,40 @@ queueEval "${Yes_Flag}"
 
 if checkPG "${Master_Passwd}" "${Master_Group}"; then
 
-#
-# The master files could be OK, per say, but checkPG may have found something it wanted to update.
-# If it did then rebuild the Queue_Commands array with a backup of each master file, first
-#
+    #
+    # The master files could be OK, per say, but checkPG may have found something it wanted to update.
+    # If it did then rebuild the Queue_Commands array with a backup of each master file, first
+    #
 
-if [ "$Queue_Commands" != "" ]; then
-    Tmp_Queue_Commands=()
-    pprint "backup master ${Master_Passwd} to ${Master_Passwd}.${Branded}" "QUEUE #${Queue_Count}"
-    Tmp_Queue_Commands+=("cp \"${Master_Passwd}\" \"${Master_Passwd}.${Branded}\"")
-    pprint "backup master ${Master_Group} to ${Master_Group}.${Branded}" "QUEUE #${Queue_Count}"
-    Tmp_Queue_Commands+=("cp \"${Master_Group}\" \"${Master_Group}.${Branded}\"")
+    if [ "$Queue_Commands" != "" ]; then
+        Tmp_Queue_Commands=()
+        pprint "backup master ${Master_Passwd} to ${Master_Passwd}.${Branded}" "QUEUE #${Queue_Count}"
+        Tmp_Queue_Commands+=("cp \"${Master_Passwd}\" \"${Master_Passwd}.${Branded}\"")
+        pprint "backup master ${Master_Group} to ${Master_Group}.${Branded}" "QUEUE #${Queue_Count}"
+        Tmp_Queue_Commands+=("cp \"${Master_Group}\" \"${Master_Group}.${Branded}\"")
 
-    for Queue_Command in "${Queue_Commands[@]}"; do
-        Tmp_Queue_Commands+=("$Queue_Command")
-    done
+        for Queue_Command in "${Queue_Commands[@]}"; do
+            Tmp_Queue_Commands+=("$Queue_Command")
+        done
 
-    Queue_Commands=()
-    for Tmp_Queue_Command in "${Tmp_Queue_Commands[@]}"; do
-        Queue_Commands+=("$Tmp_Queue_Command")
-    done
+        Queue_Commands=()
+        for Tmp_Queue_Command in "${Tmp_Queue_Commands[@]}"; do
+            Queue_Commands+=("$Tmp_Queue_Command")
+        done
 
-    for Queue_Command in "${Queue_Commands[@]}"; do
-        debug "new command: $Queue_Command"
-    done
-    unset Queue_Command Tmp_Queue_Command Tmp_Queue_Commands
-fi
+        for Queue_Command in "${Queue_Commands[@]}"; do
+            debug "new command: $Queue_Command"
+        done
+        unset Queue_Command Tmp_Queue_Command Tmp_Queue_Commands
+    fi
 
-if [ ${Verbose_Flag} -eq 0 ]; then
-    pprint "checkPG ${Active_Passwd} ${Active_Group}" OK
-fi
+    if [ ${Verbose_Flag} -eq 0 ]; then
+        pprint "checkPG ${Master_Passwd} ${Master_Passwd}" OK
+    fi
 
-if [ "${Master_Passwd}" == "/etc/passwd" ] && [ "${Master_Group}" == "/etc/group" ]; then
-    updatePGM "${Active_Passwd}" "${Active_Group}" "${Master_Passwd}" "${Master_Group}"
-fi
+    if [ "${Master_Passwd}" == "/etc/passwd" ] && [ "${Master_Group}" == "/etc/group" ]; then
+        updatePGM "${Active_Passwd}" "${Active_Group}" "${Master_Passwd}" "${Master_Group}"
+    fi
 
 else
     # continuing with bad master files is, well, bad
@@ -978,7 +1022,7 @@ else
         pprint "5) $0 yes # let the script do the rest" SUGGEST
         pprint "6) rm /etc/master.passwd /etc/master.group # or, fix the WARNING(s) and repeat" SUGGEST
     fi
-    aborting "${Master_Passwd} & ${Master_Group} have issues, fix them manually"
+    aborting "${Master_Passwd} & ${Master_Group} have issues, fix them"
 fi
 
 if [ "${Active_Passwd}" != "${Master_Passwd}" ] && [ "${Active_Group}" != "${Master_Group}" ]; then
@@ -999,12 +1043,12 @@ if [ "${Active_Passwd}" != "${Master_Passwd}" ] && [ "${Active_Group}" != "${Mas
         fi
     fi
 
-# at this point, not much in the queue should be irreversible
-queueEval "${Yes_Flag}"
-((++Queue_Count))
+    # at this point, not much in the queue should be irreversible
+    queueEval "${Yes_Flag}"
+    ((++Queue_Count))
 
-# it's likily that the active files are bad, that's OK (as long as the master files are good)
-updatePGM "${Active_Passwd}" "${Active_Group}" "${Master_Passwd}" "${Master_Group}"
+    # it's likily that the active files are bad, that's OK (as long as the master files are good)
+    updatePGM "${Active_Passwd}" "${Active_Group}" "${Master_Passwd}" "${Master_Group}"
 
 fi
 
