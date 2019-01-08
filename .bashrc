@@ -208,23 +208,42 @@ function gitConfig() {
         unset -v Rm_Rc
     fi
 
-    git config --global alias.info 'remote -v' &> /dev/null
-    git config --global alias.ls ls-files &> /dev/null
-    git config --global alias.rev-prase rev-parse &> /dev/null
-    git config --global alias.st status &> /dev/null
-    git config --global alias.up pull &> /dev/null
+    local git_config_globals=()
+    git_config_globals+=("alias.info 'remote -v'")
+    git_config_globals+=("alias.ls ls-files")
+    git_config_globals+=("alias.rev-prase rev-parse")
+    git_config_globals+=("alias.st status")
+    git_config_globals+=("alias.s status")
+    git_config_globals+=("alias.up pull")
 
-    git config --global color.ui auto &> /dev/null
-    git config --global color.branch auto &> /dev/null
-    git config --global color.status auto &> /dev/null
+    git_config_globals+=("color.ui auto")
+    git_config_globals+=("color.branch auto")
+    git_config_globals+=("color.status auto")
+
+    git_config_globals+=("user.email ${USER}@${HOSTNAME}")
+    git_config_globals+=("user.name ${USER}@${HOSTNAME}")
 
     if [[ $(git --version 2> /dev/null | grep 'version 1.9.') ]]; then
         # only support this for git 1.9.x
-        git config --global push.default simple &> /dev/null
+        git_config_globals+=("push.default simple")
     fi
 
-    git config --global user.email "joseph.tingiris@gmail.com" &> /dev/null
-    git config --global user.name "${USER}@${HOSTNAME}" &> /dev/null
+    # set if not set but don't overwrite
+    local git_config_global git_config_global_key git_config_global_value
+    for git_config_global in "${git_config_globals[@]}"; do
+        git_config_global_key=${git_config_global%% *}
+        git_config_global_value=${git_config_global#* }
+        if git_config_global=$(git config --get --global ${git_config_global_key}); then
+            if [ "${git_config_global}" == "${git_config_global_value}" ]; then
+                bverbose "INFO: git_config_global: ${git_config_global_key} ${git_config_global_value}"
+            else
+                bverbose "NOTICE: git_config_global: ${git_config_global_key} ${git_config_global_value} != ${git_config_global}"
+            fi
+        else
+            bverbose "ALERT: git_config_global: ${git_config_global_key} ${git_config_global_value}"
+            git config --global ${git_config_global_key} ${git_config_global_value}
+        fi
+    done
 
 }
 
@@ -1084,6 +1103,7 @@ if type -P git &> /dev/null; then
     alias git-config=gitConfig
     alias gc=gitConfig
     alias git-hub-dotfiles=githubDotfiles
+    alias got=git
     alias dotfiles=githubDotfiles
 fi
 
