@@ -1,6 +1,6 @@
 # .bashrc
 
-Bashrc_Version="20190107, joseph.tingiris@gmail.com"
+Bashrc_Version="20190113, joseph.tingiris@gmail.com"
 
 ##
 ### returns to avoid interactive shell enhancements
@@ -209,6 +209,7 @@ function gitConfig() {
     fi
 
     local git_config_globals=()
+    git_config_globals+=("alias.b branch")
     git_config_globals+=("alias.info 'remote -v'")
     git_config_globals+=("alias.ls ls-files")
     git_config_globals+=("alias.rev-prase rev-parse")
