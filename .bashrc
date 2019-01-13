@@ -95,7 +95,9 @@ export Base_User=${Apex_User}
 ### set PATH automatically
 ##
 
-cd &> /dev/null
+if [ ${#OLDPWD} -eq 0 ]; then
+    cd &> /dev/null
+fi
 
 unset -v Auto_Path
 
