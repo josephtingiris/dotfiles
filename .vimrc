@@ -62,7 +62,7 @@ if has("autocmd")
                 Plug 'scrooloose/nerdtree'
                 let NERDTreeShowHidden=1
                 autocmd StdinReadPre * let s:std_in=1
-                autocmd VimEnter * if argc() == 0 && !exists("s:std_in") | NERDTree | endif
+                "autocmd VimEnter * if argc() == 0 && !exists("s:std_in") | NERDTree | endif
                 map <Leader>f :NERDTreeToggle<CR>
 
                 let g:ctrlp_dont_split = 'NERD'
