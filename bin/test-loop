@@ -1,6 +1,6 @@
 #!/bin/bash
 
-COMMAND="$1"
+printf -v COMMAND "%b " "$@"
 COUNTER=0
 
 SEPERATOR="+--------------------------------------+"
@@ -21,7 +21,7 @@ while true; do
     echo "$COUNTER $SEPERATOR '$COMMAND' (sleep $SLEEP) $SEPERATOR $COUNTER"
     echo
 
-    $COMMAND
+    eval $COMMAND
 
     echo
     echo "$COUNTER $SEPERATOR '$COMMAND' (sleep $SLEEP) $SEPERATOR $COUNTER"
