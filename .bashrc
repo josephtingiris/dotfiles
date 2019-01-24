@@ -1,6 +1,6 @@
 # .bashrc
 
-Bashrc_Version="20190113, joseph.tingiris@gmail.com"
+Bashrc_Version="20190124, joseph.tingiris@gmail.com"
 
 ##
 ### returns to avoid interactive shell enhancements
@@ -655,7 +655,8 @@ function sshAgentClean() {
         fi
 
         if [ "${ssh_agent_socket_command}" == "startkde" ] || [ "${ssh_agent_socket_command}" == "sshd" ] || [ "${ssh_agent_socket_command}" == "ssh-agent" ]; then
-            SSH_AUTH_SOCK=${ssh_agent_socket} ${Ssh_Add} -l ${ssh_agent_socket} &> /dev/null
+            #echo "bug here? SSH_AUTH_SOCK=${ssh_agent_socket} ${Ssh_Add} -l ${ssh_agent_socket}"
+            SSH_AUTH_SOCK=${ssh_agent_socket} ${Ssh_Add} -l &> /dev/null
             Ssh_Add_Rc=$?
             if [ ${Ssh_Add_Rc} -gt 1 ]; then
                 # definite error
@@ -684,7 +685,11 @@ function sshAgentClean() {
         fi
         # also find really old sockets & remove them regardless if they still work or not?
     done <<<"$(find /tmp -type s -name "agent\.*" 2> /dev/null)"
-    SSH_AUTH_SOCK=$ssh_auth_sock
+
+    if [ ${#ssh_auth_sock} -gt 0 ] && [ -S "${ssh_auth_sock}" ]; then
+        SSH_AUTH_SOCK=$ssh_auth_sock
+    fi
+
     unset -v ssh_agent_socket ssh_agent_socket_pid ssh_agent_socket_command ssh_auth_sock
 
     # it's possible this condition could happen (again) if a socket's removed
@@ -901,26 +906,6 @@ alias nouser="find . -nouser 2> /dev/null"
 alias sal='pgrep -a ssh-agent; echo && env | grep -i ssh | sort -V; echo; ssh-add -l'
 
 ##
-### conditional alias definitions
-##
-
-if [ -r "${User_Dir}/.bashrc" ]; then
-    alias s="source ${User_Dir}/.bashrc"
-else
-    alias s="source ${HOME}/.bashrc"
-fi
-if [ -x $(type -P sudo) ]; then
-    alias root="sudo SSH_AUTH_SOCK=${SSH_AUTH_SOCK} -u root /bin/bash --init-file ${User_Dir}/.bashrc"
-    alias suroot='sudo su -'
-else
-    alias root="su - root -c '/bin/bash --init-file /home/jtingiris/.bashrc'"
-    alias suroot='su -'
-fi
-if [ -x $(type -P screen) ]; then
-    alias sd='screen -S $(basename $(pwd))'
-fi
-
-##
 ### global key bindings
 ##
 
@@ -1124,6 +1109,26 @@ fi
 
 if type -P svn &> /dev/null; then
     export SVN_EDITOR=${EDITOR}
+fi
+
+##
+### conditional alias definitions
+##
+
+if [ -r "${User_Dir}/.bashrc" ]; then
+    alias s="source ${User_Dir}/.bashrc"
+else
+    alias s="source ${HOME}/.bashrc"
+fi
+if [ -x $(type -P sudo) ]; then
+    alias root="sudo SSH_AUTH_SOCK=${SSH_AUTH_SOCK} -u root /bin/bash --init-file ${User_Dir}/.bashrc"
+    alias suroot='sudo su -'
+else
+    alias root="su - root -c '/bin/bash --init-file /home/jtingiris/.bashrc'"
+    alias suroot='su -'
+fi
+if [ -x $(type -P screen) ]; then
+    alias sd='screen -S $(basename $(pwd))'
 fi
 
 ##
