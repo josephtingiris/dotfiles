@@ -656,7 +656,9 @@ function sshAgentClean() {
 
         if [ "${ssh_agent_socket_command}" == "startkde" ] || [ "${ssh_agent_socket_command}" == "sshd" ] || [ "${ssh_agent_socket_command}" == "ssh-agent" ]; then
             #echo "bug here? SSH_AUTH_SOCK=${ssh_agent_socket} ${Ssh_Add} -l ${ssh_agent_socket}"
-            SSH_AUTH_SOCK=${ssh_agent_socket} ${Ssh_Add} -l &> /dev/null
+            # sometimes ssh-add fails to read the socket & takes 3+ minutes to timeout; if it takes longer than 5 seconds
+            # to read the socket then remove it (it's unusable)
+            SSH_AUTH_SOCK=${ssh_agent_socket} timeout 5 ${Ssh_Add} -l ${ssh_agent_socket} &> /dev/null
             Ssh_Add_Rc=$?
             if [ ${Ssh_Add_Rc} -gt 1 ]; then
                 # definite error
