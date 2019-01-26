@@ -939,6 +939,7 @@ export TZ='America/New_York'
 
 alias cl='cd;clear'
 alias cp='cp -i'
+alias dmesg='dmesg -T 2> /dev/null || dmesg'
 alias h='history'
 alias hs='export HISTSIZE=0'
 alias l='ls -lFhart'
