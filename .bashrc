@@ -1,6 +1,6 @@
 # .bashrc
 
-Bashrc_Version="20190124, joseph.tingiris@gmail.com"
+Bashrc_Version="20190125, joseph.tingiris@gmail.com"
 
 ##
 ### returns to avoid interactive shell enhancements
@@ -205,7 +205,7 @@ function gitConfig() {
         rm -f ~/.gitconfig.local &> /dev/null
         Rm_Rc=$?
         if [ ${Rm_Rc} -ne 0 ]; then
-            bverbose "ALERT: failed to 'rm -f ~/.gitconfig.local', rc=${Rm_Rc}"
+            verbose "ALERT: failed to 'rm -f ~/.gitconfig.local', rc=${Rm_Rc}"
         fi
         unset -v Rm_Rc
     fi
@@ -238,12 +238,12 @@ function gitConfig() {
         git_config_global_value=${git_config_global#* }
         if git_config_global=$(git config --get --global ${git_config_global_key}); then
             if [ "${git_config_global}" == "${git_config_global_value}" ]; then
-                bverbose "INFO: git_config_global: ${git_config_global_key} ${git_config_global_value}"
+                verbose "INFO: git_config_global: ${git_config_global_key} ${git_config_global_value}"
             else
-                bverbose "NOTICE: git_config_global: ${git_config_global_key} ${git_config_global_value} != ${git_config_global}"
+                verbose "NOTICE: git_config_global: ${git_config_global_key} ${git_config_global_value} != ${git_config_global}"
             fi
         else
-            bverbose "ALERT: git_config_global: ${git_config_global_key} ${git_config_global_value}"
+            verbose "ALERT: git_config_global: ${git_config_global_key} ${git_config_global_value}"
             git config --global ${git_config_global_key} ${git_config_global_value}
         fi
     done
@@ -289,12 +289,12 @@ function githubDotfiles() {
 function sshAgent() {
 
     if ! sshAgentClean; then
-        bverbose "EMERGENCY: sshAgentClean failed"
+        verbose "EMERGENCY: sshAgentClean failed"
         return 1
     fi
 
-    bverbose "DEBUG: ${FUNCNAME} start SSH_AGENT_PID=${SSH_AGENT_PID}"
-    bverbose "DEBUG: ${FUNCNAME} start SSH_AUTH_SOCK=${SSH_AUTH_SOCK}"
+    verbose "DEBUG: ${FUNCNAME} start SSH_AGENT_PID=${SSH_AGENT_PID}"
+    verbose "DEBUG: ${FUNCNAME} start SSH_AUTH_SOCK=${SSH_AUTH_SOCK}"
 
     if [ ${#Ssh_Agent_Home} -gt 0 ]; then
 
@@ -303,7 +303,7 @@ function sshAgent() {
                 # remind me; these keys probably shouldn't be here
                 for Ssh_Key in "${HOME}/.ssh/id"*; do
                     if [ -r "${Ssh_Key}" ]; then
-                        bverbose "WARNING: no ${Ssh_Agent_Home}; found ssh key file on ${HOSTNAME} '${Ssh_Key}'"
+                        verbose "WARNING: no ${Ssh_Agent_Home}; found ssh key file on ${HOSTNAME} '${Ssh_Key}'"
                     fi
                 done
                 unset -v Ssh_Key
@@ -313,7 +313,7 @@ function sshAgent() {
         if [ ${#SSH_AUTH_SOCK} -eq 0 ]; then
             if [ ! -r "${Ssh_Agent_Home}" ]; then
                 # there's no .ssh-agent file and ssh agent forwarding is apparently off
-                bverbose "ALERT: no ${Ssh_Agent_Home}; ssh agent forwarding is apparently off"
+                verbose "ALERT: no ${Ssh_Agent_Home}; ssh agent forwarding is apparently off"
                 return 0
             fi
         fi
@@ -321,13 +321,13 @@ function sshAgent() {
 
     export Ssh_Agent=$(type -P ssh-agent)
     if [ ${#Ssh_Agent} -eq 0 ] || [ ! -x ${Ssh_Agent} ]; then
-        bverbose "EMERGENCY: ssh-agent not usable"
+        verbose "EMERGENCY: ssh-agent not usable"
         return 1
     fi
 
     export Ssh_Keygen=$(type -P ssh-keygen)
     if [ ${#Ssh_Keygen} -eq 0 ] || [ ! -x ${Ssh_Keygen} ]; then
-        bverbose "EMERGENCY: ssh-keygen not usable"
+        verbose "EMERGENCY: ssh-keygen not usable"
         return 1
     fi
 
@@ -351,19 +351,19 @@ function sshAgent() {
         if [ ${#SSH_AGENT_PID} -eq 0 ] && [ ${#SSH_AUTH_SOCK} -gt 0 ]; then
             # ssh-add apparently works; ssh agent forwarding is apparently on .. start another/local agent anyway?
             if [ ${#Ssh_Agent_Home} -gt 0 ] && [ -r "${Ssh_Agent_Home}" ]; then
-                bverbose "ALERT: ignoring ${Ssh_Agent_Home}"
+                verbose "ALERT: ignoring ${Ssh_Agent_Home}"
             fi
-            bverbose "ALERT: ssh agent forwarding via SSH_AUTH_SOCK=${SSH_AUTH_SOCK}"
+            verbose "ALERT: ssh agent forwarding via SSH_AUTH_SOCK=${SSH_AUTH_SOCK}"
         fi
     else
         # starting ssh-add failed (the first time)
         if [ ${#Ssh_Add_Rc} -eq 1 ]; then
             # rc=1 means 'failure', it's unspecified and may just be that it has no identities
             if [[ "${Ssh_Add_Out}" != *"agent has no identities"* ]]; then
-                bverbose "ALERT: '${Ssh_Add}' failed with SSH_AGENT_PID=${SSH_AGENT_PID}, SSH_AUTH_SOCK=${SSH_AUTH_SOCK}, output='${Ssh_Add_Out}', rc=${Ssh_Add_Rc}"
+                verbose "ALERT: '${Ssh_Add}' failed with SSH_AGENT_PID=${SSH_AGENT_PID}, SSH_AUTH_SOCK=${SSH_AUTH_SOCK}, output='${Ssh_Add_Out}', rc=${Ssh_Add_Rc}"
             fi
         else
-            bverbose "EMERGENCY: '${Ssh_Add}' failed with SSH_AGENT_PID=${SSH_AGENT_PID}, SSH_AUTH_SOCK=${SSH_AUTH_SOCK}, output='${Ssh_Add_Out}' rc=${Ssh_Add_Rc}"
+            verbose "EMERGENCY: '${Ssh_Add}' failed with SSH_AGENT_PID=${SSH_AGENT_PID}, SSH_AUTH_SOCK=${SSH_AUTH_SOCK}, output='${Ssh_Add_Out}' rc=${Ssh_Add_Rc}"
             if [ ${#SSH_AGENT_PID} -gt 0 ] && [ ${#SSH_AUTH_SOCK} -eq 0 ]; then
                 # it's a bad SSH_AGENT_PID
                 unset -v SSH_AGENT_PID
@@ -440,7 +440,7 @@ function sshAgent() {
             Ssh_Keygen_Rc=$?
             if [ ${Ssh_Keygen_Rc} -ne 0 ]; then
                 # unsupported key type
-                bverbose "WARNING: ${Ssh_Key_File}.pub is of an unsupported key type"
+                verbose "WARNING: ${Ssh_Key_File}.pub is of an unsupported key type"
                 continue
             fi
             unset -v Ssh_Keygen_Rc
@@ -460,7 +460,7 @@ function sshAgent() {
                 ${Ssh_Add} ${Ssh_Key_File}
                 Ssh_Add_Rc=$?
                 if [ ${Ssh_Add_Rc} -ne 0 ]; then
-                    bverbose "ALERT: '${Ssh_Add} ${Ssh_Key_File}', rc=${Ssh_Add_Rc}"
+                    verbose "ALERT: '${Ssh_Add} ${Ssh_Key_File}', rc=${Ssh_Add_Rc}"
                 fi
                 unset -v Ssh_Add_Rc
 
@@ -480,7 +480,7 @@ function sshAgent() {
             mkdir -p "${Ssh_Identities_Dir}"
             Mkdir_Rc=$?
             if [ ${Mkdir_Rc} -ne 0 ]; then
-                bverbose "EMERGENCY: failed to 'mkdir -p ${Ssh_Identities_Dir}', rc=${Mkdir_Rc}"
+                verbose "EMERGENCY: failed to 'mkdir -p ${Ssh_Identities_Dir}', rc=${Mkdir_Rc}"
                 return 1
             fi
             unset -v Mkdir_Rc
@@ -489,7 +489,7 @@ function sshAgent() {
         chmod 0700 "${Ssh_Identities_Dir}" &> /dev/null
         Chmod_Rc=$?
         if [ ${Chmod_Rc} -ne 0 ]; then
-            bverbose "EMERGENCY: failed to 'chmod -700 ${Ssh_Identities_Dir}', rc=${Chmod_Rc}"
+            verbose "EMERGENCY: failed to 'chmod -700 ${Ssh_Identities_Dir}', rc=${Chmod_Rc}"
             return 1
         fi
         unset -v Chmod_Rc
@@ -504,7 +504,7 @@ function sshAgent() {
                 chmod 0400 "${Ssh_Identities_Dir}/${Ssh_Public_Key_Md5sum}.pub" &> /dev/null
                 Chmod_Rc=$?
                 if [ ${Chmod_Rc} -ne 0 ]; then
-                    bverbose "EMERGENCY: failed to 'chmod 0400 ${Ssh_Identities_Dir}/${Ssh_Public_Key_Md5sum}.pub', rc=${Chmod_Rc}"
+                    verbose "EMERGENCY: failed to 'chmod 0400 ${Ssh_Identities_Dir}/${Ssh_Public_Key_Md5sum}.pub', rc=${Chmod_Rc}"
                     return 1
                 fi
                 unset -v Chmod_Rc
@@ -521,7 +521,7 @@ function sshAgentClean() {
     export Ssh_Add=$(type -P ssh-add)
     if [ ${#Ssh_Add} -eq 0 ] || [ ! -x ${Ssh_Add} ]; then
         pkill ssh-agent &> /dev/nulll
-        bverbose "EMERGENCY: ssh-add not usable"
+        verbose "EMERGENCY: ssh-add not usable"
         return 1
     fi
 
@@ -543,11 +543,11 @@ function sshAgentClean() {
         fi
     else
         if [ -f "${Ssh_Agent_State}" ]; then
-            bverbose "ALERT: removing empty ${Ssh_Agent_State}"
+            verbose "ALERT: removing empty ${Ssh_Agent_State}"
             rm -f "${Ssh_Agent_State}" &> /dev/null
             Rm_Rc=$?
             if [ ${Rm_Rc} -ne 0 ]; then
-                bverbose "ALERT: failed to 'rm -f ${Ssh_Agent_State}', rc=${Rm_Rc}"
+                verbose "ALERT: failed to 'rm -f ${Ssh_Agent_State}', rc=${Rm_Rc}"
             fi
             unset -v Rm_Rc
         else
@@ -568,7 +568,7 @@ function sshAgentClean() {
     if [ ${#SSH_AGENT_PID} -gt 0 ]; then
         ssh_agent_socket_command=$(ps -h -o comm -p ${SSH_AGENT_PID} 2> /dev/null)
         if [ "${ssh_agent_socket_command}" != "ssh-agent" ] && [ "${ssh_agent_socket_command}" != "sshd" ]; then
-            bverbose "WARNING: SSH_AGENT_PID=${SSH_AGENT_PID} process not found"
+            verbose "WARNING: SSH_AGENT_PID=${SSH_AGENT_PID} process not found"
             unset -v SSH_AGENT_PID
         fi
     fi
@@ -576,7 +576,7 @@ function sshAgentClean() {
     if [ ${#SSH_AUTH_SOCK} -gt 0 ]; then
         if [ -S "${SSH_AUTH_SOCK}" ]; then
             if [ ! -w "${SSH_AUTH_SOCK}" ]; then
-                bverbose "WARNING: ${SSH_AUTH_SOCK} socket not found writable"
+                verbose "WARNING: ${SSH_AUTH_SOCK} socket not found writable"
                 unset -v SSH_AUTH_SOCK
                 if [ ${#SSH_AGENT_PID} -gt 0 ]; then
                     kill ${SSH_AGENT_PID} &> /dev/null
@@ -585,7 +585,7 @@ function sshAgentClean() {
             fi
         else
             # SSH_AUTH_SOCK is not a socket
-            bverbose "WARNING: ${SSH_AUTH_SOCK} is not a socket"
+            verbose "WARNING: ${SSH_AUTH_SOCK} is not a socket"
             unset -v SSH_AUTH_SOCK
             if [ ${#SSH_AGENT_PID} -gt 0 ]; then
                 kill ${SSH_AGENT_PID} &> /dev/null
@@ -596,11 +596,11 @@ function sshAgentClean() {
 
     if [ ${#SSH_AGENT_PID} -eq 0 ] && [ ${#SSH_AUTH_SOCK} -eq 0 ]; then
         if [ -s "${Ssh_Agent_State}" ]; then
-            bverbose "ALERT: removing invalid ${Ssh_Agent_State}"
+            verbose "ALERT: removing invalid ${Ssh_Agent_State}"
             rm -f "${Ssh_Agent_State}" &> /dev/null
             Rm_Rc=$?
             if [ ${Rm_Rc} -ne 0 ]; then
-                bverbose "ALERT: failed to 'rm -f ${Ssh_Agent_State}', rc=${Rm_Rc}"
+                verbose "ALERT: failed to 'rm -f ${Ssh_Agent_State}', rc=${Rm_Rc}"
             fi
             unset -v Rm_Rc
         fi
@@ -626,7 +626,7 @@ function sshAgentClean() {
                     continue
                 fi
             fi
-            bverbose "ALERT: killing old ssh_agent_pid='${ssh_agent_pid}'"
+            verbose "ALERT: killing old ssh_agent_pid='${ssh_agent_pid}'"
             kill ${ssh_agent_pid} &> /dev/null
         done
         unset -v ssh_agent_pid ssh_agent_state_pid
@@ -662,11 +662,11 @@ function sshAgentClean() {
             Ssh_Add_Rc=$?
             if [ ${Ssh_Add_Rc} -gt 1 ]; then
                 # definite error
-                bverbose "ALERT: (1) removing unusable ssh_agent_socket ${ssh_agent_socket}, comm=${ssh_agent_socket_command}, pid=${ssh_agent_socket_pid}, ${Ssh_Add} rc=${Ssh_Add_Rc}"
+                verbose "ALERT: (1) removing unusable ssh_agent_socket ${ssh_agent_socket}, comm=${ssh_agent_socket_command}, pid=${ssh_agent_socket_pid}, ${Ssh_Add} rc=${Ssh_Add_Rc}"
                 rm -f ${ssh_agent_socket} &> /dev/null
                 Rm_Rc=$?
                 if [ ${Rm_Rc} -ne 0 ]; then
-                    bverbose "ALERT: failed to 'rm -f ${ssh_agent_socket}', rc=${Rm_Rc}"
+                    verbose "ALERT: failed to 'rm -f ${ssh_agent_socket}', rc=${Rm_Rc}"
                 fi
                 unset -v ssh_auth_sock
                 unset -v Rm_Rc
@@ -676,11 +676,11 @@ function sshAgentClean() {
             fi
             unset -v Ssh_Add_Rc
         else
-            bverbose "ALERT: (2) removing dead ssh_agent_socket ${ssh_agent_socket}, comm=${ssh_agent_socket_command}, pid=${ssh_agent_socket_pid}, ${Ssh_Add} rc=${Ssh_Add_Rc}"
+            verbose "ALERT: (2) removing dead ssh_agent_socket ${ssh_agent_socket}, comm=${ssh_agent_socket_command}, pid=${ssh_agent_socket_pid}, ${Ssh_Add} rc=${Ssh_Add_Rc}"
             rm -f ${ssh_agent_socket} &> /dev/null
             Rm_Rc=$?
             if [ ${Rm_Rc} -ne 0 ]; then
-                bverbose "ALERT: failed to 'rm -f ${ssh_agent_socket}', rc=${Rm_Rc}"
+                verbose "ALERT: failed to 'rm -f ${ssh_agent_socket}', rc=${Rm_Rc}"
             fi
             unset -v ssh_auth_sock
             unset -v Rm_Rc
@@ -701,7 +701,7 @@ function sshAgentClean() {
 }
 
 # output more verbose messages based on a verbosity level set in the environment or a specific file
-function bverbose() {
+function verbose() {
     # verbose level is always the last argument
     local verbose_arguments=($@)
 
@@ -836,6 +836,47 @@ function bverbose() {
     unset -v verbose_level verbosity
 }
 
+# locate files & vi them
+function viLocate() {
+    local vi_locates=($@)
+    verbose "\nALERT: vi locates '${vi_locates[@]}'\n"
+    local vi_file vi_files vi_locate
+
+    vi_files=()
+
+    for vi_locate in ${vi_locates[@]}; do
+        if [ -r "${vi_locate}" ] && [ ! -d "${vi_locate}" ]; then
+            vi_files+=(${vi_locate})
+        else
+            if [ -x $(type -P locate) ]; then
+                while read vi_file; do
+                    if [ -r "${vi_file}" ] && [ ! -d "${vi_file}" ]; then
+                        vi_files+=($vi_file)
+                    fi
+                done <<< "$(locate -r "/${vi_locate}$" | sort)"
+            else
+                if [ -x $(type -P which) ]; then
+                    while read vi_file; do
+                        if [ -r "${vi_file}" ] && [ ! -d "${vi_file}" ]; then
+                            vi_files+=($vi_file)
+                        fi
+                    done <<< "$(which  "${vi_locate}" | sort)"
+                fi
+            fi
+        fi
+    done
+
+    if [ ${#vi_files} -eq 0 ]; then
+        vi_files=(${vi_locates[@]})
+    fi
+
+    if [[ "${EDITOR}" == *"vim"* ]] && [ -r "${User_Dir}/.vimrc" ]; then
+        HOME="${User_Dir}" ${EDITOR} --cmd "let User_Name='${User_Name}'" --cmd "let User_Dir='${User_Dir}'" $(printf "%b " "${vi_files[@]}")
+    else
+        ${EDITOR} $(printf "%b " "${vi_files[@]}")
+    fi
+}
+
 ##
 ### main
 ##
@@ -859,7 +900,7 @@ if [ "$TERM" != "$TPUT_TERM" ]; then
     fi
 fi
 
-bverbose "\nALERT: verbose is on\n"
+verbose "\nALERT: verbose is on\n"
 
 ##
 ### trap EXIT to ensure .bash_logout gets called, regardless of whether or not it's a login shell
@@ -867,7 +908,7 @@ bverbose "\nALERT: verbose is on\n"
 
 # non-login shells will *not* execute .bash_logout, and I want to know ...
 if ! shopt -q login_shell &> /dev/null; then
-    bverbose "INFO: interactive, but not a login shell\n"
+    verbose "INFO: interactive, but not a login shell\n"
 fi
 
 if [ -r "${User_Dir}/.bash_logout" ]; then
@@ -906,6 +947,8 @@ alias mv='mv -i'
 alias rm='rm -i'
 alias nouser="find . -nouser 2> /dev/null"
 alias sal='pgrep -a ssh-agent; echo && env | grep -i ssh | sort -V; echo; ssh-add -l'
+alias viw=viLocate
+alias vil=viLocate
 
 ##
 ### global key bindings
@@ -1018,7 +1061,7 @@ fi
 
 # try twice
 if ! sshAgent; then
-    bverbose "ALERT: sshAgent failed, retrying ..."
+    verbose "ALERT: sshAgent failed, retrying ..."
     sshAgent
 fi
 
@@ -1059,7 +1102,7 @@ Editors=(nvim vim vi)
 for Editor in ${Editors[@]}; do
     if type -P ${Editor} &> /dev/null; then
         export EDITOR="$(type -P ${Editor} 2> /dev/null)"
-        if [ -r "${User_Dir}/.vimrc" ]; then
+        if [[ "${EDITOR}" == *"vim"* ]] && [ -r "${User_Dir}/.vimrc" ]; then
             alias vi="HOME=\"${User_Dir}\" ${EDITOR} --cmd \"let User_Name='${User_Name}'\" --cmd \"let User_Dir='${User_Dir}'\""
         else
             alias vi="${EDITOR}"
@@ -1144,7 +1187,7 @@ if [ -r /etc/redhat-release ]; then
     printf "\n"
 fi
 
-bverbose "${User_Dir}/.bashrc ${Bashrc_Version}\n" 2
+verbose "${User_Dir}/.bashrc ${Bashrc_Version}\n" 2
 if [ "${TMUX}" ]; then
-    bverbose "${Tmux_Info} [${TMUX}]\n" 4
+    verbose "${Tmux_Info} [${TMUX}]\n" 4
 fi
