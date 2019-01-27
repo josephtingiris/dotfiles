@@ -1,6 +1,6 @@
 # .bashrc
 
-Bashrc_Version="20190125, joseph.tingiris@gmail.com"
+Bashrc_Version="20190127, joseph.tingiris@gmail.com"
 
 ##
 ### returns to avoid interactive shell enhancements
@@ -197,6 +197,15 @@ done
 ##
 ### functions
 ##
+
+# override dmesg
+function dmesg() {
+    local dmesg=$(type -P dmesg)
+
+    if [ -x ${dmesg} ]; then
+        ${dmesg} -H $@ 2> /dev/null || ${dmesg} $@
+    fi
+}
 
 # add stuff to my .gitconfig
 function gitConfig() {
@@ -939,7 +948,6 @@ export TZ='America/New_York'
 
 alias cl='cd;clear'
 alias cp='cp -i'
-alias dmesg='dmesg -T 2> /dev/null || dmesg'
 alias h='history'
 alias hs='export HISTSIZE=0'
 alias l='ls -lFhart'
