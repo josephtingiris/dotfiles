@@ -700,7 +700,7 @@ else
         fi
     fi
     if [ "$ID" == "fedora" ]; then
-        if [ "$VERSION_ID" == "28" ]; then
+        if [ "$VERSION_ID" == "28" ] || [ "$VERSION_ID" == "29" ]; then
             Tested_Ok=0 # true
         fi
     fi
