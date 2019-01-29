@@ -12,6 +12,7 @@
 # joseph.tingiris@gmail.com, 20180818 ... alpha (centos 7, fedora 28)
 # joseph.tingiris@gmail.com, 20181220 ... beta (centos 7, fedora 28)
 # joseph.tingiris@gmail.com, 20190104 ... rc1 (centos 7, fedora 28)
+# joseph.tingiris@gmail.com, 20190129 ... rc2 (centos 7, fedora 28-29)
 
 ###########
 # Globals #
@@ -30,11 +31,19 @@ fi
 
 # 0=true, 1=false
 let Delete_Flag=1
-let Reboot_Flag=1 # TODO; check /run/users/, /proc/, etc ...
+let Reboot_Flag=1
 let Report_Flag=1
 let Sync_Flag=1
 let Verbose_Flag=1
 let Yes_Flag=1
+
+Prune_Paths=(-path /dev -prune)
+Prune_Paths+=(-or -path /mnt -prune)
+Prune_Paths+=(-or -path /net -prune)
+Prune_Paths+=(-or -path /proc -prune)
+Prune_Paths+=(-or -path /run/user -prune)
+Prune_Paths+=(-or -path /sys -prune)
+Prune_Paths+=(-or)
 
 # counters
 let Queue_Count=0
@@ -593,7 +602,7 @@ function updatePGM() {
                     local homedir="$(echo "${passwd_line}" | awk -F: '{print $6}')"
                     local shell="$(echo "${passwd_line}" | awk -F: '{print $7}')"
 
-                    find_args="/ -path /dev -prune -or -path /proc -prune -or -path /run/user -prune -or -path /sys -prune -or"
+                    find_args="/ ${Prune_Paths[@]}"
 
                     # under no circumstances change root uid files
                     if [ "${uid}" == "0" ] || [ "${uid}" == "" ]; then
@@ -1058,23 +1067,23 @@ queueEval "${Yes_Flag}"
 
 Reboot=1
 if [ ${Yes_Flag} -eq 0 ]; then
-    pprint "find /proc files that have no username or groupname" "CHECK"
+    pprint "find processes that have no username" "CHECK"
     printf "\n"
-    find /proc -nouser -or -nogroup
-    if [ $? -ne 0 ]; then
+    ps -ef | grep ^[0-9]
+    if [ $? -eq 0 ]; then
         Reboot=0
     fi
     printf "\n"
 
     pprint "find / files that have no username or groupname" "CHECK"
     printf "\n"
-    find / -path /dev -prune -or -path /proc -prune -or -path /run/user -prune -or -path /sys -prune -or -path /home -prune -or -nouser -or -nogroup
+    find / ${Prune_Paths[@]} -nouser -or -nogroup
     printf "\n"
 fi
 
 if [ $Reboot -eq 0 ]; then
     printf "\n"
-    pprint "this machine needs to be rebooted" "REBOOT"
+    pprint "!! This machine needs to be rebooted. !!" "REBOOT"
     printf "\n"
 fi
 
