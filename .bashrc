@@ -1,6 +1,6 @@
 # .bashrc
 
-Bashrc_Version="20190127, joseph.tingiris@gmail.com"
+Bashrc_Version="20190129, joseph.tingiris@gmail.com"
 
 ##
 ### returns to avoid interactive shell enhancements
@@ -43,7 +43,20 @@ fi
 ### determine os variant
 ##
 
-export Uname_R=$(uname -r 2> /dev/null | awk -F\. '{print $(NF-1)"."$NF}' 2> /dev/null)
+if [ -r /etc/os-release ]; then
+    export Os_Id=$(cat /etc/os-release | sed -nEe 's#"##g;s#^ID=(.*)$#\1#p')
+    export Os_Version_Id=$(cat /etc/os-release | sed -nEe 's#"##g;s#^VERSION_ID=(.*)$#\1#p')
+fi
+
+if [ ${#Os_Id} -gt 0 ]; then
+    if [ ${#Os_Version_Id} -gt 0 ]; then
+        export Os_Variant="${Os_Id}/${Os_Version_Id}"
+    else
+        export Os_Variant="${Os_Id}"
+    fi
+fi
+
+export Uname_I=$(uname -i 2> /dev/null)
 
 ##
 ### determine true username
@@ -105,8 +118,11 @@ unset -v Auto_Path
 Find_Paths=()
 Find_Paths+=("${HOME}")
 Find_Paths+=("${User_Dir}")
-if [ -r "${User_Dir}/opt/${Uname_R}" ]; then
-    Find_Paths+=("${User_Dir}/opt/${Uname_R}")
+if [ -r "${User_Dir}/opt/static/${Uname_I}" ]; then
+    Find_Paths+=("${User_Dir}/opt/static/${Uname_I}")
+fi
+if [ -r "${User_Dir}/opt/${Os_Variant}/${Uname_I}" ]; then
+    Find_Paths+=("${User_Dir}/opt/${Os_Variant}/${Uname_I}")
 fi
 Find_Paths+=("/apex")
 Find_Paths+=("/base")
@@ -1125,11 +1141,19 @@ unset -v Editor Editors
 ### set LD_LIRBARY_PATH
 ##
 
-if [ -r "${User_Dir}/opt/${Uname_R}/lib" ]; then
+if [ -r "${User_Dir}/opt/static/${Uname_I}/lib" ]; then
     if [ ${#LD_LIBRARY_PATH} -eq 0 ]; then
-        export LD_LIBRARY_PATH="${User_Dir}/opt/${Uname_R}/lib"
+        export LD_LIBRARY_PATH="${User_Dir}/opt/static/${Uname_I}/lib"
     else
-        export LD_LIBRARY_PATH="${LD_LIBRARY_PATH}:${User_Dir}/opt/${Uname_R}/lib"
+        export LD_LIBRARY_PATH="${LD_LIBRARY_PATH}:${User_Dir}/opt/static/${Uname_I}/lib"
+    fi
+fi
+
+if [ -r "${User_Dir}/opt/${Os_Variant}/${Uname_I}/lib" ]; then
+    if [ ${#LD_LIBRARY_PATH} -eq 0 ]; then
+        export LD_LIBRARY_PATH="${User_Dir}/opt/${Os_Variant}/${Uname_I}/lib"
+    else
+        export LD_LIBRARY_PATH="${LD_LIBRARY_PATH}:${User_Dir}/opt/${Os_Variant}/${Uname_I}/lib"
     fi
 fi
 
