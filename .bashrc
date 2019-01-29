@@ -1145,7 +1145,7 @@ if [ -r "${User_Dir}/opt/static/${Uname_I}/lib" ]; then
     if [ ${#LD_LIBRARY_PATH} -eq 0 ]; then
         export LD_LIBRARY_PATH="${User_Dir}/opt/static/${Uname_I}/lib"
     else
-        export LD_LIBRARY_PATH="${LD_LIBRARY_PATH}:${User_Dir}/opt/static/${Uname_I}/lib"
+        export LD_LIBRARY_PATH="${User_Dir}/opt/static/${Uname_I}/lib:${LD_LIBRARY_PATH}"
     fi
 fi
 
@@ -1153,7 +1153,7 @@ if [ -r "${User_Dir}/opt/${Os_Variant}/${Uname_I}/lib" ]; then
     if [ ${#LD_LIBRARY_PATH} -eq 0 ]; then
         export LD_LIBRARY_PATH="${User_Dir}/opt/${Os_Variant}/${Uname_I}/lib"
     else
-        export LD_LIBRARY_PATH="${LD_LIBRARY_PATH}:${User_Dir}/opt/${Os_Variant}/${Uname_I}/lib"
+        export LD_LIBRARY_PATH="${User_Dir}/opt/${Os_Variant}/${Uname_I}/lib:${LD_LIBRARY_PATH}"
     fi
 fi
 
