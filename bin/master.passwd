@@ -13,6 +13,10 @@
 # joseph.tingiris@gmail.com, 20181220 ... beta (centos 7, fedora 28)
 # joseph.tingiris@gmail.com, 20190104 ... rc1 (centos 7, fedora 28)
 # joseph.tingiris@gmail.com, 20190129 ... rc2 (centos 7, fedora 28-29)
+# joseph.tingiris@gmail.com, 20190130 ... rc3 (centos 7, fedora 28-29); added Mkhome_Flag
+
+# TODO:
+# use getops
 
 ###########
 # Globals #
@@ -31,6 +35,7 @@ fi
 
 # 0=true, 1=false
 let Delete_Flag=1
+let Mkhome_Flag=1
 let Reboot_Flag=1
 let Report_Flag=1
 let Sync_Flag=1
@@ -565,9 +570,13 @@ function updatePGM() {
                         pprint "${master_passwd} ${master_username}:x:${master_uid}:${master_gid} home directory will change from '${homedir}' to '${master_homedir}'" "QUEUE #${Queue_Count}"
                         Queue_Commands+=("mv \"${homedir}\" \"${master_homedir}\"")
                     else
-                        pprint "${master_passwd} ${master_username}:x:${master_uid}:${master_gid} make home '${master_homedir}' directory" "QUEUE #${Queue_Count}"
-                        Queue_Commands+=("mkdir -p \"${master_homedir}\"")
-                        Queue_Commands+=("chown ${master_uid}:${master_gid} \"${master_homedir}\"")
+                        if [ $Mkhome_Flag -eq 0 ]; then
+                            pprint "${master_passwd} ${master_username}:x:${master_uid}:${master_gid} make home '${master_homedir}' directory" "QUEUE #${Queue_Count}"
+                            Queue_Commands+=("mkdir -p \"${master_homedir}\"")
+                            Queue_Commands+=("chown ${master_uid}:${master_gid} \"${master_homedir}\"")
+                        else
+                            pprint "${master_passwd} ${master_username}:x:${master_uid}:${master_gid} missing home '${master_homedir}' directory" "WARNING"
+                        fi
                     fi
                 fi
 
@@ -676,10 +685,10 @@ function updatePGM() {
 
 function usage() {
     printf "\nusage:\n\n"
-    printf "$0 report [verbose]                 # harmless; show a report of what would be done\n"
-    printf "$0 sync [verbose]                   # updates master files only, with users & groups that only exist in the active files\n"
+    printf "$0 report [verbose] [mkhome]        # harmless; show a report of what would be done\n"
+    printf "$0 sync [verbose] [mkhome]          # updates master files only, with users & groups that only exist in the active files\n"
     printf "$0 rm \"<username(s)>\" [verbose]     # if found, remove usernames from active and master passwd & group files\n"
-    printf "$0 yes [verbose]                    # HARMFUL! changes everything the report shows\n"
+    printf "$0 yes [verbose] [mkhome]           # HARMFUL! changes everything the report shows\n"
     printf "\n"
     exit 1
 }
@@ -744,12 +753,18 @@ case "$1" in
 esac
 
 case "$2" in
+    mkhome)
+        Mkhome_Flag=0
+        ;;
     verbose)
         Verbose_Flag=0
         ;;
 esac
 
 case "$3" in
+    mkhome)
+        Mkhome_Flag=0
+        ;;
     verbose)
         Verbose_Flag=0
         ;;
