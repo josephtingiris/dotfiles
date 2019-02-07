@@ -42,6 +42,8 @@ let Sync_Flag=1
 let Verbose_Flag=1
 let Yes_Flag=1
 
+Local_Mounts=()
+
 Prune_Paths=(-path /dev -prune)
 Prune_Paths+=(-or -path /mnt -prune)
 Prune_Paths+=(-or -path /net -prune)
@@ -611,27 +613,29 @@ function updatePGM() {
                     local homedir="$(echo "${passwd_line}" | awk -F: '{print $6}')"
                     local shell="$(echo "${passwd_line}" | awk -F: '{print $7}')"
 
-                    find_args="/ ${Prune_Paths[@]}"
+                    for Local_Mount in ${Local_Mounts[@]}; do
+                        #find_args="${Local_Mount} "
+                        find_args="${Local_Mount} -xdev -xautofs ${Prune_Paths[@]}"
 
-                    # under no circumstances change root uid files
-                    if [ "${uid}" == "0" ] || [ "${uid}" == "" ]; then
-                        debug "passwd_line = '${passwd_line}'"
-                        aborting "${passwd} ${username}:x:${uid}:${gid} != ${master_passwd} ${username} root uid=${uid}?"
-                    fi
-
-                    # under no circumstances change root gid files
-                    if [ "${gid}" == "0" ] || [ "${gid}" == "" ]; then
-                        debug "passwd_line = '${passwd_line}'"
-                        aborting "${passwd} ${username}:x:${uid}:${gid} != ${master_passwd} ${username} root gid=${gid}?"
-                    fi
-
-                    if [ "${uid}" != "${master_uid}" ] && [ "${gid}" != "${master_gid}" ]; then
-                        pprint "${master_passwd} ${master_username}:x:${master_uid}:${master_gid} uid and gid will change from ${uid}:${gid} to ${master_uid}:${master_gid}" "QUEUE #${Queue_Count}"
-                        # only need to do this once; it *should* fix everything
-                        if [ ${update_check} -eq 1 ]; then
-                            Queue_Commands+=("# ${master_passwd} ${master_username} change files uid:gid from ${uid}:${gid} to ${master_uid}:${master_gid}")
-                            Queue_Commands+=("find ${find_args} -user ${uid} -and -group ${gid} -print0 | xargs -0 --no-run-if-empty chown --changes --no-dereference --preserve-root ${master_uid}:${master_gid}")
+                        # under no circumstances change root uid files
+                        if [ "${uid}" == "0" ] || [ "${uid}" == "" ]; then
+                            debug "passwd_line = '${passwd_line}'"
+                            aborting "${passwd} ${username}:x:${uid}:${gid} != ${master_passwd} ${username} root uid=${uid}?"
                         fi
+
+                        # under no circumstances change root gid files
+                        if [ "${gid}" == "0" ] || [ "${gid}" == "" ]; then
+                            debug "passwd_line = '${passwd_line}'"
+                            aborting "${passwd} ${username}:x:${uid}:${gid} != ${master_passwd} ${username} root gid=${gid}?"
+                        fi
+
+                        if [ "${uid}" != "${master_uid}" ] && [ "${gid}" != "${master_gid}" ]; then
+                            pprint "${master_passwd} ${master_username}:x:${master_uid}:${master_gid} uid and gid will change from ${uid}:${gid} to ${master_uid}:${master_gid}" "QUEUE #${Queue_Count}"
+                            # only need to do this once; it *should* fix everything
+                            if [ ${update_check} -eq 1 ]; then
+                                Queue_Commands+=("# ${master_passwd} ${master_username} change files uid:gid from ${uid}:${gid} to ${master_uid}:${master_gid}")
+                                Queue_Commands+=("find ${find_args} -user ${uid} -and -group ${gid} -print0 | xargs -0 --no-run-if-empty chown --changes --no-dereference --preserve-root ${master_uid}:${master_gid}")
+                            fi
 
                         # need to do this once; it needs to be run only on the second check pass for duplicates
                         if [ ${update_checks} -eq 1 ] || [ ${update_check} -eq 2 ]; then
@@ -653,14 +657,16 @@ function updatePGM() {
                             fi
                         fi
                     fi
+                done
+                unset -v Local_Mount
 
-                done <<< "$(grep "^${master_username}:x:" "${passwd}" | sort -u)"
-                unset passwd_line username password uid gid comment homedir shell
-            fi
+            done <<< "$(grep "^${master_username}:x:" "${passwd}" | sort -u)"
+            unset passwd_line username password uid gid comment homedir shell
+        fi
 
-        done <<< "$(cat "${master_passwd}")"
-        unset master_username master_password master_uid master_gid master_comment master_homedir master_shell
-    done # update_checks
+    done <<< "$(cat "${master_passwd}")"
+    unset master_username master_password master_uid master_gid master_comment master_homedir master_shell
+done # update_checks
 
     #
     # if they're different then copy master_passwd & master_group to passwd & group
@@ -701,6 +707,14 @@ if [ "$SUDO_USER" == "" ]; then
     if [ "$USER" != "root" ]; then
         aborting "must be root, or use sudo"
     fi
+fi
+
+while read Local_Dir; do
+    Local_Mounts+=("$Local_Dir")
+done <<< "$(mount | egrep -e 'type ext[2-4]|type xfs' | sed -nEe 's#^.* on (.*) type.*#\1#p')"
+
+if [ "$Local_Mounts" == "" ]; then
+    aborting "no local ext or xfs mounts found"
 fi
 
 #
@@ -1090,10 +1104,15 @@ if [ ${Yes_Flag} -eq 0 ]; then
     fi
     printf "\n"
 
-    pprint "find / files that have no username or groupname" "CHECK"
-    printf "\n"
-    find / ${Prune_Paths[@]} -nouser -or -nogroup
-    printf "\n"
+    for Local_Mount in ${Local_Mounts[@]}; do
+        debug "Local_Mount=${Local_Mount}"
+
+        pprint "find ${Local_Mount} files that have no username or groupname" "CHECK"
+        printf "\n"
+        find ${Local_Mount} -xdev -xautofs ${Prune_Paths[@]} -nouser -or -nogroup -ls
+        printf "\n"
+    done
+    unset -v Local_Mount
 fi
 
 if [ $Reboot -eq 0 ]; then
