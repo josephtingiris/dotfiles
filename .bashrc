@@ -1,6 +1,6 @@
 # .bashrc
 
-Bashrc_Version="20190129, joseph.tingiris@gmail.com"
+Bashrc_Version="20190211, joseph.tingiris@gmail.com"
 
 ##
 ### returns to avoid interactive shell enhancements
@@ -219,7 +219,7 @@ function dmesg() {
     local dmesg=$(type -P dmesg)
 
     if [ -x ${dmesg} ]; then
-        ${dmesg} -H $@ 2> /dev/null || ${dmesg} $@
+        ${dmesg} -TL $@ 2> /dev/null || ${dmesg} $@
     fi
 }
 
@@ -247,6 +247,8 @@ function gitConfig() {
     git_config_globals+=("color.ui auto")
     git_config_globals+=("color.branch auto")
     git_config_globals+=("color.status auto")
+
+    git_config_globals+=("core.filemode false")
 
     git_config_globals+=("user.email ${USER}@${HOSTNAME}")
     git_config_globals+=("user.name ${USER}@${HOSTNAME}")
