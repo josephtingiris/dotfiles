@@ -10,31 +10,33 @@ function usage() {
 if [ "$1" == "" ]; then
     usage
 else
-    DB="$1"
+    MYSQL_DB="$1"
 fi
 
 if [ "$2" == "" ]; then
-    HOST=localhost
+    if [ "$MYSQL_HOST" == "" ]; then
+        MYSQL_HOST=localhost
+    fi
 else
-    HOST="$2"
+    MYSQL_HOST="$2"
 fi
 
-echo "/* DB    = $DB */;"
-echo "/* HOST  = $HOST */;"
+echo "/* MYSQL_DB    = $MYSQL_DB */;"
+echo "/* MYSQL_HOST  = $MYSQL_HOST */;"
 echo
 
 if [ "$MYSQL_USER" == "" ]; then
     MYSQL_USER=root
 fi
 
-if [ "$DB" == "mysql" ]; then
-    mysql --user=$MYSQL_USER --password=$MYSQL_PASS --host=$HOST -N mysql -e "select concat(\"'\", user, \"'@'\", host, \"'\"), Password from user where not user like 'mysql.%'" | while read user pass ; do echo "GRANT USAGE ON *.* TO $user IDENTIFIED BY PASSWORD '$pass';" ; mysql --user=$MYSQL_USER --password=$MYSQL_PASS --host=$HOST -N -e "SHOW GRANTS FOR $user" | grep -v 'GRANT USAGE' | sed 's/\(\S\)$/\1;/' ; done
+if [ "$MYSQL_DB" == "mysql" ]; then
+    mysql --user=$MYSQL_USER --password=$MYSQL_PASS --host=$MYSQL_HOST -N mysql -e "select concat(\"'\", user, \"'@'\", host, \"'\"), Password from user where not user like 'mysql.%'" | while read user pass ; do echo "GRANT USAGE ON *.* TO $user IDENTIFIED BY PASSWORD '$pass';" ; mysql --user=$MYSQL_USER --password=$MYSQL_PASS --host=$MYSQL_HOST -N -e "SHOW GRANTS FOR $user" | grep -v 'GRANT USAGE' | sed 's/\(\S\)$/\1;/' ; done
     echo "flush privileges;"
 else
-    if [ "$DB" == "?" ] || [ "$DB" == "*" ]; then
-        echo "show databases;" | mysql --user=$MYSQL_USER --password=$MYSQL_PASS --host=$HOST
+    if [ "$MYSQL_DB" == "?" ] || [ "$MYSQL_DB" == "*" ]; then
+        echo "show databases;" | mysql --user=$MYSQL_USER --password=$MYSQL_PASS --host=$MYSQL_HOST
     else
-        mysqldump --events --host=$HOST --user=$MYSQL_USER --password=$MYSQL_PASS --databases $DB --add-drop-database --create-options --extended-insert --flush-logs --flush-privileges --lock-tables 
+        mysqldump --events --host=$MYSQL_HOST --user=$MYSQL_USER --password=$MYSQL_PASS --databases $MYSQL_DB --add-drop-database --create-options --extended-insert --flush-logs --flush-privileges --lock-tables 
     fi
 fi
 
