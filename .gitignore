@@ -64,6 +64,7 @@
 /bin/*
 !/bin/ff
 !/bin/fif
+!/bin/mysql-cp
 !/bin/mysql-kill
 !/bin/passwd.master
 !/bin/src-dotfiles-rsync
