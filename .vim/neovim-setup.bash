@@ -28,7 +28,7 @@ if [ "${ID}" == "centos" ]; then
     if [ ${VERSION_ID} -le 7 ]; then
         Yum_Packages+=(centos-release-scl)
         Yum_Packages+=(python34-devel)
-        Yum_Packages+=(rh-python34-python-pip)
+        Yum_Packages+=(python34-pip)
         Yum_Packages+=(rh-ruby24-ruby-devel)
     fi
 else
