@@ -1,6 +1,6 @@
 # .bashrc
 
-Bashrc_Version="20190211, joseph.tingiris@gmail.com"
+Bashrc_Version="20190326, joseph.tingiris@gmail.com"
 
 ##
 ### returns to avoid interactive shell enhancements
@@ -973,7 +973,7 @@ alias ls='ls --color=tty'
 alias mv='mv -i'
 alias rm='rm -i'
 alias nouser="find . -nouser 2> /dev/null"
-alias sal='pgrep -a ssh-agent; echo && env | grep -i ssh | sort -V; echo; ssh-add -l'
+alias sal='ps -ef | grep ssh-agent; echo && env | grep -i ssh | sort -V; echo; ssh-add -l'
 alias viw=viLocate
 alias vil=viLocate
 
