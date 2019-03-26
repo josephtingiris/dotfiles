@@ -53,6 +53,7 @@
 !/.vim/
 !/.vim/*
 .vim/.netrwhist
+.vim/log
 .vim/plug
 .vim/shada
 .vim/swap
