@@ -97,6 +97,12 @@ function checkPG() {
         #local password="$(echo "${passwd_line}" | awk -F: '{print $2}')"
         let local uid="$(echo "${passwd_line}" | awk -F: '{print $3}')"
         let local gid="$(echo "${passwd_line}" | awk -F: '{print $4}')"
+
+        if isLocal /etc/passwd.local ${username}; then
+            pprint "${passwd} ${username}:x:${uid}:${gid} uid ${uid} is a local user" NOTICE
+            continue
+        fi
+
         local comment="$(echo "${passwd_line}" | awk -F: '{print $5}')"
         local homedir="$(echo "${passwd_line}" | awk -F: '{print $6}')"
         local shell="$(echo "${passwd_line}" | awk -F: '{print $7}')"
@@ -216,6 +222,12 @@ function checkPG() {
         local groupname="$(echo "${group_line}" | awk -F: '{print $1}')"
         #local password="$(echo "${group_line}" | awk -F: '{print $2}')"
         let local gid="$(echo "${group_line}" | awk -F: '{print $3}')"
+
+        if isLocal /etc/group.local ${groupname}; then
+            pprint "${group} ${groupname}:x:${gid} is a local group" NOTICE
+            continue
+        fi
+
         local group_line_ok=0
 
         groupname_count=$(grep ^${groupname}:x: "${group}" | wc -l)
@@ -306,6 +318,18 @@ function debug() {
     fi
 }
 
+function groupsRm() {
+    grpconv
+    local no_group no_user no_users
+    while read no_users; do
+        no_group=$(echo "$no_users" | awk '{print $3}' | awk -F: '{print $1}')
+        no_user=$(echo "$no_users" | awk '{print $NF}')
+        gpasswd --delete $no_user $no_group
+        unset no_group
+    done <<< "$(grpck -r | grep "shadow group .*: no user .*")"
+    unset no_group no_user no_users
+}
+
 function usersRm() {
     local passwd="$1"
     isAccessible "${passwd}"
@@ -394,6 +418,31 @@ function isAccessible() {
             aborting "${filename} file not ${feedback}"
         fi
     fi
+}
+
+# if a user is in the 'local' passwd file return true else return false
+function isLocal() {
+    local pg="$1"
+    if [ ! -r "${pg}" ]; then
+        return 1
+    fi
+
+    local name="$2"
+    local id="$3"
+
+    if [ "$name" == "" ]; then
+        return 1
+    else
+        if [ "$id" == "" ]; then
+            id="*"
+        fi
+        if grep -q ^${name}:x:${id}: ${pg} &> /dev/null; then
+            debug "local              = ${pg} ($name:x:$id:)" 2
+            return 0
+        fi
+    fi
+
+    return 1
 }
 
 # eval all commands in Queue_Commands & if successful reset the array else abort
@@ -677,6 +726,10 @@ done # update_checks
         if [ $? -ne 0 ]; then
             pprint "copy ${master_passwd} to ${passwd}" "QUEUE #${Queue_Count}"
             Queue_Commands+=("cp \"${master_passwd}\" \"${passwd}\"")
+            if [ -r /etc/passwd.local ]; then
+                pprint "merge /etc/passwd.local into ${passwd}" "QUEUE #${Queue_Count}"
+                Queue_Commands+=("cat \"/etc/passwd.local\" >> \"${passwd}\"")
+            fi
         fi
     fi
 
@@ -685,6 +738,10 @@ done # update_checks
         if [ $? -ne 0 ]; then
             pprint "copy ${master_group} to ${group}" "QUEUE #${Queue_Count}"
             Queue_Commands+=("cp \"${master_group}\" \"${group}\"")
+            if [ -r /etc/group.local ]; then
+                pprint "merge /etc/group.local into ${group}" "QUEUE #${Queue_Count}"
+                Queue_Commands+=("cat \"/etc/group.local\" >> \"${group}\"")
+            fi
         fi
     fi
 }
@@ -800,6 +857,8 @@ fi
 isAccessible "${Active_Passwd}"
 
 if [ "${Active_Passwd}" == "/etc/passwd" ]; then
+    pprint "${Active_Passwd}" "CHECK"
+    printf "\n"
     pwconv
     if ! pwck -q -r "${Active_Passwd}" &> /dev/null; then
         pprint
@@ -826,10 +885,14 @@ fi
 isAccessible "${Active_Group}"
 
 if [ "${Active_Group}" == "/etc/group" ]; then
-    grpconv
+    pprint "${Active_Group}" "CHECK"
+    printf "\n"
+
+    groupsRm &> /dev/null
+
     if ! grpck -r "${Active_Group}" &> /dev/null; then
         pprint
-        grpck -r "${group}"
+        grpck -r "${Active_Group}"
         pprint
         pprint "Consider trying this ..." SUGGEST
         pprint "" SUGGEST
@@ -958,11 +1021,13 @@ if [ ${Sync_Flag} -eq 0 ]; then
     if [ "${Active_Passwd}" != "${Master_Passwd}" ]; then
         if [ -w "${Master_Passwd}" ]; then
             for username in $(awk -F: '{print $1}' "${Active_Passwd}"); do
-                Master_Passwd_Username=$(grep ^${username}:x: "${Master_Passwd}")
-                if [ "${Master_Passwd_Username}" == "" ]; then
-                    pprint "${Master_Passwd} add username '${username}' from ${Active_Passwd}" "QUEUE #${Queue_Count}"
-                    Queue_Commands+=("grep \"^${username}:x:\" \"${Active_Passwd}\" | head -1 >> \"${Master_Passwd}\"")
-                    let Resort=0
+                if ! isLocal /etc/passwd.local ${username}; then
+                    Master_Passwd_Username=$(grep ^${username}:x: "${Master_Passwd}")
+                    if [ "${Master_Passwd_Username}" == "" ]; then
+                        pprint "${Master_Passwd} add username '${username}' from ${Active_Passwd}" "QUEUE #${Queue_Count}"
+                        Queue_Commands+=("grep \"^${username}:x:\" \"${Active_Passwd}\" | head -1 >> \"${Master_Passwd}\"")
+                        let Resort=0
+                    fi
                 fi
             done
         fi
@@ -975,11 +1040,13 @@ if [ ${Sync_Flag} -eq 0 ]; then
     if [ "${Active_Group}" != "${Master_Group}" ]; then
         if [ -w "${Master_Group}" ]; then
             for groupname in $(awk -F: '{print $1}' "${Active_Group}"); do
-                Master_Group_Username=$(grep ^${groupname}:x: "${Master_Group}")
-                if [ "${Master_Group_Username}" == "" ]; then
-                    pprint "${Master_Group} add groupname '${groupname}' from ${Active_Group}" "QUEUE #${Queue_Count}"
-                    Queue_Commands+=("grep \"^${groupname}:x:\" \"${Active_Group}\" | head -1 >> \"${Master_Group}\"")
-                    let Resort=0
+                if ! isLocal /etc/group.local ${groupname}; then
+                    Master_Group_Username=$(grep ^${groupname}:x: "${Master_Group}")
+                    if [ "${Master_Group_Username}" == "" ]; then
+                        pprint "${Master_Group} add groupname '${groupname}' from ${Active_Group}" "QUEUE #${Queue_Count}"
+                        Queue_Commands+=("grep \"^${groupname}:x:\" \"${Active_Group}\" | head -1 >> \"${Master_Group}\"")
+                        let Resort=0
+                    fi
                 fi
             done
         fi
@@ -1096,6 +1163,11 @@ queueEval "${Yes_Flag}"
 
 Reboot=1
 if [ ${Yes_Flag} -eq 0 ]; then
+    pprint "remove users that do not exist from groups" "CHECK"
+    printf "\n"
+    groupsRm
+    printf "\n"
+
     pprint "find processes that have no username" "CHECK"
     printf "\n"
     ps -ef | grep ^[0-9]
