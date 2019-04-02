@@ -1,6 +1,6 @@
 # .bashrc
 
-Bashrc_Version="20190326, joseph.tingiris@gmail.com"
+Bashrc_Version="20190327, joseph.tingiris@gmail.com"
 
 ##
 ### returns to avoid interactive shell enhancements
@@ -968,14 +968,16 @@ alias cl='cd;clear'
 alias cp='cp -i'
 alias h='history'
 alias hs='export HISTSIZE=0'
+alias jc=journalctl
 alias l='ls -lFhart'
 alias ls='ls --color=tty'
 alias mv='mv -i'
-alias rm='rm -i'
 alias nouser="find . -nouser 2> /dev/null"
+alias rm='rm -i'
 alias sal='ps -ef | grep ssh-agent; echo && env | grep -i ssh | sort -V; echo; ssh-add -l'
-alias viw=viLocate
+alias sc=systemctl
 alias vil=viLocate
+alias viw=viLocate
 
 ##
 ### global key bindings
