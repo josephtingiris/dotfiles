@@ -1023,6 +1023,12 @@ else
 fi
 
 ##
+### exported functions
+##
+
+export -f verbose
+
+##
 ### set default timezone
 ##
 
