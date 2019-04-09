@@ -895,25 +895,26 @@ function verbose() {
     if [ ${verbosity} -ge ${verbose_level} ]; then
 
         local v1 v2
-        if [[ "${verbose_message^^}" == *"="* ]]; then
-            v1="${verbose_message%%=*}"
-            v1="${v1#"${v1%%[![:space:]]*}"}"
-            v1="${v1%"${v1##*[![:space:]]}"}"
-            v2="${verbose_message##*=}"
-            v2="${v2#"${v2%%[![:space:]]*}"}"
-            v2="${v2%"${v2##*[![:space:]]}"}"
-            printf -v verbose_message "%-40b = %b" "${v1}" "${v2}"
-            unset v1 v2
-        fi
 
         if [[ "${verbose_message^^}" == *":"* ]]; then
-            v1="${verbose_message%%:*}"
+            v1="${verbose_message%:*}"
             v1="${v1#"${v1%%[![:space:]]*}"}"
             v1="${v1%"${v1##*[![:space:]]}"}"
             v2="${verbose_message##*:}"
             v2="${v2#"${v2%%[![:space:]]*}"}"
             v2="${v2%"${v2##*[![:space:]]}"}"
             printf -v verbose_message "%-11b : %b" "${v1}" "${v2}"
+            unset v1 v2
+        fi
+
+        if [[ "${verbose_message^^}" == *"="* ]]; then
+            v1="${verbose_message%=*}"
+            v1="${v1#"${v1%%[![:space:]]*}"}"
+            v1="${v1%"${v1##*[![:space:]]}"}"
+            v2="${verbose_message##*=}"
+            v2="${v2#"${v2%%[![:space:]]*}"}"
+            v2="${v2%"${v2##*[![:space:]]}"}"
+            printf -v verbose_message "%-40b = %b" "${v1}" "${v2}"
             unset v1 v2
         fi
 
