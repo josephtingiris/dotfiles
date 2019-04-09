@@ -292,8 +292,8 @@ function githubDotfiles() {
 
         if [ "${git_head_upstream}" != "${git_head_working}" ]; then
             # need to pull
-            printf "git_head_upstream   = ${git_head_upstream}\n"
-            printf "git_head_working    = ${git_head_working}\n\n"
+            verbose "NOTICE: git_head_upstream = ${git_head_upstream}"
+            verbose "NOTICE: git_head_working = ${git_head_working}\n"
 
             git pull
         fi
@@ -833,54 +833,54 @@ function verbose() {
     if [ ${verbose_level} -eq 1 ]; then
         verbose_color=1
         if [ ${verbose_level_prefix} -eq 0 ] && [[ "${verbose_message^^}" != *"ALERT"* ]]; then
-            verbose_message="ALERT     : ${verbose_message}"
+            verbose_message="ALERT: ${verbose_message}"
         fi
     else
         if [ ${verbose_level} -eq 2 ]; then
             verbose_color=3
             if [ ${verbose_level_prefix} -eq 0 ] &&  [[ "${verbose_message^^}" != *"CRIT"* ]]; then
-                verbose_message="CRITICAL  : ${verbose_message}"
+                verbose_message="CRITICAL: ${verbose_message}"
             fi
         else
             if [ ${verbose_level} -eq 3 ]; then
                 verbose_color=5
                 if [ ${verbose_level_prefix} -eq 0 ] &&  [[ "${verbose_message^^}" != *"ERROR"* ]]; then
-                    verbose_message="ERROR     : ${verbose_message}"
+                    verbose_message="ERROR: ${verbose_message}"
                 fi
             else
                 if [ ${verbose_level} -eq 4 ]; then
                     verbose_color=2
                     if [ ${verbose_level_prefix} -eq 0 ] &&  [[ "${verbose_message^^}" != *"WARN"* ]]; then
-                        verbose_message="WARNING   : ${verbose_message}"
+                        verbose_message="WARNING: ${verbose_message}"
                     fi
                 else
                     if [ ${verbose_level} -eq 5 ]; then
                         verbose_color=6
                         if [ ${verbose_level_prefix} -eq 0 ] &&  [[ "${verbose_message^^}" != *"NOTICE"* ]]; then
-                            verbose_message="NOTICE    : ${verbose_message}"
+                            verbose_message="NOTICE: ${verbose_message}"
                         fi
                     else
                         if [ ${verbose_level} -eq 6 ]; then
                             verbose_color=4
                             if [ ${verbose_level_prefix} -eq 0 ] &&  [[ "${verbose_message^^}" != *"INFO"* ]]; then
-                                verbose_message="INFO      : ${verbose_message}"
+                                verbose_message="INFO: ${verbose_message}"
                             fi
                         else
                             if [ ${verbose_level} -eq 7 ]; then
                                 verbose_color=7
                                 if [ ${verbose_level_prefix} -eq 0 ] &&  [[ "${verbose_message^^}" != *"DEBUG"* ]]; then
-                                    verbose_message="DEBUG     : ${verbose_message}"
+                                    verbose_message="DEBUG: ${verbose_message}"
                                 fi
                             else
                                 if [ ${verbose_level} -eq 0 ]; then
                                     verbose_color=0
                                     if [ ${verbose_level_prefix} -eq 0 ] &&  [[ "${verbose_message^^}" != *"EMERGENCY"* ]]; then
-                                        verbose_message="EMERGENCY : ${verbose_message}"
+                                        verbose_message="EMERGENCY: ${verbose_message}"
                                     fi
                                 else
                                     verbose_color=8
                                     if [ ${verbose_level_prefix} -eq 0 ] &&  [[ "${verbose_message^^}" != *"DEBUG"* ]]; then
-                                        verbose_message="XDEBUG    : ${verbose_message}"
+                                        verbose_message="XDEBUG: ${verbose_message}"
                                     fi
                                 fi
                             fi
@@ -903,12 +903,26 @@ function verbose() {
 
     if [ ${verbosity} -ge ${verbose_level} ]; then
 
+        local v1 v2
         if [[ "${verbose_message^^}" == *"="* ]]; then
-            local v1 v2
             v1="${verbose_message%%=*}"
+            v1="${v1#"${v1%%[![:space:]]*}"}"
+            v1="${v1%"${v1##*[![:space:]]}"}"
             v2="${verbose_message##*=}"
-            v2="${v2# *}"
-            printf -v verbose_message "%-32s = %s" "$v1" "$v2"
+            v2="${v2#"${v2%%[![:space:]]*}"}"
+            v2="${v2%"${v2##*[![:space:]]}"}"
+            printf -v verbose_message "%-40b = %b" "${v1}" "${v2}"
+            unset v1 v2
+        fi
+
+        if [[ "${verbose_message^^}" == *":"* ]]; then
+            v1="${verbose_message%%:*}"
+            v1="${v1#"${v1%%[![:space:]]*}"}"
+            v1="${v1%"${v1##*[![:space:]]}"}"
+            v2="${verbose_message##*:}"
+            v2="${v2#"${v2%%[![:space:]]*}"}"
+            v2="${v2%"${v2##*[![:space:]]}"}"
+            printf -v verbose_message "%-12b : %b" "${v1}" "${v2}"
             unset v1 v2
         fi
 
@@ -934,7 +948,7 @@ function verbose() {
 # locate files & vi them
 function viLocate() {
     local vi_locates=($@)
-    verbose "\nALERT: vi locates '${vi_locates[@]}'\n"
+    verbose "ALERT: vi locates '${vi_locates[@]}'\n"
     local vi_file vi_files vi_locate
 
     vi_files=()
@@ -995,7 +1009,7 @@ if [ "$TERM" != "$TPUT_TERM" ]; then
     fi
 fi
 
-verbose "\nALERT: verbose is on\n"
+verbose "ALERT: verbose is on\n"
 
 ##
 ### trap EXIT to ensure .bash_logout gets called, regardless of whether or not it's a login shell
