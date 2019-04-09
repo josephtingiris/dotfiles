@@ -754,16 +754,7 @@ function verbose() {
                 verbosity=1
             fi
         else
-            for verbose_file in "${HOME}/.verbose" "${HOME}/.bashrc.verbose"; do
-                if [ -r "${verbose_file}" ]; then
-                    # get digits only from the first line; if they're not digits then set verbosity to one
-                    verbosity=$(grep -m1 "^[0-9]*$" "${verbose_file}" 2> /dev/null)
-                    if [ ${#verbosity} -eq 0 ]; then
-                        verbosity=1
-                    fi
-                    break
-                fi
-            done
+            verbosity=1
         fi
     fi
 
@@ -922,7 +913,7 @@ function verbose() {
             v2="${verbose_message##*:}"
             v2="${v2#"${v2%%[![:space:]]*}"}"
             v2="${v2%"${v2##*[![:space:]]}"}"
-            printf -v verbose_message "%-12b : %b" "${v1}" "${v2}"
+            printf -v verbose_message "%-11b : %b" "${v1}" "${v2}"
             unset v1 v2
         fi
 
@@ -987,7 +978,7 @@ function viLocate() {
 }
 
 ##
-### main
+### Main
 ##
 
 # this is mainly for performance; as long as TERM doesn't change then there's no need to run tput every time
@@ -1008,8 +999,6 @@ if [ "$TERM" != "$TPUT_TERM" ]; then
         export TPUT_SMSO="$(tput smso)"
     fi
 fi
-
-verbose "ALERT: verbose is on\n"
 
 ##
 ### trap EXIT to ensure .bash_logout gets called, regardless of whether or not it's a login shell
@@ -1035,6 +1024,22 @@ else
         fi
     fi
 fi
+
+##
+### set Verbose
+##
+
+for verbose_file in "${HOME}/.verbose" "${HOME}/.bashrc.verbose"; do
+    if [ -r "${verbose_file}" ]; then
+        # get digits only from the first line; if they're not digits then set verbosity to one
+        export Verbose=$(grep -m1 "^[0-9]*$" "${verbose_file}" 2> /dev/null)
+        if [ ${#Verbose} -gt 0 ]; then
+            break
+        fi
+    fi
+done
+
+verbose "ALERT: verbose is on\n"
 
 ##
 ### exported functions
