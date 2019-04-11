@@ -1,6 +1,6 @@
 # .bashrc
 
-Bashrc_Version="20190409, joseph.tingiris@gmail.com"
+Bashrc_Version="20190411, joseph.tingiris@gmail.com"
 
 ##
 ### returns to avoid interactive shell enhancements
@@ -1060,6 +1060,8 @@ export TZ='America/New_York'
 
 alias cl='cd;clear'
 alias cp='cp -i'
+alias duh='export HISTSIZE=0; unset HISTSIZE'
+alias forget=duh
 alias h='history'
 alias hs='export HISTSIZE=0'
 alias jc=journalctl
