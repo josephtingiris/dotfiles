@@ -1,6 +1,6 @@
 # .bashrc
 
-Bashrc_Version="20190411, joseph.tingiris@gmail.com"
+Bashrc_Version="20190413, joseph.tingiris@gmail.com"
 
 ##
 ### returns to avoid interactive shell enhancements
@@ -242,6 +242,7 @@ function gitConfig() {
     git_config_globals+=("alias.rev-prase rev-parse")
     git_config_globals+=("alias.st status")
     git_config_globals+=("alias.s status")
+    git_config_globals+=("alias.unstage 'reset --'")
     git_config_globals+=("alias.up pull")
 
     git_config_globals+=("color.ui auto")
@@ -263,6 +264,7 @@ function gitConfig() {
     for git_config_global in "${git_config_globals[@]}"; do
         git_config_global_key=${git_config_global%% *}
         git_config_global_value=${git_config_global#* }
+        git_config_global_value=${git_config_global_value//\'/}
         if git_config_global=$(git config --get --global ${git_config_global_key}); then
             if [ "${git_config_global}" == "${git_config_global_value}" ]; then
                 verbose "INFO: git_config_global: ${git_config_global_key} ${git_config_global_value}"
@@ -271,7 +273,7 @@ function gitConfig() {
             fi
         else
             verbose "ALERT: git_config_global: ${git_config_global_key} ${git_config_global_value}"
-            git config --global ${git_config_global_key} ${git_config_global_value}
+            git config --global ${git_config_global_key} "${git_config_global_value}"
         fi
     done
 
