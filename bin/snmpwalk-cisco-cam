@@ -1,0 +1,163 @@
+#!/bin/bash
+
+# 20190418, joseph.tingiris@gmail.com
+
+Verbose=0 # 0=on
+Debug=1 # 0=on
+
+PATH=~/bin:/usr/bin:/usr/sbin
+
+function debug() {
+    if [ "$Debug" == "0" ]; then
+        echo $@
+    fi
+}
+
+function usage() {
+    printf "\nusage: $0 <host> <community>\n\n"
+    exit 2
+}
+
+function verbose() {
+    if [ "$Verbose" == "0" ]; then
+        echo $@
+    fi
+}
+
+Switch="$1"
+if [ "${Switch}" == "" ]; then
+    usage
+fi
+
+Community="$2"
+if [ "${Community}" == "" ]; then
+    usage
+fi
+
+verbose "Switch      = ${Switch}"
+debug "Community   = ${Community}"
+verbose
+
+snmpwalk="snmpwalk -v 2c -On -c ${Community} ${Switch}"
+
+# https://www.cisco.com/c/en/us/support/docs/ip/simple-network-management-protocol-snmp/13492-cam-snmp.html#steps
+
+Vlans="$3"
+if [ "${Vlans}" == "" ]; then
+    Vlans=($($snmpwalk .1.3.6.1.4.1.9.9.46.1.3.1.1.2 2> /dev/null | awk -F= '{print $1}' | awk -F\. '{print $NF}'))
+fi
+verbose "Step 1 - vtpVlanState          - VLAN  = ${Vlans[@]}"
+
+MAC_Addresses=()
+Bridge_Ports=()
+Base_Port_Ifindexes=()
+Ifnames=()
+for Vlan in ${Vlans[@]}; do
+
+    snmpwalk_vlan="snmpwalk -v 2c -On -c ${Community}@${Vlan} ${Switch}"
+
+    # Step 2 - dot1dTpFdbAddress
+    verbose "Step 2 - dot1dTpFdbAddress     - VLAN  = ${Vlan} - Get Mac Addresses ..."
+    while read MAC_Address; do
+        MAC_Addresses+=("$MAC_Address")
+    done <<< "$($snmpwalk_vlan .1.3.6.1.2.1.17.4.3.1.1 2> /dev/null | grep -v "No Such Instance")"
+
+    # Step 3 - dot1dTpFdbPort
+    verbose "Step 3 - dot1dTpFdbPort        - VLAN  = ${Vlan} - Get Bridge Ports ..."
+    while read Bridge_Port; do
+        Bridge_Ports+=("$Bridge_Port")
+    done <<< "$($snmpwalk_vlan .1.3.6.1.2.1.17.4.3.1.2 2> /dev/null | grep -v "No Such Instance")"
+
+    # Step 4 - dot1dBasePortIfIndex
+    verbose "Step 4 - dot1dBasePortIfIndex  - VLAN  = ${Vlan} - Get Base Port Interface Indexes  ..."
+    while read Base_Port_Ifindex; do
+        Base_Port_Ifindexes+=("$Base_Port_Ifindex")
+    done <<< "$($snmpwalk_vlan .1.3.6.1.2.1.17.1.4.1.2 2> /dev/null | grep -v "No Such Instance")"
+done
+
+# Step 5 - ifName
+verbose "Step 5 - ifName                - VLAN  = ${Vlan} - Get Interface Names  ..."
+while read Ifname; do
+    Ifnames+=("$Ifname")
+done <<< "$($snmpwalk .1.3.6.1.2.1.31.1.1.1.1 2> /dev/null | grep -v "No Such Instance")"
+
+verbose
+
+# Analyze data ...
+
+Cams=()
+
+for MAC_Address in "${MAC_Addresses[@]}"; do
+    unset Base_Port_Ifindex Base_Port_Ifindex_Number Base_Port_Ifindex_OID Bridge_Port Bridge_Port_Number Bridge_Port_OID Ifname Ifname_Name Ifname_OID MAC MAC_OID
+    [ ${#MAC_Address} -eq 0 ] && continue
+
+    MAC=${MAC_Address##* }
+    MAC_OID=${MAC_Address%% *}
+    MAC_OID=${MAC_OID//.1.3.6.1.2.1.17.4.3.1.1./}
+
+    # should output something ...
+    [ ${#MAC} -eq 0 ] && continue
+    [ ${#MAC_OID} -eq 0 ] && continue
+
+    debug "MAC_Address              = ${MAC} (${MAC_OID})" #" ${MAC_Address}"
+    verbose "MAC_Address              = ${MAC}"
+
+    for Bridge_Port in "${Bridge_Ports[@]}"; do
+        unset Bridge_Port_Number Bridge_Port_OID
+        Bridge_Port_Number=${Bridge_Port##* }
+        Bridge_Port_OID=${Bridge_Port%% *}
+        Bridge_Port_OID=${Bridge_Port_OID//.1.3.6.1.2.1.17.4.3.1.2./}
+        if [ "${Bridge_Port_OID}" == "${MAC_OID}" ]; then
+            debug "Bridge_Port_Number       = ${Bridge_Port_Number} (${Bridge_Port_OID}) [YES]"
+            verbose "Bridge_Port_Number       = ${Bridge_Port_Number}"
+
+            for Base_Port_Ifindex in "${Base_Port_Ifindexes[@]}"; do
+                unset Base_Port_Ifindex_Number Base_Port_Ifindex_OID
+                Base_Port_Ifindex_Number=${Base_Port_Ifindex##* }
+                Base_Port_Ifindex_OID=${Base_Port_Ifindex%% *}
+                Base_Port_Ifindex_OID=${Base_Port_Ifindex_OID//.1.3.6.1.2.1.17.1.4.1.2./}
+                if [ "${Base_Port_Ifindex_OID}" == "${Bridge_Port_Number}" ]; then
+                    debug "Base_Port_Ifindex_Number = ${Base_Port_Ifindex_Number} (${Base_Port_Ifindex_OID}) [YES]"
+                    verbose "Base_Port_Ifindex_Number = ${Base_Port_Ifindex_Number}"
+
+                    for Ifname in "${Ifnames[@]}"; do
+                        unset Ifname_Name Ifname_OID
+                        Ifname_Name=${Ifname##* }
+                        Ifname_OID=${Ifname%% *}
+                        Ifname_OID=${Ifname_OID//.1.3.6.1.2.1.31.1.1.1.1./}
+                        if [ "${Base_Port_Ifindex_Number}" == "${Ifname_OID}" ]; then
+                            debug "Ifname_Name              = ${Ifname_Name} (${Ifname_OID}) [YES]"
+                            verbose "Ifname_Name              = ${Ifname_Name}"
+
+                            Cams+=("${Switch}, ${Vlan}, ${MAC}, ${Bridge_Port_Number}, ${Base_Port_Ifindex_Number}, ${Ifname_Name}")
+
+                            break
+                        else
+                            debug "Ifname                   = ${Ifname} (${Ifname_OID}) [NO]"
+                        fi
+                    done
+
+                    break
+                else
+                    debug "Base_Port_Ifindex        = ${Base_Port_Ifindex} (${Base_Port_Ifindex_OID}) [NO]"
+                fi
+            done
+
+            break
+
+        else
+            debug "Bridge_Port         = ${Bridge_Port} (${Bridge_Port_OID}) [NO]"
+        fi
+    done
+
+    verbose
+done
+
+if [ "${Cams}" != "" ]; then
+    printf "%b\n" "Switch, Vlan, MAC, Bridge_Port_Number, Base_Port_Ifindex_Number, Ifname_Number"
+    for Cam in "${Cams[@]}"; do
+        printf "%b\n" "${Cam}"
+    done
+else
+    printf "\nno cams found\n"
+fi
