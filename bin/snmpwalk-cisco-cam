@@ -2,7 +2,7 @@
 
 # 20190418, joseph.tingiris@gmail.com
 
-Verbose=0 # 0=on
+Verbose=1 # 0=on
 Debug=1 # 0=on
 
 PATH=~/bin:/usr/bin:/usr/sbin
@@ -14,7 +14,11 @@ function debug() {
 }
 
 function usage() {
-    printf "\nusage: $0 <host> <community>\n\n"
+    printf "\nusage: $0 <host> <community> [vlans] [-debug|-verbose]\n\n"
+    if [ "$1" != "" ]; then
+        printf "\nNOTE:\n\n"
+        echo $@
+    fi
     exit 2
 }
 
@@ -34,18 +38,43 @@ if [ "${Community}" == "" ]; then
     usage
 fi
 
-verbose "Switch      = ${Switch}"
-debug "Community   = ${Community}"
-verbose
+if [[ "$3" =~ ^[0-9]+$ ]]; then
+    Vlans=("$3")
+    declare -l Output="$4"
+else
+    Vlans=""
+    declare -l Output="$3"
+fi
+
+if [ "${Output:0:2}" == "-d" ]; then
+    Debug=0
+    Verbose=0
+else
+    if [ "${Output:0:2}" == "-v" ]; then
+        Verbose=0
+    fi
+fi
 
 snmpwalk="snmpwalk -v 2c -On -c ${Community} ${Switch}"
 
 # https://www.cisco.com/c/en/us/support/docs/ip/simple-network-management-protocol-snmp/13492-cam-snmp.html#steps
 
+Rc=0
+
 Vlans="$3"
 if [ "${Vlans}" == "" ]; then
     Vlans=($($snmpwalk .1.3.6.1.4.1.9.9.46.1.3.1.1.2 2> /dev/null | awk -F= '{print $1}' | awk -F\. '{print $NF}'))
+    Rc=$?
 fi
+
+if [ $Rc -ne 0 ]; then
+    usage "'$snmpwalk' failed, wrong community?"
+fi
+
+verbose "Switch      = ${Switch}"
+debug "Community   = ${Community}"
+verbose
+
 verbose "Step 1 - vtpVlanState          - VLAN  = ${Vlans[@]}"
 
 MAC_Addresses=()
@@ -91,7 +120,11 @@ for MAC_Address in "${MAC_Addresses[@]}"; do
     unset Base_Port_Ifindex Base_Port_Ifindex_Number Base_Port_Ifindex_OID Bridge_Port Bridge_Port_Number Bridge_Port_OID Ifname Ifname_Name Ifname_OID MAC MAC_OID
     [ ${#MAC_Address} -eq 0 ] && continue
 
-    MAC=${MAC_Address##* }
+    declare -l MAC=${MAC_Address##*STRING: }
+    MAC=${MAC// /:}
+    MAC=${MAC/0:/00:}
+    MAC=${MAC//:0:/:00:}
+    MAC=${MAC//000/00}
     MAC_OID=${MAC_Address%% *}
     MAC_OID=${MAC_OID//.1.3.6.1.2.1.17.4.3.1.1./}
 
@@ -154,10 +187,11 @@ for MAC_Address in "${MAC_Addresses[@]}"; do
 done
 
 if [ "${Cams}" != "" ]; then
-    printf "%b\n" "Switch, Vlan, MAC, Bridge_Port_Number, Base_Port_Ifindex_Number, Ifname_Number"
+    printf "%b\n" "Switch, Vlan, MAC, Bridge_Port_Number, Base_Port_Ifindex_Number, Ifname_Number" > /tmp/${Switch}-cam.csv
     for Cam in "${Cams[@]}"; do
-        printf "%b\n" "${Cam}"
+        printf "%b\n" "${Cam}" >> /tmp/${Switch}-cam.csv
     done
+    cat /tmp/${Switch}-cam.csv
 else
-    printf "\nno cams found\n"
+    printf "\nerror, no cams found on switch ${Switch} with community ${Community}\n\n"
 fi
