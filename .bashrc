@@ -1,6 +1,6 @@
 # .bashrc
 
-Bashrc_Version="20190415, joseph.tingiris@gmail.com"
+Bashrc_Version="20190514, joseph.tingiris@gmail.com"
 
 ##
 ### returns to avoid interactive shell enhancements
@@ -1050,6 +1050,12 @@ verbose "ALERT: verbose is on\n"
 ##
 
 export -f verbose
+
+##
+### set history control
+##
+
+export HISTCONTROL=ignoredups
 
 ##
 ### set default timezone
