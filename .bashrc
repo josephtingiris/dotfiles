@@ -741,47 +741,33 @@ function verbose() {
     local -i verbosity
 
     # if these values are set with an integer that will be honored, otherwise a verbosity value of 1 will be set
-    if [ ${#Verbose} -gt 0 ]; then
-        # if it's an integer then use that value, otherwise set verbosity to one
-        if [[ ${Verbose} =~ ^[0-9]+$ ]]; then
-            verbosity=${Verbose}
-        else
-            verbosity=1
-        fi
+    if [[ ${Verbose} =~ ^[0-9]+$ ]]; then
+        verbosity=${Verbose}
     else
-        if [ ${#VERBOSE} -gt 0 ]; then
-            # if it's an integer then use that value, otherwise set verbosity to one
-            if [[ ${VERBOSE} =~ ^[0-9]+$ ]]; then
-                verbosity=${VERBOSE}
-            else
-                verbosity=1
-            fi
+        if [[ ${VERBOSE} =~ ^[0-9]+$ ]]; then
+            verbosity=${VERBOSE}
         else
             verbosity=1
         fi
     fi
 
     if [ ${#2} -gt 0 ]; then
-        verbose_message=(${verbose_arguments[@]}) # preserve verbose_arguments
-        verbose_level=${verbose_message[${#verbose_message[@]}-1]}
+        verbose_message="${verbose_arguments[@]}" # preserve verbose_arguments
+        verbose_level=${verbose_arguments[${#verbose_arguments[@]}-1]}
+        if [[ ${verbose_level} =~ ^[0-9]+$ ]]; then
+            # remove the last (integer) element (verbose_level)
+            verbose_message="${verbose_message% *}"
+        else
+            verbose_level=""
+        fi
     else
         verbose_message="${1}"
         verbose_level=""
     fi
 
-    # 0 EMERGENCY, 1 ALERT, 2 CRIT(ICAL), 3 ERROR, 4 WARN(ING), 5 NOTICE, 6 INFO(RMATIONAL), 7 DEBUG
+    # 0 EMERGENCY (unusable), 1 ALERT, 2 CRIT(ICAL), 3 ERROR, 4 WARN(ING), 5 NOTICE, 6 INFO(RMATIONAL), 7 DEBUG
 
-    if [[ ${verbose_level} =~ ^[0-9]+$ ]]; then
-        # given verbose_level is always used
-        if [ ${#2} -gt 0 ]; then
-            # remove the last (integer) element (verbose_level) from the array & convert verbose_message to a string
-            unset 'verbose_message[${#verbose_message[@]}-1]'
-        fi
-        verbose_message="${verbose_message[@]}"
-    else
-        # don't change the array, convert it to a string, and explicitly set verbose_level so the message gets displayed
-        verbose_message="${verbose_message[@]}"
-
+    if [[ ! "${verbose_level}" =~ ^[0-9]+$ ]]; then
         # convert verbose_message to uppercase & check for presence of keywords
         if [[ "${verbose_message^^}" == *"ALERT"* ]]; then
             verbose_level=1
@@ -804,7 +790,6 @@ function verbose() {
                                 if [[ "${verbose_message^^}" == *"DEBUG"* ]]; then
                                     verbose_level=7
                                 else
-                                    # EMERGENCY (always gets displayed)
                                     verbose_level=0
                                 fi
                             fi
@@ -813,7 +798,11 @@ function verbose() {
                 fi
             fi
         fi
+    fi
 
+    if [ ${verbose_level} -eq 0 ]; then
+        # unusable
+        return
     fi
 
     local -l verbose_level_prefix
@@ -866,16 +855,9 @@ function verbose() {
                                     verbose_message="DEBUG: ${verbose_message}"
                                 fi
                             else
-                                if [ ${verbose_level} -eq 0 ]; then
-                                    verbose_color=0
-                                    if [ ${verbose_level_prefix} -eq 0 ] &&  [[ "${verbose_message^^}" != *"EMERGENCY"* ]]; then
-                                        verbose_message="EMERGENCY: ${verbose_message}"
-                                    fi
-                                else
-                                    verbose_color=8
-                                    if [ ${verbose_level_prefix} -eq 0 ] &&  [[ "${verbose_message^^}" != *"DEBUG"* ]]; then
-                                        verbose_message="XDEBUG: ${verbose_message}"
-                                    fi
+                                verbose_color=8
+                                if [ ${verbose_level_prefix} -eq 0 ] &&  [[ "${verbose_message^^}" != *"DEBUG"* ]]; then
+                                    verbose_message="XDEBUG: ${verbose_message}"
                                 fi
                             fi
                         fi
@@ -885,17 +867,17 @@ function verbose() {
         fi
     fi
 
-    # be pendantic; ensure there are integer values to avoid any possibility of comparison errors
-
-    if [ ${#verbosity} -eq 0 ] || [[ ! ${verbosity} =~ ^[0-9]+$ ]]; then
-        verbosity=0
-    fi
-
-    if [ ${#verbose_level} -eq 0 ] || [[ ! ${verbose_level} =~ ^[0-9]+$ ]]; then
-        verbose_level=0
-    fi
-
     if [ ${verbosity} -ge ${verbose_level} ]; then
+
+        local -i verbose_pad_left verbose_pad_right
+
+        if [[ ${Verbose_Pad_Left} =~ ^[0-9]+$ ]]; then
+            verbose_pad_left=${Verbose_Pad_Left}
+        fi
+
+        if [[ ${Verbose_Pad_Right} =~ ^[0-9]+$ ]]; then
+            verbose_pad_right=${Verbose_Pad_Right}
+        fi
 
         local v1 v2
 
@@ -906,7 +888,7 @@ function verbose() {
             v2="${verbose_message#*:}"
             v2="${v2#"${v2%%[![:space:]]*}"}"
             v2="${v2%"${v2##*[![:space:]]}"}"
-            printf -v verbose_message "%-11b : %b" "${v1}" "${v2}"
+            printf -v verbose_message "%-${verbose_pad_left}b : %b" "${v1}" "${v2}"
             unset v1 v2
         fi
 
@@ -917,24 +899,21 @@ function verbose() {
             v2="${verbose_message#*=}"
             v2="${v2#"${v2%%[![:space:]]*}"}"
             v2="${v2%"${v2##*[![:space:]]}"}"
-            printf -v verbose_message "%-40b = %b" "${v1}" "${v2}"
+            printf -v verbose_message "%-${verbose_pad_right}b = %b" "${v1}" "${v2}"
             unset v1 v2
         fi
 
-        if [ -x $(type -P tput) ]; then
-            if [ ${verbose_level} -eq 0 ]; then
-                # EMERGENCY (0), black is special; standout mode with white background color
-                verbose_message="${TPUT_SMSO}${TPUT_SETAF_8}${verbose_message}${TPUT_SGR0}"
-            else
-                if [ ${#verbose_color} -eq 0 ]; then
-                    verbose_color=${verbose_level}
-                fi
-                local tput_set_af_v="TPUT_SETAF_${verbose_color}"
-                verbose_message="${TPUT_BOLD}${!tput_set_af_v}${verbose_message}${TPUT_SGR0}"
-                unset -v tput_set_af_v
+        if [ ${#TPUT_BOLD} -gt 0 ] && [ ${#TPUT_SGR0} -gt 0 ]; then
+            if [ ${#verbose_color} -eq 0 ]; then
+                verbose_color=${verbose_level}
             fi
+            local tput_set_af_v="TPUT_SETAF_${verbose_color}"
+            verbose_message="${TPUT_BOLD}${!tput_set_af_v}${verbose_message}${TPUT_SGR0}"
+            unset -v tput_set_af_v
         fi
+
         (>&2 printf "%b\n" "${verbose_message}")
+
     fi
 
     unset -v verbose_level verbosity
@@ -1030,8 +1009,11 @@ else
 fi
 
 ##
-### set Verbose
+### set Verbose variables
 ##
+
+Verbose_Pad_Left=11
+Verbose_Pad_Right=50
 
 for verbose_file in "${HOME}/.verbose" "${HOME}/.bashrc.verbose"; do
     if [ -r "${verbose_file}" ]; then
