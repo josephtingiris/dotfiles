@@ -241,6 +241,42 @@ if !exists("*Reconfigure")
     map <Leader>s :call Reconfigure()<CR>
 endif
 
+if !exists("*ToggleClipboard")
+    function! ToggleClipboard()
+        if &clipboard ==# "unnamedplus"
+            set clipboard&
+            echo "Clipboard turned off."
+        else
+            set clipboard=unnamedplus
+            echo "Clipboard turned on."
+        endif
+    endfunction
+endif
+
+if !exists("*TogglePaste")
+    function TogglePaste()
+        if &paste
+            set nopaste
+            echo "Paste turned off."
+        else
+            set paste
+            echo "Paste turned on."
+        endif
+    endfunction
+endif
+
+if !exists("*ToggleSpell")
+    function ToggleSpell()
+        if &spell
+            set nospell
+            echo "Spell turned off."
+        else
+            set spell spelllang=en_us
+            echo "Spell turned on."
+        endif
+    endfunction
+endif
+
 " NR-8    COLOR NAME
 " 0       Black
 " 1       DarkRed
@@ -274,11 +310,11 @@ syntax enable
 filetype indent on
 
 " keyboard preferences
-noremap <F7> :set nopaste<CR>
-noremap <F8> :set paste<CR>
-noremap <F10> <Esc>:setlocal spell spelllang=en_us<CR>
-noremap <F11> <Esc>:setlocal nospell<CR>
-noremap <F12> <Esc>:syntax sync fromstart<CR>
+noremap <silent> <F2> <Esc>:call ToggleClipboard()<CR>
+noremap <silent> <F3> <Esc>:call ToggleSpell()<CR>
+noremap <silent> <F4> <Esc>:call TogglePaste()<CR>
+" <F5> is conditionally mapped to IndentBuffer() (above)
+noremap <F6> <Esc>:syntax sync fromstart<CR>
 nnoremap qb :silent! normal mpea}<Esc>bi{<Esc>`pl " put {} (braces) around a word
 map <Leader>jcf :%!python -m json.tool<CR>   " format/indent json better
 map <Leader>q :q<CR>
