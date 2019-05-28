@@ -1,6 +1,6 @@
 # .bashrc
 
-Bashrc_Version="20190514, joseph.tingiris@gmail.com"
+Bashrc_Version="20190528, joseph.tingiris@gmail.com"
 
 ##
 ### returns to avoid interactive shell enhancements
@@ -43,14 +43,33 @@ fi
 ### determine os variant
 ##
 
+Os_Id=""
+Os_Version_Id=""
+Os_Version_Major=""
+
 if [ -r /etc/os-release ]; then
-    export Os_Id=$(cat /etc/os-release | sed -nEe 's#"##g;s#^ID=(.*)$#\1#p')
-    export Os_Version_Id=$(cat /etc/os-release | sed -nEe 's#"##g;s#^VERSION_ID=(.*)$#\1#p')
+    if [ ${#Os_Id} -eq 0 ]; then
+        Os_Id=$(sed -nEe 's#"##g;s#^ID=(.*)$#\1#p' /etc/os-release)
+    fi
+    if [ ${#Os_Version_Id} -eq 0 ]; then
+        Os_Version_Id=$(sed -nEe 's#"##g;s#^VERSION_ID=(.*)$#\1#p' /etc/os-release)
+    fi
 fi
 
+if [ ${#Os_Id} -eq 0 ]; then
+    if [ -r /etc/redhat-release ]; then
+        Os_Id=rhel
+        Os_Version_Id=$(sed 's/[^.0-9][^.0-9]*//g' /etc/redhat-release)
+    fi
+fi
+
+Os_Version_Major=${Os_Version_Id%.*}
+
+export Os_Id Os_Version_Id Os_Version_Major
+
 if [ ${#Os_Id} -gt 0 ]; then
-    if [ ${#Os_Version_Id} -gt 0 ]; then
-        export Os_Variant="${Os_Id}/${Os_Version_Id}"
+    if [ ${#Os_Version_Major} -gt 0 ]; then
+        export Os_Variant="${Os_Id}/${Os_Version_Major}"
     else
         export Os_Variant="${Os_Id}"
     fi
