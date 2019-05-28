@@ -271,13 +271,11 @@ function gitConfig() {
 
     git_config_globals+=("core.filemode false")
 
-    git_config_globals+=("push.default simple")
-
     git_config_globals+=("user.email ${USER}@${HOSTNAME}")
     git_config_globals+=("user.name ${USER}@${HOSTNAME}")
 
-    if [[ $(git --version 2> /dev/null | grep 'version 1.9.') ]]; then
-        # only support this for git 1.9.x
+    if [[ $(git --version 2> /dev/null | egrep -e 'version 1.9.|version 1.8.[3-9].') ]]; then
+        # only support this for git 1.8.3-1.9.x
         git_config_globals+=("push.default simple")
     fi
 
