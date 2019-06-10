@@ -1,6 +1,6 @@
 # .bashrc
 
-Bashrc_Version="20190619, joseph.tingiris@gmail.com"
+Bashrc_Version="20190610, joseph.tingiris@gmail.com"
 
 ##
 ### returns to avoid interactive shell enhancements
@@ -1125,7 +1125,7 @@ if [[ "${TERM}" != *"screen"* ]] && [[ "${TERM}" != *"tmux"* ]]; then
     if [ ${#KONSOLE_DBUS_WINDOW} -gt 0 ]; then
         export TERM=konsole-256color # if it's a konsole dbus window then konsole-25color
     else
-        export TERM=ansi
+        export TERM=screen-256color
     fi
 fi
 
