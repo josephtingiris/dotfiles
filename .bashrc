@@ -1305,11 +1305,16 @@ fi
 ### conditional alias definitions
 ##
 
+if [ -x $(type -P colordiff) ]; then
+    alias diff=colordiff
+fi
+
 if [ -r "${User_Dir}/.bashrc" ]; then
     alias s="source ${User_Dir}/.bashrc"
 else
     alias s="source ${HOME}/.bashrc"
 fi
+
 if [ -x $(type -P sudo) ]; then
     alias root="sudo SSH_AUTH_SOCK=${SSH_AUTH_SOCK} -u root /bin/bash --init-file ${User_Dir}/.bashrc"
     alias suroot='sudo su -'
@@ -1317,6 +1322,7 @@ else
     alias root="su - root -c '/bin/bash --init-file /home/jtingiris/.bashrc'"
     alias suroot='su -'
 fi
+
 if [ -x $(type -P screen) ]; then
     alias sd='screen -S $(basename $(pwd))'
 fi
