@@ -188,6 +188,7 @@ function! CtagsUpdate(scope)
     " echo something useful
     echo "Updated (" . a:scope . ") tags in " . expand('%:p:h') . "/.tags"
 endfunction
+
 set tags+=.tags;/                           " search backwards for .tags (too)
 command! CtagsFile call CtagsUpdate('file')
 command! CtagsDirectory call CtagsUpdate('directory')
@@ -241,6 +242,7 @@ if !exists("*Reconfigure")
             :execute ":source " . g:User_Dir . "/.gvimrc"
         endif
     endfunction
+
     command! Reconfigure call Reconfigure()
     map <Leader>s :call Reconfigure()<CR>
 endif
@@ -254,6 +256,12 @@ if !exists("*ToggleClipboard")
             set clipboard=unnamedplus
             echo "Clipboard turned on."
         endif
+    endfunction
+endif
+
+if !exists("*ToggleListchars")              
+    function! ToggleListchars()
+        set invlist
     endfunction
 endif
 
@@ -319,6 +327,7 @@ noremap <silent> <F3> <Esc>:call ToggleSpell()<CR>
 noremap <silent> <F4> <Esc>:call TogglePaste()<CR>
 " <F5> is conditionally mapped to IndentBuffer() (above)
 noremap <F6> <Esc>:syntax sync fromstart<CR>
+noremap <silent> <F9> <Esc>:call ToggleListchars()<CR>
 nnoremap qb :silent! normal mpea}<Esc>bi{<Esc>`pl " put {} (braces) around a word
 map <Leader>jcf :%!python -m json.tool<CR>   " format/indent json better
 map <Leader>q :q<CR>
@@ -342,7 +351,8 @@ set hidden                                  " allow hidden buffers
 set history=1000                            " default = 8
 set laststatus=2                            " use the second statusline
 set linebreak                               " only wrap at sensible places
-set list listchars=tab:→\ ,nbsp:▪,trail:▫,extends:▶,precedes:◀ " help listchars
+"set list listchars=tab:⁞\ ,nbsp:▪,trail:▫,extends:▶,precedes:◀ " help listchars
+set list listchars=tab:│\ ,nbsp:▪,trail:▫,extends:▶,precedes:◀ " help listchars
 set nocompatible                            " make vim behave in a more useful way
 "set number                                  " .ine numbers
 set ruler                                   " show the line and column number of the cursor position
