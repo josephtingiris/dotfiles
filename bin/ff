@@ -3,7 +3,7 @@
 # find file (ff)
 
 if [ ! "$1" ];then
-  exit
+    exit
 fi
 
 find_arg="-not -iwholename '*/.git/*' -and -not -iwholename '*/.svn/*' -and"

@@ -3,7 +3,7 @@
 # find in file (fif)
 
 if [ ! "$1" ];then
-  exit
+    exit
 fi
 
 if [ -d "$1" ]; then
