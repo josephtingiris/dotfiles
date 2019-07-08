@@ -36,6 +36,10 @@ if has("autocmd")
             Plug '2072/PHP-Indenting-for-VIm'
 
             if v:version >= 704
+                " https://github.com/fatih/vim-go
+                Plug 'fatih/vim-go', { 'do': ':GoUpdateBinaries' }
+                let g:go_version_warning = 0
+
                 " https://github.com/chrisbra/vim-sh-indent
                 Plug 'chrisbra/vim-sh-indent'
             endif
@@ -338,12 +342,13 @@ set hidden                                  " allow hidden buffers
 set history=1000                            " default = 8
 set laststatus=2                            " use the second statusline
 set linebreak                               " only wrap at sensible places
-set list listchars=tab:▷\ ,trail:⋅,nbsp:⋅
+set list listchars=tab:→\ ,nbsp:▪,trail:▫,extends:▶,precedes:◀ " help listchars
 set nocompatible                            " make vim behave in a more useful way
 "set number                                  " .ine numbers
 set ruler                                   " show the line and column number of the cursor position
 set secure                                  " shell and write commands are not allowed in .nvimrc and .exrc in the current directory
 set shiftwidth=4                            " return value for shiftwidth()
+set showbreak=↪\ 
 set showcmd                                 " show (partial) command in the last line of the screen
 "set smartindent                             " smart autoindent when starting a new line; shouldn't use with filtetype indent
 set smarttab                                " when on a <Tab> in front of a line, insert blanks according to shiftwidth
@@ -357,4 +362,3 @@ endif
 set wildmenu                                " enhanced command-line completion
 set wrap                                    " turn on word wrapping
 set wrapmargin=0                            " number of characters from the right window border where wrapping starts
-
