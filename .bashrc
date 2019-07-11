@@ -1,6 +1,6 @@
 # .bashrc
 
-Bashrc_Version="20190621, joseph.tingiris@gmail.com"
+Bashrc_Version="20190711, joseph.tingiris@gmail.com"
 
 ##
 ### returns to avoid interactive shell enhancements
@@ -235,7 +235,7 @@ done
 
 # override dmesg
 function dmesg() {
-    local dmesg=$(type -P dmesg)
+    local dmesg="$(type -P dmesg)"
 
     if [ -x ${dmesg} ]; then
         ${dmesg} -TL $@ 2> /dev/null || ${dmesg} $@
@@ -368,13 +368,13 @@ function sshAgent() {
         fi
     fi
 
-    export Ssh_Agent=$(type -P ssh-agent)
+    export Ssh_Agent="$(type -P ssh-agent)"
     if [ ${#Ssh_Agent} -eq 0 ] || [ ! -x ${Ssh_Agent} ]; then
         verbose "EMERGENCY: ssh-agent not usable"
         return 1
     fi
 
-    export Ssh_Keygen=$(type -P ssh-keygen)
+    export Ssh_Keygen="$(type -P ssh-keygen)"
     if [ ${#Ssh_Keygen} -eq 0 ] || [ ! -x ${Ssh_Keygen} ]; then
         verbose "EMERGENCY: ssh-keygen not usable"
         return 1
@@ -521,7 +521,7 @@ function sshAgent() {
 
     # hmm .. https://serverfault.com/questions/401737/choose-identity-from-ssh-agent-by-file-name
     # this will convert the stored ssh-keys to public files that can be used with IdentitiesOnly
-    Md5sum=$(type -P md5sum)
+    Md5sum="$(type -P md5sum)"
     if [ -x "${Md5sum}" ] && [ -w "${HOME}/.ssh" ] && [ "${USER}" != "root" ]; then
         Ssh_Identities_Dir="${HOME}/.ssh/md5sum"
 
@@ -567,7 +567,7 @@ function sshAgent() {
 
 function sshAgentClean() {
 
-    export Ssh_Add=$(type -P ssh-add)
+    export Ssh_Add="$(type -P ssh-add)"
     if [ ${#Ssh_Add} -eq 0 ] || [ ! -x ${Ssh_Add} ]; then
         pkill ssh-agent &> /dev/nulll
         verbose "EMERGENCY: ssh-add not usable"
@@ -950,14 +950,14 @@ function viLocate() {
         if [ -r "${vi_locate}" ] && [ ! -d "${vi_locate}" ]; then
             vi_files+=(${vi_locate})
         else
-            if [ -x $(type -P locate) ]; then
+            if type -P locate &> /dev/null; then
                 while read vi_file; do
                     if [ -r "${vi_file}" ] && [ ! -d "${vi_file}" ]; then
                         vi_files+=($vi_file)
                     fi
                 done <<< "$(locate -r "/${vi_locate}$" | sort)"
             else
-                if [ -x $(type -P which) ]; then
+                if type -P which &> /dev/null; then
                     while read vi_file; do
                         if [ -r "${vi_file}" ] && [ ! -d "${vi_file}" ]; then
                             vi_files+=($vi_file)
@@ -985,7 +985,7 @@ function viLocate() {
 
 # this is mainly for performance; as long as TERM doesn't change then there's no need to run tput every time
 if [ "$TERM" != "$TPUT_TERM" ]; then
-    if [ -x $(type -P tput) ]; then
+    if type -P tput &> /dev/null; then
         export TPUT_TERM=$TERM
         export TPUT_BOLD="$(tput bold)"
         export TPUT_SETAF_0="$(tput setaf 0)"
@@ -1105,7 +1105,7 @@ if [ ${#TMUX} -gt 0 ]; then
     export Tmux_Bin=$(ps -ho cmd -p $(ps -ho ppid -p $$ 2> /dev/null) 2> /dev/null | awk '{print $1}')
 else
     # not in in a tmux
-    export Tmux_Bin=$(type -P tmux 2> /dev/null)
+    export Tmux_Bin="$(type -P tmux 2> /dev/null)"
 fi
 
 if [ ${#Tmux_Bin} -gt 0 ] && [ -x ${Tmux_Bin} ]; then
@@ -1305,7 +1305,7 @@ fi
 ### conditional alias definitions
 ##
 
-if [ -x $(type -P colordiff) ]; then
+if type -P colordiff &> /dev/null; then
     alias diff=colordiff
 fi
 
@@ -1315,7 +1315,7 @@ else
     alias s="source ${HOME}/.bashrc"
 fi
 
-if [ -x $(type -P sudo) ]; then
+if type -P sudo &> /dev/null; then
     alias root="sudo SSH_AUTH_SOCK=${SSH_AUTH_SOCK} -u root /bin/bash --init-file ${User_Dir}/.bashrc"
     alias suroot='sudo su -'
 else
@@ -1323,7 +1323,7 @@ else
     alias suroot='su -'
 fi
 
-if [ -x $(type -P screen) ]; then
+if type -P screen &> /dev/null; then
     alias sd='screen -S $(basename $(pwd))'
 fi
 
