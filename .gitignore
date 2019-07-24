@@ -1,6 +1,9 @@
 # exculde everyting
 /*
 
+# except .ansible.cfg
+!.ansible.cfg
+
 # except .bash* files
 !.bash_logout
 !.bash_profile
