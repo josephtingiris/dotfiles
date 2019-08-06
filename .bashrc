@@ -1,6 +1,6 @@
 # .bashrc
 
-Bashrc_Version="20190711, joseph.tingiris@gmail.com"
+Bashrc_Version="20190806, joseph.tingiris@gmail.com"
 
 ##
 ### returns to avoid interactive shell enhancements
@@ -1135,14 +1135,14 @@ fi
 
 case "${TERM}" in
     # linux term only supports 8 colors (and bold)
-    #export PS1="\[${TPUT_SETAF_0}\][\u@\h \w]${PS} \[${TPUT_SGR0}\]" # black
-    #export PS1="\[${TPUT_SETAF_1}\][\u@\h \w]${PS} \[${TPUT_SGR0}\]" # red
-    #export PS1="\[${TPUT_SETAF_2}\][\u@\h \w]${PS} \[${TPUT_SGR0}\]" # green
-    #export PS1="\[${TPUT_SETAF_3}\][\u@\h \w]${PS} \[${TPUT_SGR0}\]" # yellow(ish)
-    #export PS1="\[${TPUT_SETAF_4}\][\u@\h \w]${PS} \[${TPUT_SGR0}\]" # blue
-    #export PS1="\[${TPUT_SETAF_5}\][\u@\h \w]${PS} \[${TPUT_SGR0}\]" # purple
-    #export PS1="\[${TPUT_SETAF_6}\][\u@\h \w]${PS} \[${TPUT_SGR0}\]" # cyan
-    #export PS1="\[${TPUT_SETAF_7}\][\u@\h \w]${PS} \[${TPUT_SGR0}\]" # grey
+    #export PS1="\[${TPUT_SETAF_0}\][\u@\H \w]${PS} \[${TPUT_SGR0}\]" # black
+    #export PS1="\[${TPUT_SETAF_1}\][\u@\H \w]${PS} \[${TPUT_SGR0}\]" # red
+    #export PS1="\[${TPUT_SETAF_2}\][\u@\H \w]${PS} \[${TPUT_SGR0}\]" # green
+    #export PS1="\[${TPUT_SETAF_3}\][\u@\H \w]${PS} \[${TPUT_SGR0}\]" # yellow(ish)
+    #export PS1="\[${TPUT_SETAF_4}\][\u@\H \w]${PS} \[${TPUT_SGR0}\]" # blue
+    #export PS1="\[${TPUT_SETAF_5}\][\u@\H \w]${PS} \[${TPUT_SGR0}\]" # purple
+    #export PS1="\[${TPUT_SETAF_6}\][\u@\H \w]${PS} \[${TPUT_SGR0}\]" # cyan
+    #export PS1="\[${TPUT_SETAF_7}\][\u@\H \w]${PS} \[${TPUT_SGR0}\]" # grey
 
     ansi|*color|*xterm)
 
@@ -1171,7 +1171,7 @@ case "${TERM}" in
         ;;
 esac
 
-PS="[\u@\h \w]"
+PS="[\u@\H \w]"
 if [ "${USER}" == "root" ]; then
     PS+="# "
     PS1="\[${TPUT_BOLD}${TPUT_SETAF_3}\]${PS}\[${TPUT_SGR0}\]" # bold yellow
@@ -1314,6 +1314,8 @@ if [ -r "${User_Dir}/.bashrc" ]; then
 else
     alias s="source ${HOME}/.bashrc"
 fi
+
+alias ssho='ssh -o IdentitiesOnly=yes'
 
 if type -P sudo &> /dev/null; then
     alias root="sudo SSH_AUTH_SOCK=${SSH_AUTH_SOCK} -u root /bin/bash --init-file ${User_Dir}/.bashrc"
