@@ -78,6 +78,7 @@
 
 # except specific files in the etc/profile.d directory
 !/etc/
+/etc/restic.conf
 /etc/profile.d/*
 !/etc/profile.d/README
 
