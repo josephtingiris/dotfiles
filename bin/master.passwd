@@ -14,6 +14,8 @@
 # joseph.tingiris@gmail.com, 20190104 ... rc1 (centos 7, fedora 28)
 # joseph.tingiris@gmail.com, 20190129 ... rc2 (centos 7, fedora 28-29)
 # joseph.tingiris@gmail.com, 20190130 ... rc3 (centos 7, fedora 28-29); added Mkhome_Flag
+# joseph.tingiris@gmail.com, 20190808 ... rc3 (centos 7, fedora 28-29, rhel 7)
+# joseph.tingiris@gmail.com, 20190814 ... rc3 (centos 7, fedora 28-30, rhel 7)
 
 # TODO:
 # use getops
@@ -324,7 +326,9 @@ function groupsRm() {
     while read no_users; do
         no_group=$(echo "$no_users" | awk '{print $3}' | awk -F: '{print $1}')
         no_user=$(echo "$no_users" | awk '{print $NF}')
-        gpasswd --delete $no_user $no_group
+        if [ ${#no_user} -gt 0 ] && [ ${#no_group} -gt 0 ]; then
+            gpasswd --delete $no_user $no_group
+        fi
         unset no_group
     done <<< "$(grpck -r | grep "shadow group .*: no user .*")"
     unset no_group no_user no_users
@@ -789,7 +793,12 @@ else
         fi
     fi
     if [ "$ID" == "fedora" ]; then
-        if [ "$VERSION_ID" == "28" ] || [ "$VERSION_ID" == "29" ]; then
+        if [[ "$VERSION_ID" =~ ^2 ]] || [[ "$VERSION_ID" =~ ^3 ]]; then
+            Tested_Ok=0 # true
+        fi
+    fi
+    if [ "$ID" == "rhel" ]; then
+        if [[ "$VERSION_ID" =~ ^7. ]]; then
             Tested_Ok=0 # true
         fi
     fi
