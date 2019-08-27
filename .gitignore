@@ -73,6 +73,7 @@
 !/bin/mysql-kill
 !/bin/passwd.master
 !/bin/snmpwalk*
+!/bin/scpmv
 !/bin/src-dotfiles-rsync
 !/bin/test-loop
 
