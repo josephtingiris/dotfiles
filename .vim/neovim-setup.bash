@@ -22,6 +22,7 @@ npm
 python2-pip
 tmux
 xsel
+yamllint
 )
 
 if [ "${ID}" == "centos" ]; then

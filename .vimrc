@@ -47,6 +47,17 @@ if has("autocmd")
             " https://github.com/pearofducks/ansible-vim
             Plug 'pearofducks/ansible-vim'
             let g:ansible_unindent_after_newline = 1
+            autocmd BufNewFile,BufRead *.j2 set filetype=yaml.ansible
+            autocmd BufNewFile,BufRead *.jinja2 set filetype=yaml.ansible
+            autocmd BufNewFile,BufRead *.yml set filetype=yaml.ansible
+            autocmd BufNewFile,BufRead *.yaml set filetype=yaml.ansible
+
+            " https://github.com/mrk21/yaml-vim
+            "Plug 'https://github.com/mrk21/yaml-vim'
+            "au! BufNewFile,BufReadPost *.{yaml,yml} set filetype=yaml foldmethod=indent
+            "autocmd FileType yaml setlocal ts=2 sts=2 sw=2 expandtab
+            "autocmd FileType yaml setlocal ai ts=2 sts=2 sw=2 et
+            "autocmd FileType yml setlocal ai ts=2 sts=2 sw=2 et
 
             " https://github.com/ctrlpvim/ctrlp.vim
             Plug 'ctrlpvim/ctrlp.vim'
@@ -78,6 +89,7 @@ if has("autocmd")
             let g:syntastic_auto_loc_list = 1
             let g:syntastic_check_on_open = 1
             let g:syntastic_check_on_wq = 0
+            let g:syntastic_yaml_checkers = ['yamllint']
 
             " https://github.com/tpope/vim-fugitive
             Plug 'tpope/vim-fugitive'
@@ -138,22 +150,14 @@ if has("autocmd")
 
     " autocmd Buf preferences
     autocmd BufNewFile,BufRead *.d set filetype=sh
-    autocmd BufNewFile,BufRead *.j2 set filetype=yaml.ansible
-    autocmd BufNewFile,BufRead *.jinja2 set filetype=yaml.ansible
     autocmd BufNewFile,BufRead *.md set filetype=markdown
     autocmd BufNewFile,BufRead http* set filetype=xml syntax=apache
     autocmd BufNewFile,BufRead named*.conf set filetype=named
     autocmd BufNewFile,BufRead *.web set filetype=sh
-    autocmd BufNewFile,BufRead *.yml set filetype=yaml.ansible
-    autocmd BufNewFile,BufRead *.yaml set filetype=yaml.ansible
     autocmd BufNewFile,BufRead *.zone set filetype=bindzone
 
     " autocmd Vim preferences
     "autocmd VimEnter * "set term=$TERM"
-
-    " autocmd yml preferences
-    autocmd FileType yaml setlocal ai ts=2 sts=2 sw=2 et
-    autocmd FileType yml setlocal ai ts=2 sts=2 sw=2 et
 
     if has('nvim')
         " workaround nvim terminal bug; https://github.com/neovim/neovim/wiki/FAQ#nvim-shows-weird-symbols-2-q-when-changing-modes
