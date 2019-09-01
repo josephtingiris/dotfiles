@@ -39,6 +39,11 @@ if has("autocmd")
                 " https://github.com/fatih/vim-go
                 Plug 'fatih/vim-go', { 'do': ':GoUpdateBinaries' }
                 let g:go_version_warning = 0
+                autocmd BufNewFile,BufRead *.go set filetype=go
+                autocmd FileType go nmap <leader>b <Plug>(go-build)
+                autocmd FileType go nmap <leader>r <Plug>(go-run)
+                autocmd FileType go nmap <leader>t <Plug>(go-test)
+                autocmd FileType go nmap <leader>c <Plug>(go-coverage)
 
                 " https://github.com/chrisbra/vim-sh-indent
                 Plug 'chrisbra/vim-sh-indent'
@@ -66,7 +71,7 @@ if has("autocmd")
             " https://github.com/Raimondi/delimitMate
             Plug 'Raimondi/delimitMate'
             let delimitMate_matchpairs = "(:),[:],{:},<:>"
-            au FileType vim,html let b:delimitMate_matchpairs = "(:),[:],{:},<:>"
+            autocmd FileType vim,html let b:delimitMate_matchpairs = "(:),[:],{:},<:>"
 
             " https://github.com/sbdchd/neoformat
             Plug 'sbdchd/neoformat'
