@@ -1,0 +1,26 @@
+#!/bin/bash
+
+Arguments=$@
+Arguments_Count=$#
+
+scp ${Arguments}
+scp_rc=$?
+
+if [ ${scp_rc} -eq 0 ]; then
+    printf "\n'scp ${Arguments}' succeeded (scp_rc=$scp_rc)\n\n"
+    for ((a=1; a<=$Arguments_Count; a++)); do
+        Argument="${!a}"
+        if [ -f "$Argument" ] && [ -r "$Argument" ]; then
+            rm "${Argument}"
+            if [ $? -eq 0 ]; then
+                echo "rm ${Argument} - OK"
+            else
+                echo "rm ${Argument} - FAILED"
+            fi
+        fi
+    done
+
+else
+    printf "\n'scp ${Arguments}' failed (scp_rc=$scp_rc)\n\n"
+    exit 2
+fi
