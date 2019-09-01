@@ -336,7 +336,7 @@ function githubDotfiles() {
 
 # colorize make output
 function make() {
-    /usr/bin/make "$@" 2>&1 | sed --unbuffered -e "s/\(.*[Ee]rror.*\)/${TPUT_SETAF_1}\1${TPUT_SGR0}/" -e "s/\(.*[Ww]arning.*\)/${TPUT_SETAF_3}\1${TPUT_SGR0}/"
+    /usr/bin/make "$@" 2>&1 | sed --unbuffered -e "s/\(.*[Ee]rror.*\)/${TPUT_SETAF_1}\1${TPUT_SGR0}/" -e "s/\(.*[Ff]ail.*\)/${TPUT_SMSO}\1${TPUT_SGR0}/" -e "s/\(.*[Ww]arning.*\)/${TPUT_SETAF_3}\1${TPUT_SGR0}/"
     return ${PIPESTATUS[0]}
 }
 
