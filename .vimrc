@@ -39,8 +39,13 @@ if has("autocmd")
                 " https://github.com/fatih/vim-go
                 Plug 'fatih/vim-go', { 'do': ':GoUpdateBinaries' }
                 let g:go_version_warning = 0
+                let g:go_fmt_command = "goimports"
                 autocmd BufNewFile,BufRead *.go set filetype=go
+                autocmd FileType go map <C-n> :cnext<CR>
+                autocmd FileType go map <C-m> :cprevious<CR>
+                autocmd FileType go nnoremap <leader>a :cclose<CR>
                 autocmd FileType go nmap <leader>b <Plug>(go-build)
+                autocmd FileType go nmap <leader>i <Plug>(go-imports)
                 autocmd FileType go nmap <leader>r <Plug>(go-run)
                 autocmd FileType go nmap <leader>t <Plug>(go-test)
                 autocmd FileType go nmap <leader>c <Plug>(go-coverage)
@@ -48,6 +53,9 @@ if has("autocmd")
                 " https://github.com/chrisbra/vim-sh-indent
                 Plug 'chrisbra/vim-sh-indent'
             endif
+
+            " https://github.com/ervandew/supertab
+            Plug 'ervandew/supertab'
 
             " https://github.com/pearofducks/ansible-vim
             Plug 'pearofducks/ansible-vim'
@@ -87,6 +95,12 @@ if has("autocmd")
 
                 let g:ctrlp_dont_split = 'NERD'
             endif
+
+            " https://github.com/SirVer/ultisnips
+            Plug 'SirVer/ultisnips'
+            let g:UltiSnipsExpandTrigger = "<tab>"
+            let g:UltiSnipsJumpForwardTrigger = "<tab>"
+            let g:UltiSnipsJumpBackwardTrigger = "<s-tab>"
 
             " https://github.com/vim-syntastic/syntastic
             Plug 'scrooloose/syntastic'
@@ -130,6 +144,9 @@ if has("autocmd")
 
                 " https://github.com/Valloric/YouCompleteMe
                 Plug 'Valloric/YouCompleteMe'
+                let g:ycm_key_list_select_completion = ['<C-n>', '<Down>']
+                let g:ycm_key_list_previous_completion = ['<C-p>', '<Up>']
+                let g:SuperTabDefaultCompletionType = '<C-n>'
 
             else
                 " vim compatible, only
