@@ -755,8 +755,24 @@ function updatePGM() {
 
     fi
 
+    printf "\n"
+    pprint "enforcement" "CHECK"
+    printf "\n"
+
     local enforce_file enforce_files enforce_mode enforce_ownership enforce_ownerships enforce_user_group
     enforce_ownerships=()
+    # chrony
+    enforce_ownerships+=(/var/lib/chrony++chrony:chrony)
+    enforce_ownerships+=(/var/lib/chrony/drift++chrony:chrony)
+    enforce_ownerships+=(/var/log/chrony++chrony:chrony)
+    # colord
+    enforce_ownerships+=(/var/lib/colord++colord:colord)
+    # lirc
+    enforce_ownerships+=(/var/log/lirc++lirc:lirc)
+    # pcp
+    enforce_ownerships+=(/var/lib/pcp++pcp)
+    enforce_ownerships+=(/var/lib/pcp/tmp++pcp:pcp)
+    # ssh_keys
     enforce_ownerships+=(/etc/ssh/*_key++root:ssh_keys++0600)
     enforce_ownerships+=(/usr/libexec/openssh/ssh-keysign++root:ssh_keys)
     for enforce_ownership in ${enforce_ownerships[@]}; do
@@ -765,7 +781,7 @@ function updatePGM() {
         enforce_user_group=${enforce_user_group%%++*}
         enforce_mode=${enforce_ownership##*++}
         for enforce_file in ${enforce_files}; do
-            if [ -f "${enforce_file}" ]; then
+            if [ -a "${enforce_file}" ]; then
                 pprint "enforce ownership of ${enforce_file} to be ${enforce_user_group}" "QUEUE #${Queue_Count}"
                 Queue_Commands+=("# ${master_passwd} ${master_username} enforce ownership of ${enforce_file} to be ${enforce_user_group}")
                 Queue_Commands+=("chown --changes --no-dereference --preserve-root ${enforce_user_group} ${enforce_file}")
