@@ -16,6 +16,7 @@
 # joseph.tingiris@gmail.com, 20190130 ... rc3 (centos 7, fedora 28-29); added Mkhome_Flag
 # joseph.tingiris@gmail.com, 20190808 ... rc3 (centos 7, fedora 28-29, rhel 7)
 # joseph.tingiris@gmail.com, 20190814 ... rc3 (centos 7, fedora 28-30, rhel 7)
+# joseph.tingiris@gmail.com, 20190906 ... add 'enforce' logic
 
 # TODO:
 # use getops
@@ -728,26 +729,56 @@ function updatePGM() {
     if [ "${master_passwd}" != "${passwd}" ]; then
         diff -q "${master_passwd}" "${passwd}" &> /dev/null
         if [ $? -ne 0 ]; then
-            pprint "copy ${master_passwd} to ${passwd}" "QUEUE #${Queue_Count}"
+            pprint "copy ${master_passwd} to ${passwd} & pwconv" "QUEUE #${Queue_Count}"
             Queue_Commands+=("cp \"${master_passwd}\" \"${passwd}\"")
             if [ -r /etc/passwd.local ]; then
                 pprint "merge /etc/passwd.local into ${passwd}" "QUEUE #${Queue_Count}"
                 Queue_Commands+=("cat \"/etc/passwd.local\" >> \"${passwd}\"")
             fi
+            Queue_Commands+=("pwconv")
+            Queue_Commands+=("pwck -s")
         fi
     fi
 
     if [ "${master_group}" != "${group}" ]; then
         diff -q "${master_group}" "${group}" &> /dev/null
         if [ $? -ne 0 ]; then
-            pprint "copy ${master_group} to ${group}" "QUEUE #${Queue_Count}"
+            pprint "copy ${master_group} to ${group} & grpconv" "QUEUE #${Queue_Count}"
             Queue_Commands+=("cp \"${master_group}\" \"${group}\"")
             if [ -r /etc/group.local ]; then
                 pprint "merge /etc/group.local into ${group}" "QUEUE #${Queue_Count}"
                 Queue_Commands+=("cat \"/etc/group.local\" >> \"${group}\"")
             fi
         fi
+        Queue_Commands+=("grpconv")
+        Queue_Commands+=("grpck -s")
+
     fi
+
+    local enforce_file enforce_files enforce_mode enforce_ownership enforce_ownerships enforce_user_group
+    enforce_ownerships=()
+    enforce_ownerships+=(/etc/ssh/*_key++root:ssh_keys++0600)
+    enforce_ownerships+=(/usr/libexec/openssh/ssh-keysign++root:ssh_keys)
+    for enforce_ownership in ${enforce_ownerships[@]}; do
+        enforce_files=${enforce_ownership%%++*}
+        enforce_user_group=${enforce_ownership#*++}
+        enforce_user_group=${enforce_user_group%%++*}
+        enforce_mode=${enforce_ownership##*++}
+        for enforce_file in ${enforce_files}; do
+            if [ -f "${enforce_file}" ]; then
+                pprint "enforce ownership of ${enforce_file} to be ${enforce_user_group}" "QUEUE #${Queue_Count}"
+                Queue_Commands+=("# ${master_passwd} ${master_username} enforce ownership of ${enforce_file} to be ${enforce_user_group}")
+                Queue_Commands+=("chown --changes --no-dereference --preserve-root ${enforce_user_group} ${enforce_file}")
+                if [ "${enforce_mode}" != "${enforce_user_group}" ]; then
+                    pprint "enforce mode of ${enforce_file} to be ${enforce_mode}" "QUEUE #${Queue_Count}"
+                    Queue_Commands+=("# ${master_passwd} ${master_username} enforce mode of ${enforce_file} to be ${enforce_mode}")
+                    Queue_Commands+=("chmod ${enforce_mode} ${enforce_file}")
+                fi
+            fi
+        done
+        unset -v enfore_files enforce_more enforce_user_group
+    done
+
 }
 
 function usage() {
