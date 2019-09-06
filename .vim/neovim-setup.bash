@@ -58,6 +58,7 @@ pip2 install --user --upgrade neovim
 pip3 install --user --upgrade neovim
 gem install --user-install neovim
 grep /home/jtingiris/.gem/ruby/bin ~/.Auto_Path || echo /home/jtingiris/.gem/ruby/bin >> ~/.Auto_Path
+npm install -g bash-language-server
 npm install -g typescript
 npm install -g neovim
 echo
