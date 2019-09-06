@@ -54,10 +54,6 @@ if has("autocmd")
                 Plug 'chrisbra/vim-sh-indent'
             endif
 
-            " https://github.com/ervandew/supertab
-            Plug 'ervandew/supertab'
-
-            " https://github.com/pearofducks/ansible-vim
             Plug 'pearofducks/ansible-vim'
             let g:ansible_unindent_after_newline = 1
             autocmd BufNewFile,BufRead *.j2 set filetype=yaml.ansible
@@ -97,10 +93,10 @@ if has("autocmd")
             endif
 
             " https://github.com/SirVer/ultisnips
-            Plug 'SirVer/ultisnips'
-            let g:UltiSnipsExpandTrigger = "<tab>"
-            let g:UltiSnipsJumpForwardTrigger = "<tab>"
-            let g:UltiSnipsJumpBackwardTrigger = "<s-tab>"
+            "Plug 'SirVer/ultisnips'
+            "let g:UltiSnipsExpandTrigger = "<tab>"
+            "let g:UltiSnipsJumpForwardTrigger = "<tab>"
+            "let g:UltiSnipsJumpBackwardTrigger = "<s-tab>"
 
             " https://github.com/vim-syntastic/syntastic
             Plug 'scrooloose/syntastic'
@@ -142,11 +138,20 @@ if has("autocmd")
                 endfunction
                 Plug 'euclio/vim-markdown-composer', { 'do': function('BuildComposer') }
 
-                " https://github.com/Valloric/YouCompleteMe
-                Plug 'Valloric/YouCompleteMe'
-                let g:ycm_key_list_select_completion = ['<C-n>', '<Down>']
-                let g:ycm_key_list_previous_completion = ['<C-p>', '<Up>']
-                let g:SuperTabDefaultCompletionType = '<C-n>'
+
+                if has('nvim-0.3.1')
+                    " https://github.com/neoclide/coc.nvim
+                    " release branch
+                    Plug 'neoclide/coc.nvim', {'branch': 'release'}
+                    " latest tag
+                    " Plug 'neoclide/coc.nvim', {'tag': '*', 'branch': 'release'}
+                else
+                    " https://github.com/Valloric/YouCompleteMe
+                    Plug 'Valloric/YouCompleteMe'
+                    "let g:ycm_key_list_select_completion = ['<C-n>', '<Down>']
+                    "let g:ycm_key_list_previous_completion = ['<C-p>', '<Up>']
+                    "let g:SuperTabDefaultCompletionType = '<C-n>'
+                endif
 
             else
                 " vim compatible, only
