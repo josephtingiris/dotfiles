@@ -637,7 +637,6 @@ function updatePGM() {
 
             fi
 
-
             if [ ${master_passwd_line_ok} -eq 0 ]; then
                 if [ ${Verbose_Flag} -eq 0 ]; then
                     if [ ${notice} -ne 0 ]; then
@@ -684,42 +683,43 @@ function updatePGM() {
 
                         if [ "${uid}" != "${master_uid}" ] && [ "${gid}" != "${master_gid}" ]; then
                             pprint "${master_passwd} ${master_username}:x:${master_uid}:${master_gid} uid and gid will change from ${uid}:${gid} to ${master_uid}:${master_gid}" "QUEUE #${Queue_Count}"
+
                             # only need to do this once; it *should* fix everything
                             if [ ${update_check} -eq 1 ]; then
                                 Queue_Commands+=("# ${master_passwd} ${master_username} change files uid:gid from ${uid}:${gid} to ${master_uid}:${master_gid}")
-                                Queue_Commands+=("find ${find_args} -user ${uid} -and -group ${gid} -print0 | xargs -0 --no-run-if-empty chown --changes --no-dereference --preserve-root ${master_uid}:${master_gid}")
+                                Queue_Commands+=("find ${find_args} -user ${uid} -and -group ${gid} -print0 | xargs -0 -r chown --changes --no-dereference --preserve-root ${master_uid}:${master_gid}")
                             fi
 
                         # need to do this once; it needs to be run only on the second check pass for duplicates
                         if [ ${update_checks} -eq 1 ] || [ ${update_check} -eq 2 ]; then
                             Queue_Commands+=("# ${master_passwd} ${master_username} change files uid from ${uid} to ${master_uid}")
-                            Queue_Commands+=("find ${find_args} -user ${uid} -print0 | xargs -0 --no-run-if-empty chown --changes --no-dereference --preserve-root ${master_uid}")
+                            Queue_Commands+=("find ${find_args} -user ${uid} -print0 | xargs -0 -r chown --changes --no-dereference --preserve-root ${master_uid}")
                             Queue_Commands+=("# ${master_passwd} ${master_username} change files gid from ${gid} to ${master_gid}")
-                            Queue_Commands+=("find ${find_args} -group ${gid} -print0 | xargs -0 --no-run-if-empty chgrp --changes --no-dereference --preserve-root ${master_gid}")
+                            Queue_Commands+=("find ${find_args} -group ${gid} -print0 | xargs -0 -r chgrp --changes --no-dereference --preserve-root ${master_gid}")
                         fi
                     else
                         # only need to do this once
                         if [ ${update_check} -eq 1 ]; then
                             if [ "${uid}" != "${master_uid}" ]; then
                                 Queue_Commands+=("# ${master_passwd} ${master_username} uid will change from ${uid} to ${master_uid}")
-                                Queue_Commands+=("find ${find_args} -user ${uid} -print0 | xargs -0 --no-run-if-empty chown --changes --no-dereference --preserve-root ${master_uid}")
+                                Queue_Commands+=("find ${find_args} -user ${uid} -print0 | xargs -0 -r chown --changes --no-dereference --preserve-root ${master_uid}")
                             fi
                             if [ "${gid}" != "${master_gid}" ]; then
                                 Queue_Commands+=("# ${master_passwd} ${master_username} gid will change from ${gid} to ${master_gid}")
-                                Queue_Commands+=("find ${find_args} -group ${gid} -print0 | xargs -0 --no-run-if-empty chgrp --changes --no-dereference --preserve-root ${master_gid}")
+                                Queue_Commands+=("find ${find_args} -group ${gid} -print0 | xargs -0 -r chgrp --changes --no-dereference --preserve-root ${master_gid}")
                             fi
                         fi
-                    fi
-                done
-                unset -v Local_Mount
+                        fi
+                    done
+                    unset -v Local_Mount
 
-            done <<< "$(grep "^${master_username}:x:" "${passwd}" | sort -u)"
-            unset passwd_line username password uid gid comment homedir shell
-        fi
+                done <<< "$(grep "^${master_username}:x:" "${passwd}" | sort -u)"
+                unset passwd_line username password uid gid comment homedir shell
+            fi
 
-    done <<< "$(cat "${master_passwd}")"
-    unset master_username master_password master_uid master_gid master_comment master_homedir master_shell
-done # update_checks
+        done <<< "$(cat "${master_passwd}")"
+        unset master_username master_password master_uid master_gid master_comment master_homedir master_shell
+    done # update_checks
 
     #
     # if they're different then copy master_passwd & master_group to passwd & group
@@ -1017,11 +1017,11 @@ if [ ${Sync_Flag} -eq 0 ]; then
             unset Sync_Passwd Sync_Group
         else
             aborting "syncing all matching files in ${2} only works if there are valid master passwd & group files"
+            fi
+            exit
         fi
-        exit
-    fi
 
-    let Resort=1
+        let Resort=1
 
     #
     # sync all 'new' users from the active passwd and put them in the master passwd
@@ -1081,7 +1081,7 @@ if [ ${Sync_Flag} -eq 0 ]; then
         ((++Queue_Count))
         exit
     fi
-fi
+    fi
 
 # at this point, nothing in the command queue should be irreversible
 queueEval "${Yes_Flag}"
