@@ -1,6 +1,6 @@
 # .bashrc
 
-Bashrc_Version="20190903, joseph.tingiris@gmail.com"
+Bashrc_Version="20190910, joseph.tingiris@gmail.com"
 
 ##
 ### returns to avoid interactive shell enhancements
@@ -1314,6 +1314,7 @@ else
     alias s="source ${HOME}/.bashrc"
 fi
 
+alias scpo='scp -o IdentitiesOnly=yes'
 alias ssho='ssh -o IdentitiesOnly=yes'
 
 if type -P sudo &> /dev/null; then
