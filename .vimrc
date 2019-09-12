@@ -248,9 +248,8 @@ if has("autocmd")
 
                 else
 
-                    " vim compatible, only
+                    " nvim <= 0.3.0
 
-                    " https://github.com/suan/instant-markdown-d
                     " https://github.com/suan/vim-instant-markdown
                     Plug 'suan/vim-instant-markdown'
                     let g:markdown_fenced_languages = ['html', 'python', 'bash=sh']
@@ -258,6 +257,12 @@ if has("autocmd")
                     let g:markdown_minlines = 100
                     let g:instant_markdown_autostart = 0    " Use :InstantMarkdownPreview to turn on
 
+                    " https://github.com/Valloric/YouCompleteMe
+                    Plug 'Valloric/YouCompleteMe'
+                    "let g:ycm_key_list_select_completion = ['<C-n>', '<Down>']
+                    "let g:ycm_key_list_previous_completion = ['<C-p>', '<Up>']
+                    "let g:SuperTabDefaultCompletionType = '<C-n>'
+                              "
                 endif " has('nvim-0.3.1')
 
             endif " has('nvim')
