@@ -1,6 +1,6 @@
 # .bashrc
 
-Bashrc_Version="20190910, joseph.tingiris@gmail.com"
+Bashrc_Version="20190930, joseph.tingiris@gmail.com"
 
 ##
 ### returns to avoid interactive shell enhancements
@@ -1317,9 +1317,17 @@ fi
 alias scpo='scp -o IdentitiesOnly=yes'
 alias ssho='ssh -o IdentitiesOnly=yes'
 
-if type -P sudo &> /dev/null; then
-    alias root="sudo SSH_AUTH_SOCK=${SSH_AUTH_SOCK} -u root /bin/bash --init-file ${User_Dir}/.bashrc"
-    alias suroot='sudo su -'
+if [ -x /usr/bin/sudo ]; then
+    Sudo=/usr/bin/sudo
+else
+    if [ -x /bin/sudo ]; then
+        Sudo=/bin/sudo
+    fi
+fi
+
+if [ ${#Sudo} -gt 0 ]; then
+    alias root="${Sudo} SSH_AUTH_SOCK=${SSH_AUTH_SOCK} -u root /bin/bash --init-file ${User_Dir}/.bashrc"
+    alias suroot="${Sudo} su -"
 else
     alias root="su - root -c '/bin/bash --init-file /home/jtingiris/.bashrc'"
     alias suroot='su -'
