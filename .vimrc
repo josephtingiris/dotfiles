@@ -36,23 +36,6 @@ if has("autocmd")
             Plug '2072/PHP-Indenting-for-VIm'
 
             if v:version >= 704
-                " https://github.com/fatih/vim-go
-                Plug 'fatih/vim-go', { 'do': ':GoUpdateBinaries' }
-                let g:go_version_warning = 0
-                let g:go_fmt_command = "goimports"
-                let g:go_def_mode = "gopls"
-                let g:go_def_mapping_enabled = 0
-                let g:go_info_mode = "gopls"
-                autocmd BufNewFile,BufRead *.go set filetype=go
-                "autocmd FileType go map <C-n> :cnext<CR>
-                "autocmd FileType go map <C-m> :cprevious<CR>
-                "autocmd FileType go nnoremap <leader>a :cclose<CR>
-                "autocmd FileType go nmap <leader>b <Plug>(go-build)
-                "autocmd FileType go nmap <leader>i <Plug>(go-imports)
-                "autocmd FileType go nmap <leader>r <Plug>(go-run)
-                "autocmd FileType go nmap <leader>t <Plug>(go-test)
-                "autocmd FileType go nmap <leader>c <Plug>(go-coverage)
-
                 " https://github.com/chrisbra/vim-sh-indent
                 Plug 'chrisbra/vim-sh-indent'
             endif
@@ -123,6 +106,23 @@ if has("autocmd")
 
             if has('nvim')
                 " neovim, only
+
+                " https://github.com/fatih/vim-go
+                Plug 'fatih/vim-go', { 'do': ':GoUpdateBinaries' }
+                let g:go_version_warning = 0
+                let g:go_fmt_command = "goimports"
+                let g:go_def_mode = "gopls"
+                let g:go_def_mapping_enabled = 0
+                let g:go_info_mode = "gopls"
+                autocmd BufNewFile,BufRead *.go set filetype=go
+                "autocmd FileType go map <C-n> :cnext<CR>
+                "autocmd FileType go map <C-m> :cprevious<CR>
+                "autocmd FileType go nnoremap <leader>a :cclose<CR>
+                "autocmd FileType go nmap <leader>b <Plug>(go-build)
+                "autocmd FileType go nmap <leader>i <Plug>(go-imports)
+                "autocmd FileType go nmap <leader>r <Plug>(go-run)
+                "autocmd FileType go nmap <leader>t <Plug>(go-test)
+                "autocmd FileType go nmap <leader>c <Plug>(go-coverage)
 
                 " https://github.com/euclio/vim-markdown-composer
                 function! BuildComposer(info)
