@@ -31,5 +31,3 @@ if [ "$(type -t sshAgentClean)" == "function" ]; then
 fi
 
 export Bash_Logout=0
-
-sleep 3
