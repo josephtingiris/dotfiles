@@ -1,6 +1,6 @@
 # .bashrc
 
-Bashrc_Version="20190930, joseph.tingiris@gmail.com"
+Bashrc_Version="20191219, joseph.tingiris@gmail.com"
 
 ##
 ### returns to avoid interactive shell enhancements
@@ -340,7 +340,7 @@ if [ -x /usr/bin/make ]; then
         /usr/bin/make "$@" 2>&1 | sed --unbuffered -e "s/\(.*[Ee]rror.*\)/${TPUT_SETAF_1}\1${TPUT_SGR0}/" -e "s/\(.*[Ff]ail.*\)/${TPUT_SMSO}\1${TPUT_SGR0}/" -e "s/\(.*[Ww]arning.*\)/${TPUT_SETAF_3}\1${TPUT_SGR0}/"
         return ${PIPESTATUS[0]}
     }
-    export -f make
+export -f make
 fi
 
 # if necessary, start ssh-agent
@@ -1282,6 +1282,16 @@ if type -P git &> /dev/null; then
     alias git-hub-dotfiles=githubDotfiles
     alias got=git
     alias dotfiles=githubDotfiles
+fi
+
+##
+### set ip
+##
+
+if type -P ip &> /dev/null; then
+    if ip -c link show lo &> /dev/null; then
+        alias ip='ip -c'
+    fi
 fi
 
 ##
