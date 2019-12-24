@@ -370,8 +370,8 @@ function sshAgent() {
 
         if [ ${#SSH_AUTH_SOCK} -eq 0 ]; then
             if [ ! -r "${Ssh_Agent_Home}" ]; then
-                # there's no .ssh-agent file and ssh agent forwarding is apparently off
-                verbose "ALERT: no ${Ssh_Agent_Home}; ssh agent forwarding is apparently off"
+                # there's no .ssh-agent file and ssh agent forwarding is off
+                verbose "ALERT: no ${Ssh_Agent_Home}; ssh agent forwarding is off"
                 return 0
             fi
         fi
@@ -407,7 +407,7 @@ function sshAgent() {
     Ssh_Add_Rc=$?
     if [ ${Ssh_Add_Rc} -eq 0 ]; then
         if [ ${#SSH_AGENT_PID} -eq 0 ] && [ ${#SSH_AUTH_SOCK} -gt 0 ]; then
-            # ssh-add apparently works; ssh agent forwarding is apparently on .. start another/local agent anyway?
+            # ssh-add works; ssh agent forwarding is on .. start another/local agent anyway?
             if [ ${#Ssh_Agent_Home} -gt 0 ] && [ -r "${Ssh_Agent_Home}" ]; then
                 verbose "ALERT: ignoring ${Ssh_Agent_Home}"
             fi
@@ -515,7 +515,7 @@ function sshAgent() {
 
                 # add the key to the agent
                 printf "\n"
-                ${Ssh_Add} ${Ssh_Key_File}
+                ${Ssh_Add} ${Ssh_Key_File} 2> /dev/null
                 Ssh_Add_Rc=$?
                 if [ ${Ssh_Add_Rc} -ne 0 ]; then
                     verbose "ALERT: '${Ssh_Add} ${Ssh_Key_File}', rc=${Ssh_Add_Rc}"
@@ -568,7 +568,7 @@ function sshAgent() {
                 unset -v Chmod_Rc
             fi
             unset -v Ssh_Public_Key_Md5sum
-        done <<< "$(${Ssh_Add} -L)"
+        done <<< "$(${Ssh_Add} -L 2> /dev/null)"
         unset -v Ssh_Public_Key
     fi
 
@@ -1006,27 +1006,6 @@ function viLocate() {
 ### Main
 ##
 
-# this is mainly for performance; as long as TERM doesn't change then there's no need to run tput every time
-if [ "$TERM" != "$TPUT_TERM" ]; then
-    if type -P tput &> /dev/null; then
-        export TPUT_TERM=$TERM
-        export TPUT_BOLD="$(tput bold 2> /dev/null)"
-        if [ $? -eq 0 ]; then
-            export TPUT_SETAF_0="$(tput setaf 0 2> /dev/null)" # black
-            export TPUT_SETAF_1="$(tput setaf 1 2> /dev/null)" # red
-            export TPUT_SETAF_2="$(tput setaf 2 2> /dev/null)" # green
-            export TPUT_SETAF_3="$(tput setaf 3 2> /dev/null)" # orange (yellow?)
-            export TPUT_SETAF_4="$(tput setaf 4 2> /dev/null)" # blue
-            export TPUT_SETAF_5="$(tput setaf 5 2> /dev/null)" # purple
-            export TPUT_SETAF_6="$(tput setaf 6 2> /dev/null)" # cyan
-            export TPUT_SETAF_7="$(tput setaf 7 2> /dev/null)" # white
-            export TPUT_SETAF_8="$(tput setaf 8 2> /dev/null)" # grey
-            export TPUT_SGR0="$(tput sgr0 2> /dev/null)" # reset
-            export TPUT_SMSO="$(tput smso 2> /dev/null)" # standout
-        fi
-    fi
-fi
-
 ##
 ### trap EXIT to ensure .bash_logout gets called, regardless of whether or not it's a login shell
 ##
@@ -1162,6 +1141,27 @@ if [[ "${TERM}" == *"screen"* ]]; then
             export TERM=screen
         else
             export TERM=ansi
+        fi
+    fi
+fi
+
+# this is mainly for performance; as long as TERM doesn't change then there's no need to run tput every time
+if [ "$TERM" != "$TPUT_TERM" ]; then
+    if type -P tput &> /dev/null; then
+        export TPUT_TERM=$TERM
+        export TPUT_BOLD="$(tput bold 2> /dev/null)"
+        if [ $? -eq 0 ]; then
+            export TPUT_SETAF_0="$(tput setaf 0 2> /dev/null)" # black
+            export TPUT_SETAF_1="$(tput setaf 1 2> /dev/null)" # red
+            export TPUT_SETAF_2="$(tput setaf 2 2> /dev/null)" # green
+            export TPUT_SETAF_3="$(tput setaf 3 2> /dev/null)" # orange (yellow?)
+            export TPUT_SETAF_4="$(tput setaf 4 2> /dev/null)" # blue
+            export TPUT_SETAF_5="$(tput setaf 5 2> /dev/null)" # purple
+            export TPUT_SETAF_6="$(tput setaf 6 2> /dev/null)" # cyan
+            export TPUT_SETAF_7="$(tput setaf 7 2> /dev/null)" # white
+            export TPUT_SETAF_8="$(tput setaf 8 2> /dev/null)" # grey
+            export TPUT_SGR0="$(tput sgr0 2> /dev/null)" # reset
+            export TPUT_SMSO="$(tput smso 2> /dev/null)" # standout
         fi
     fi
 fi
