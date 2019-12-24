@@ -795,27 +795,35 @@ function verbose() {
 
     # 0 EMERGENCY (unusable), 1 ALERT, 2 CRIT(ICAL), 3 ERROR, 4 WARN(ING), 5 NOTICE, 6 INFO(RMATIONAL), 7 DEBUG
 
+    local verbose_message_upper
+
+    if [ ${BASH_VERSINFO} -ge 4 ]; then
+        verbose_message_upper="${verbose_message^^}"
+    else
+        verbose_message_upper=$(echo "${verbose_message}" | tr '[:lower:]' '[:upper:]')
+    fi
+
     if [[ ! "${verbose_level}" =~ ^[0-9]+$ ]]; then
         # convert verbose_message to uppercase & check for presence of keywords
-        if [[ "${verbose_message^^}" == *"ALERT"* ]]; then
+        if [[ "${verbose_message_upper}" == *"ALERT"* ]]; then
             verbose_level=1
         else
-            if [[ "${verbose_message^^}" == *"CRIT"* ]]; then
+            if [[ "${verbose_message_upper}" == *"CRIT"* ]]; then
                 verbose_level=2
             else
-                if [[ "${verbose_message^^}" == *"ERROR"* ]]; then
+                if [[ "${verbose_message_upper}" == *"ERROR"* ]]; then
                     verbose_level=3
                 else
-                    if [[ "${verbose_message^^}" == *"WARN"* ]]; then
+                    if [[ "${verbose_message_upper}" == *"WARN"* ]]; then
                         verbose_level=4
                     else
-                        if [[ "${verbose_message^^}" == *"NOTICE"* ]]; then
+                        if [[ "${verbose_message_upper}" == *"NOTICE"* ]]; then
                             verbose_level=5
                         else
-                            if [[ "${verbose_message^^}" == *"INFO"* ]]; then
+                            if [[ "${verbose_message_upper}" == *"INFO"* ]]; then
                                 verbose_level=6
                             else
-                                if [[ "${verbose_message^^}" == *"DEBUG"* ]]; then
+                                if [[ "${verbose_message_upper}" == *"DEBUG"* ]]; then
                                     verbose_level=7
                                 else
                                     verbose_level=0
@@ -828,12 +836,12 @@ function verbose() {
         fi
     fi
 
-    if [ ${verbose_level} -eq 0 ]; then
+    if [ ${verbose_level} -eq 0 ] || [ ${#verbose_level} -eq 0 ]; then
         # unusable
         return
     fi
 
-    local -l verbose_level_prefix
+    local verbose_level_prefix
 
     if [[ "${Verbose_Level_Prefix}" =~ ^(0|on|true)$ ]]; then
         verbose_level_prefix=0
@@ -843,48 +851,48 @@ function verbose() {
 
     if [ ${verbose_level} -eq 1 ]; then
         verbose_color=1
-        if [ ${verbose_level_prefix} -eq 0 ] && [[ "${verbose_message^^}" != *"ALERT"* ]]; then
+        if [ ${verbose_level_prefix} -eq 0 ] && [[ "${verbose_message_upper}" != *"ALERT"* ]]; then
             verbose_message="ALERT: ${verbose_message}"
         fi
     else
         if [ ${verbose_level} -eq 2 ]; then
             verbose_color=3
-            if [ ${verbose_level_prefix} -eq 0 ] &&  [[ "${verbose_message^^}" != *"CRIT"* ]]; then
+            if [ ${verbose_level_prefix} -eq 0 ] &&  [[ "${verbose_message_upper}" != *"CRIT"* ]]; then
                 verbose_message="CRITICAL: ${verbose_message}"
             fi
         else
             if [ ${verbose_level} -eq 3 ]; then
                 verbose_color=5
-                if [ ${verbose_level_prefix} -eq 0 ] &&  [[ "${verbose_message^^}" != *"ERROR"* ]]; then
+                if [ ${verbose_level_prefix} -eq 0 ] &&  [[ "${verbose_message_upper}" != *"ERROR"* ]]; then
                     verbose_message="ERROR: ${verbose_message}"
                 fi
             else
                 if [ ${verbose_level} -eq 4 ]; then
                     verbose_color=2
-                    if [ ${verbose_level_prefix} -eq 0 ] &&  [[ "${verbose_message^^}" != *"WARN"* ]]; then
+                    if [ ${verbose_level_prefix} -eq 0 ] &&  [[ "${verbose_message_upper}" != *"WARN"* ]]; then
                         verbose_message="WARNING: ${verbose_message}"
                     fi
                 else
                     if [ ${verbose_level} -eq 5 ]; then
                         verbose_color=6
-                        if [ ${verbose_level_prefix} -eq 0 ] &&  [[ "${verbose_message^^}" != *"NOTICE"* ]]; then
+                        if [ ${verbose_level_prefix} -eq 0 ] &&  [[ "${verbose_message_upper}" != *"NOTICE"* ]]; then
                             verbose_message="NOTICE: ${verbose_message}"
                         fi
                     else
                         if [ ${verbose_level} -eq 6 ]; then
                             verbose_color=4
-                            if [ ${verbose_level_prefix} -eq 0 ] &&  [[ "${verbose_message^^}" != *"INFO"* ]]; then
+                            if [ ${verbose_level_prefix} -eq 0 ] &&  [[ "${verbose_message_upper}" != *"INFO"* ]]; then
                                 verbose_message="INFO: ${verbose_message}"
                             fi
                         else
                             if [ ${verbose_level} -eq 7 ]; then
                                 verbose_color=7
-                                if [ ${verbose_level_prefix} -eq 0 ] &&  [[ "${verbose_message^^}" != *"DEBUG"* ]]; then
+                                if [ ${verbose_level_prefix} -eq 0 ] &&  [[ "${verbose_message_upper}" != *"DEBUG"* ]]; then
                                     verbose_message="DEBUG: ${verbose_message}"
                                 fi
                             else
                                 verbose_color=8
-                                if [ ${verbose_level_prefix} -eq 0 ] &&  [[ "${verbose_message^^}" != *"DEBUG"* ]]; then
+                                if [ ${verbose_level_prefix} -eq 0 ] &&  [[ "${verbose_message_upper}" != *"DEBUG"* ]]; then
                                     verbose_message="XDEBUG: ${verbose_message}"
                                 fi
                             fi
@@ -896,6 +904,12 @@ function verbose() {
     fi
 
     if [ ${verbosity} -ge ${verbose_level} ]; then
+
+        if [ ${BASH_VERSINFO} -ge 4 ]; then
+            verbose_message_upper="${verbose_message^^}"
+        else
+            verbose_message_upper=$(echo "${verbose_message}" | tr '[:lower:]' '[:upper:]')
+        fi
 
         local -i verbose_pad_left verbose_pad_right
 
@@ -909,7 +923,7 @@ function verbose() {
 
         local v1 v2
 
-        if [[ "${verbose_message^^}" == *":"* ]]; then
+        if [[ "${verbose_message_upper}" == *":"* ]]; then
             v1="${verbose_message%%:*}"
             v1="${v1#"${v1%%[![:space:]]*}"}"
             v1="${v1%"${v1##*[![:space:]]}"}"
@@ -920,7 +934,7 @@ function verbose() {
             unset v1 v2
         fi
 
-        if [[ "${verbose_message^^}" == *"="* ]]; then
+        if [[ "${verbose_message_upper}" == *"="* ]]; then
             v1="${verbose_message%%=*}"
             v1="${v1#"${v1%%[![:space:]]*}"}"
             v1="${v1%"${v1##*[![:space:]]}"}"
@@ -1181,6 +1195,7 @@ case "${TERM}" in
         ;;
     *)
         echo TERM=$TERM
+        echo
         ;;
 esac
 
