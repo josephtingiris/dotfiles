@@ -446,7 +446,9 @@ endif
 " color preferences
 silent! colorscheme elflord
 set background=dark
-set t_Co=256
+if &t_Co
+    set t_Co=256
+endif
 syntax on
 syntax enable
 
