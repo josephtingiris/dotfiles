@@ -996,18 +996,20 @@ function viLocate() {
 if [ "$TERM" != "$TPUT_TERM" ]; then
     if type -P tput &> /dev/null; then
         export TPUT_TERM=$TERM
-        export TPUT_BOLD="$(tput bold)"
-        export TPUT_SETAF_0="$(tput setaf 0)" # black
-        export TPUT_SETAF_1="$(tput setaf 1)" # red
-        export TPUT_SETAF_2="$(tput setaf 2)" # green
-        export TPUT_SETAF_3="$(tput setaf 3)" # orange (yellow?)
-        export TPUT_SETAF_4="$(tput setaf 4)" # blue
-        export TPUT_SETAF_5="$(tput setaf 5)" # purple
-        export TPUT_SETAF_6="$(tput setaf 6)" # cyan
-        export TPUT_SETAF_7="$(tput setaf 7)" # white
-        export TPUT_SETAF_8="$(tput setaf 8)" # grey
-        export TPUT_SGR0="$(tput sgr0)" # reset
-        export TPUT_SMSO="$(tput smso)" # standout
+        export TPUT_BOLD="$(tput bold 2> /dev/null)"
+        if [ $? -eq 0 ]; then
+            export TPUT_SETAF_0="$(tput setaf 0 2> /dev/null)" # black
+            export TPUT_SETAF_1="$(tput setaf 1 2> /dev/null)" # red
+            export TPUT_SETAF_2="$(tput setaf 2 2> /dev/null)" # green
+            export TPUT_SETAF_3="$(tput setaf 3 2> /dev/null)" # orange (yellow?)
+            export TPUT_SETAF_4="$(tput setaf 4 2> /dev/null)" # blue
+            export TPUT_SETAF_5="$(tput setaf 5 2> /dev/null)" # purple
+            export TPUT_SETAF_6="$(tput setaf 6 2> /dev/null)" # cyan
+            export TPUT_SETAF_7="$(tput setaf 7 2> /dev/null)" # white
+            export TPUT_SETAF_8="$(tput setaf 8 2> /dev/null)" # grey
+            export TPUT_SGR0="$(tput sgr0 2> /dev/null)" # reset
+            export TPUT_SMSO="$(tput smso 2> /dev/null)" # standout
+        fi
     fi
 fi
 
@@ -1132,16 +1134,20 @@ fi
 
 if [ "${TERM}" != "linux" ] && [[ "${TERM}" != *"screen"* ]] && [[ "${TERM}" != *"tmux"* ]]; then
     if [ ${#KONSOLE_DBUS_WINDOW} -gt 0 ] && [ -r /usr/share/terminfo/k/konsole-256color ]; then
-        export TERM=konsole-256color # if it's a konsole dbus window then konsole-25color
+        export TERM=konsole-256color # if it's a konsole dbus window then use konsole-256color
     else
-        if [ -r /usr/share/terminfo/s/screen-256color ]; then
-            export TERM=screen-256color
+        export TERM=screen-256color
+    fi
+fi
+
+if [[ "${TERM}" == *"screen"* ]]; then
+    if [ -r /usr/share/terminfo/s/screen-256color ]; then
+        export TERM=screen-256color
+    else
+        if [ -r /usr/share/terminfo/s/screen ]; then
+            export TERM=screen
         else
-            if [ -r /usr/share/terminfo/s/screen ]; then
-                export TERM=screen
-            else
-                export TERM=ansi
-            fi
+            export TERM=ansi
         fi
     fi
 fi
