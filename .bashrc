@@ -1131,10 +1131,18 @@ fi
 ##
 
 if [ "${TERM}" != "linux" ] && [[ "${TERM}" != *"screen"* ]] && [[ "${TERM}" != *"tmux"* ]]; then
-    if [ ${#KONSOLE_DBUS_WINDOW} -gt 0 ]; then
+    if [ ${#KONSOLE_DBUS_WINDOW} -gt 0 ] && [ -r /usr/share/terminfo/k/konsole-256color ]; then
         export TERM=konsole-256color # if it's a konsole dbus window then konsole-25color
     else
-        export TERM=screen-256color
+        if [ -r /usr/share/terminfo/s/screen-256color ]; then
+            export TERM=screen-256color
+        else
+            if [ -r /usr/share/terminfo/s/screen ]; then
+                export TERM=screen
+            else
+                export TERM=ansi
+            fi
+        fi
     fi
 fi
 
