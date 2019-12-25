@@ -17,6 +17,7 @@
 # joseph.tingiris@gmail.com, 20190808 ... rc3 (centos 7, fedora 28-29, rhel 7)
 # joseph.tingiris@gmail.com, 20190814 ... rc3 (centos 7, fedora 28-30, rhel 7)
 # joseph.tingiris@gmail.com, 20190906 ... add 'enforce' logic
+# joseph.tingiris@gmail.com, 20191225 ... add 'shadow' & 'exclude_mount' logic
 
 # TODO:
 # use getops
@@ -33,7 +34,11 @@ Queue_Commands=()
 if [ "$DEBUG" != "" ]; then
     let Debug="$DEBUG"
 else
-    let Debug=0
+    if [ "$Debug" != "" ]; then
+        let Debug="$Debug"
+    else
+        let Debug=0
+    fi
 fi
 
 # 0=true, 1=false
@@ -66,7 +71,7 @@ let Queue_Count=0
 function aborting() {
     printf "\n"
     pprint "" "ABORT"
-    pprint "$1" "ABORT"
+    pprint "$@" "ABORT"
     pprint "" "ABORT"
     printf "\n"
     exit 2
@@ -80,8 +85,8 @@ function checkPG() {
     local group="$2"
     isAccessible "${group}"
 
-    debug "passwd             = ${passwd}" 2
-    debug "group              = ${group}" 2
+    debug "passwd             = ${passwd}" 1
+    debug "group              = ${group}" 1
 
     local issue_count=0
 
@@ -199,7 +204,7 @@ function checkPG() {
                 pprint "${passwd} ${username}:x:${uid}:${gid} (${reasons})" "WARNING"
             fi
         else
-            debug "${passwd} ${username}:x:${uid}:${gid}"
+            debug "${passwd} ${username}:x:${uid}:${gid}" 12
         fi
 
         unset username password uid gid comment homedir shell
@@ -298,7 +303,7 @@ function checkPG() {
                 pprint "${group} ${groupname}:x:${gid} (${reasons})" WARNING
             fi
         else
-            debug "${group} ${groupname}:x:${gid}"
+            debug "${group} ${groupname}:x:${gid}" 12
         fi
 
         unset groupname password gid
@@ -316,8 +321,18 @@ function checkPG() {
 
 # output debug messages
 function debug() {
-    if [ ${Debug} -gt 0 ]; then
-        pprint "$1" DEBUG
+    local debug_level
+
+    debug_level=${@: -1}
+
+    if [[ ! "${debug_level}" =~ [0-9]+ ]]; then
+        debug_level=1
+    fi
+
+    if [ ${#Debug} -gt 0 ]; then
+        if [ ${Debug} -ge ${debug_level} ]; then
+            pprint "[${debug_level}] $1" "DEBUG"
+        fi
     fi
 }
 
@@ -547,10 +562,14 @@ function updatePGM() {
     local master_group="$4"
     isAccessible "${master_group}"
 
-    debug "passwd        = ${passwd}"
-    debug "master_passwd = ${master_passwd}"
-    debug "group         = ${group}"
-    debug "master_group  = ${master_group}"
+    debug "passwd        = ${passwd}" 1
+    debug "master_passwd = ${master_passwd}" 1
+    debug "group         = ${group}" 1
+    debug "master_group  = ${master_group}" 1
+
+    local shadow=${passwd//passwd/shadow}
+
+    debug "shadow        = ${shadow}" 1
 
     let local notice=1
     let local update_checks=1
@@ -581,7 +600,7 @@ function updatePGM() {
     let local update_check=0
     while [ ${update_check} -lt ${update_checks} ]; do
         ((++update_check))
-        debug "update_check ${update_check}"
+        debug "update_check ${update_check}" 9
 
         if [ $update_check -eq 2 ]; then
             ((++Queue_Count))
@@ -647,7 +666,7 @@ function updatePGM() {
 
                 continue # if the master passwd line is OK then there's no need for further checks
             else
-                debug "${master_passwd} ${master_username} (${passwd_line_count}) CHECK #${update_check}"
+                debug "${master_passwd} ${master_username} (${passwd_line_count}) CHECK #${update_check}" 9
 
                 local master_comment="$(echo "${master_passwd_line}" | awk -F: '{print $5}')"
                 local master_shell="$(echo "${master_passwd_line}" | awk -F: '{print $7}')"
@@ -672,13 +691,13 @@ function updatePGM() {
 
                         # under no circumstances change root uid files
                         if [ "${uid}" == "0" ] || [ "${uid}" == "" ]; then
-                            debug "passwd_line = '${passwd_line}'"
+                            debug "passwd_line = '${passwd_line}'" 10
                             aborting "${passwd} ${username}:x:${uid}:${gid} != ${master_passwd} ${username} root uid=${uid}?"
                         fi
 
                         # under no circumstances change root gid files
                         if [ "${gid}" == "0" ] || [ "${gid}" == "" ]; then
-                            debug "passwd_line = '${passwd_line}'"
+                            debug "passwd_line = '${passwd_line}'" 10
                             aborting "${passwd} ${username}:x:${uid}:${gid} != ${master_passwd} ${username} root gid=${gid}?"
                         fi
 
@@ -735,8 +754,13 @@ function updatePGM() {
                 pprint "merge /etc/passwd.local into ${passwd}" "QUEUE #${Queue_Count}"
                 Queue_Commands+=("cat \"/etc/passwd.local\" >> \"${passwd}\"")
             fi
+            if [ -f /etc/shadow.local ]; then
+                pprint "merge /etc/shadow.local into ${shadow}" "QUEUE #${Queue_Count}"
+                Queue_Commands+=("cat \"/etc/shadow.local\" >> \"${shadow}\"")
+            fi
             Queue_Commands+=("pwconv")
             Queue_Commands+=("pwck -s")
+            Queue_Commands+=("sort -u -t: -k 1,1 \"${shadow}\" -o \"${shadow}\"")
         fi
     fi
 
@@ -773,6 +797,7 @@ function updatePGM() {
     enforce_ownerships+=(/var/lib/pcp++pcp)
     enforce_ownerships+=(/var/lib/pcp/tmp++pcp:pcp)
     # ssh_keys
+    enforce_ownerships+=(/etc/shadow*++root:root++0000)
     enforce_ownerships+=(/etc/ssh/*_key++root:ssh_keys++0600)
     enforce_ownerships+=(/usr/libexec/openssh/ssh-keysign++root:ssh_keys)
     for enforce_ownership in ${enforce_ownerships[@]}; do
@@ -804,6 +829,8 @@ function usage() {
     printf "$0 rm \"<username(s)>\" [verbose]     # if found, remove usernames from active and master passwd & group files\n"
     printf "$0 yes [verbose] [mkhome]           # HARMFUL! changes everything the report shows\n"
     printf "\n"
+    printf "note: export Exclude_Mounts='egrep regex' to exclude specific mounts from find\n\n"
+
     exit 1
 }
 
@@ -815,14 +842,6 @@ if [ "$SUDO_USER" == "" ]; then
     if [ "$USER" != "root" ]; then
         aborting "must be root, or use sudo"
     fi
-fi
-
-while read Local_Dir; do
-    Local_Mounts+=("$Local_Dir")
-done <<< "$(mount | egrep -e 'type ext[2-4]|type xfs' | sed -nEe 's#^.* on (.*) type.*#\1#p')"
-
-if [ "$Local_Mounts" == "" ]; then
-    aborting "no local ext or xfs mounts found"
 fi
 
 #
@@ -897,6 +916,20 @@ case "$3" in
         ;;
 esac
 
+if [ "${Exclude_Mounts}" == "" ]; then
+    Egrep_Exclude_Mounts="egrep ."
+else
+    Egrep_Exclude_Mounts="egrep -v ${Exclude_Mounts}"
+fi
+
+while read Local_Dir; do
+    Local_Mounts+=("$Local_Dir")
+done <<< "$(mount | egrep -e 'type ext[2-4]|type xfs' | sed -nEe 's#^.* on (.*) type.*#\1#p' | ${Egrep_Exclude_Mounts})"
+
+if [ "$Local_Mounts" == "" ]; then
+    aborting "no local ext or xfs mounts found"
+fi
+
 #
 # The 'active' passwd & group; use files in pwd by default, else fall back to /etc (most often)
 #
@@ -911,6 +944,8 @@ else
     fi
 fi
 isAccessible "${Active_Passwd}"
+
+Active_Shadow=${Active_Passwd//passwd/shadow}
 
 if [ "${Active_Passwd}" == "/etc/passwd" ]; then
     pprint "${Active_Passwd}" "CHECK"
@@ -964,8 +999,8 @@ fi
 # The 'master' passwd & group; use files in pwd by default, if they exist then use what's in /etc else make them the same as active
 #
 
-if [ "$MASTER_PASSWD" != "" ]; then
-    Master_Passwd=$(readlink -e "$MASTER_PASSWD" 2> /dev/null)
+if [ "$Master_Passwd" != "" ]; then
+    Master_Passwd=$(readlink -e "$Master_Passwd" 2> /dev/null)
 else
     if [ -f ./passwd.master ]; then
         Master_Passwd=$(readlink -e ./passwd.master 2> /dev/null)
@@ -979,8 +1014,8 @@ else
 fi
 isAccessible "${Master_Passwd}"
 
-if [ "$MASTER_GROUP" != "" ]; then
-    Master_Group=$(readlink -e "$MASTER_GROUP" 2> /dev/null)
+if [ "$Master_Group" != "" ]; then
+    Master_Group=$(readlink -e "$Master_Group" 2> /dev/null)
 else
     if [ -f ./group.master ]; then
         Master_Group=$(readlink -e ./group.master)
@@ -994,10 +1029,11 @@ else
 fi
 isAccessible "${Master_Group}"
 
-debug "Active_Passwd = $Active_Passwd"
-debug "Master_Passwd = $Master_Passwd"
-debug "Active_Group  = $Active_Group"
-debug "Master_Group  = $Master_Group"
+debug "Active_Passwd = ${Active_Passwd}" 3
+debug "Active_Shadow = ${Active_Shadow}" 3
+debug "Master_Passwd = ${Master_Passwd}" 3
+debug "Active_Group  = ${Active_Group}" 3
+debug "Master_Group  = ${Master_Group}" 3
 
 #
 # make sure the active & master files are paired with different files
@@ -1158,7 +1194,7 @@ if checkPG "${Master_Passwd}" "${Master_Group}"; then
         done
 
         for Queue_Command in "${Queue_Commands[@]}"; do
-            debug "new command: $Queue_Command"
+            debug "new command: $Queue_Command" 4
         done
         unset Queue_Command Tmp_Queue_Command Tmp_Queue_Commands
     fi
@@ -1192,6 +1228,8 @@ if [ "${Active_Passwd}" != "${Master_Passwd}" ] && [ "${Active_Group}" != "${Mas
     if [ $? -ne 0 ]; then
         pprint "backup active ${Active_Passwd} to ${Active_Passwd}.${Branded}" "QUEUE #${Queue_Count}"
         Queue_Commands+=("cp \"${Active_Passwd}\" \"${Active_Passwd}.${Branded}\"")
+        pprint "backup active ${Active_Shadow} to ${Active_Shadow}.${Branded}" "QUEUE #${Queue_Count}"
+        Queue_Commands+=("cp \"${Active_Shadow}\" \"${Active_Shadow}.${Branded}\"")
         pprint "backup active ${Active_Group} to ${Active_Group}.${Branded}" "QUEUE #${Queue_Count}"
         Queue_Commands+=("cp \"${Active_Group}\" \"${Active_Group}.${Branded}\"")
     else
@@ -1199,6 +1237,8 @@ if [ "${Active_Passwd}" != "${Master_Passwd}" ] && [ "${Active_Group}" != "${Mas
         if [ $? -ne 0 ]; then
             pprint "backup active ${Active_Passwd} to ${Active_Passwd}.${Branded}" "QUEUE #${Queue_Count}"
             Queue_Commands+=("cp \"${Active_Passwd}\" \"${Active_Passwd}.${Branded}\"")
+            pprint "backup active ${Active_Shadow} to ${Active_Shadow}.${Branded}" "QUEUE #${Queue_Count}"
+            Queue_Commands+=("cp \"${Active_Shadow}\" \"${Active_Shadow}.${Branded}\"")
             pprint "backup active ${Active_Group} to ${Active_Group}.${Branded}" "QUEUE #${Queue_Count}"
             Queue_Commands+=("cp \"${Active_Group}\" \"${Active_Group}.${Branded}\"")
         fi
@@ -1233,7 +1273,7 @@ if [ ${Yes_Flag} -eq 0 ]; then
     printf "\n"
 
     for Local_Mount in ${Local_Mounts[@]}; do
-        debug "Local_Mount=${Local_Mount}"
+        debug "Local_Mount=${Local_Mount}" 4
 
         pprint "find ${Local_Mount} files that have no username or groupname" "CHECK"
         printf "\n"
