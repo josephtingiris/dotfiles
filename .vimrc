@@ -150,10 +150,23 @@ if has("autocmd")
                 endfunction
                 Plug 'euclio/vim-markdown-composer', { 'do': function('BuildComposer') }
 
+                let node_valid = 0 " true
+                let use_ycm = 0 " true
 
                 if v:version >= 800 || has('nvim-0.3.1')
 
                     if executable('node')
+                        let node_output = system('node' . ' --version')
+                        let node_ms = matchlist(node_output, 'v\(\d\+\).\(\d\+\).\(\d\+\)')
+                        if empty(node_ms) || str2nr(node_ms[1]) < 8 || (str2nr(node_ms[1]) == 8 && str2nr(node_ms[2]) < 10)
+                            let node_valid = 0
+                            let use_ycm = 1
+                        else
+                            let node_valid = 1
+                        endif
+                    endif
+
+                    if node_valid
 
                         " https://github.com/neoclide/coc.nvim
                         " release branch
@@ -265,12 +278,11 @@ if has("autocmd")
 
                         " extensions
                         let g:coc_global_extensions = ['coc-gitignore', 'coc-go', 'coc-json', 'coc-yaml']
-                    endif
+
+                    endif " if node_valid
 
 
-                else
-
-                    " nvim <= 0.3.0
+                else " if v:version >= 800 || has('nvim-0.3.1')
 
                     " https://github.com/suan/vim-instant-markdown
                     Plug 'suan/vim-instant-markdown'
@@ -279,19 +291,23 @@ if has("autocmd")
                     let g:markdown_minlines = 100
                     let g:instant_markdown_autostart = 0    " Use :InstantMarkdownPreview to turn on
 
+                endif " if v:version >= 800 || has('nvim-0.3.1')
+
+                if use_ycm
+
                     " https://github.com/Valloric/YouCompleteMe
                     Plug 'Valloric/YouCompleteMe'
                     "let g:ycm_key_list_select_completion = ['<C-n>', '<Down>']
                     "let g:ycm_key_list_previous_completion = ['<C-p>', '<Up>']
                     "let g:SuperTabDefaultCompletionType = '<C-n>'
-                    "
-                endif " has('nvim-0.3.1')
 
-            endif " has('nvim')
+                endif " if use_ycm
 
-        else
+            endif " if v:version >= 800 || has('nvim')
+
+        else " if exists(":Plug")
             echo "Plug does not exist."
-        endif " exists(":Plug")
+        endif " if exists(":Plug")
 
         " autoload plug begin
         call plug#end()
