@@ -1,15 +1,1 @@
-#!/bin/bash
-
-# find file (ff)
-
-if [ ! "$1" ];then
-    exit
-fi
-
-find_arg="-not -iwholename '*/.git/*' -and -not -iwholename '*/.svn/*' -and"
-if [[ $1 =~ "/" ]]; then
-    find $(readlink -e .) $find_arg -wholename "*${1}*"
-else
-    find $(readlink -e .) $find_arg -name "*${1}*"
-fi
-
+fif
