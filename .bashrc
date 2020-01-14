@@ -1,6 +1,6 @@
 # .bashrc
 
-Bashrc_Version="20191224, joseph.tingiris@gmail.com"
+Bashrc_Version="20200114, joseph.tingiris@gmail.com"
 
 ##
 ### returns to avoid interactive shell enhancements
@@ -351,8 +351,9 @@ function sshAgent() {
         return 1
     fi
 
-    verbose "DEBUG: ${FUNCNAME} start SSH_AGENT_PID=${SSH_AGENT_PID}"
-    verbose "DEBUG: ${FUNCNAME} start SSH_AUTH_SOCK=${SSH_AUTH_SOCK}"
+    verbose "DEBUG: ${FUNCNAME} start"
+    verbose "DEBUG: ${FUNCNAME} SSH_AGENT_PID=${SSH_AGENT_PID}"
+    verbose "DEBUG: ${FUNCNAME} SSH_AUTH_SOCK=${SSH_AUTH_SOCK}"
 
     if [ ${#Ssh_Agent_Home} -gt 0 ]; then
 
@@ -428,8 +429,10 @@ function sshAgent() {
             else
                 if [ ${#SSH_AGENT_PID} -eq 0 ] && [ ${#SSH_AUTH_SOCK} -gt 0 ]; then
                     # it's a bad SSH_AUTH_SOCK
+                    verbose "ALERT: no SSH_AGENT_PID, unset SSH_AUTH_SOCK=${SSH_AUTH_SOCK}"
                     unset -v SSH_AUTH_SOCK
                 else
+                    verbose "ALERT: unset SSH_AGENT_PID=${SSH_AGENT_PID}, unset SSH_AUTH_SOCK=${SSH_AUTH_SOCK}"
                     unset -v SSH_AGENT_PID
                     unset -v SSH_AUTH_SOCK
                 fi
@@ -634,7 +637,7 @@ function sshAgentClean() {
     if [ ${#SSH_AUTH_SOCK} -gt 0 ]; then
         if [ -S "${SSH_AUTH_SOCK}" ]; then
             if [ ! -w "${SSH_AUTH_SOCK}" ]; then
-                verbose "WARNING: ${SSH_AUTH_SOCK} socket not found writable"
+                verbose "WARNING: unset SSH_AUTH_SOCK=${SSH_AUTH_SOCK}, socket not found writable"
                 unset -v SSH_AUTH_SOCK
                 if [ ${#SSH_AGENT_PID} -gt 0 ]; then
                     kill ${SSH_AGENT_PID} &> /dev/null
@@ -642,14 +645,18 @@ function sshAgentClean() {
                 fi
             fi
         else
-            # SSH_AUTH_SOCK is not a socket
-            verbose "WARNING: ${SSH_AUTH_SOCK} is not a socket"
+            # SSH_AUTH_SOCK is not a valid socket
+            verbose "WARNING: unset SSH_AUTH_SOCK=${SSH_AUTH_SOCK}, socket is invalid"
             unset -v SSH_AUTH_SOCK
             if [ ${#SSH_AGENT_PID} -gt 0 ]; then
                 kill ${SSH_AGENT_PID} &> /dev/null
                 unset -v SSH_AGENT_PID
             fi
         fi
+    fi
+
+    if [ ${#SSH_AUTH_SOCK} -eq 0 ]; then
+            verbose "WARNING: no SSH_AUTH_SOCK"
     fi
 
     if [ ${#SSH_AGENT_PID} -eq 0 ] && [ ${#SSH_AUTH_SOCK} -eq 0 ]; then
@@ -1353,6 +1360,8 @@ else
     alias s="source ${HOME}/.bashrc"
 fi
 
+alias ssha="export SSH_AUTH_SOCK=$(find /tmp -user ${User_Name} -wholename "*ssh*agent*" 2> /dev/null | xargs -r ls -1tr | head -1); sshAgentClean && echo 'SSH_AUTH_SOCK update success, now using ${SSH_AUTH_SOCK}' || echo 'SSH_AUTH_SOCK update failed'"
+alias authsock=ssha
 alias scpo='scp -o IdentitiesOnly=yes'
 alias ssho='ssh -o IdentitiesOnly=yes'
 
