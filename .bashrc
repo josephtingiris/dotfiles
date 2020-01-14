@@ -657,6 +657,7 @@ function sshAgentClean() {
 
     if [ ${#SSH_AUTH_SOCK} -eq 0 ]; then
             verbose "WARNING: no SSH_AUTH_SOCK"
+            sshAuthSockReuse
     fi
 
     if [ ${#SSH_AGENT_PID} -eq 0 ] && [ ${#SSH_AUTH_SOCK} -eq 0 ]; then
@@ -763,6 +764,12 @@ function sshAgentClean() {
     if [ ${#SSH_AGENT_PID} -gt 0 ] && [ ${#SSH_AUTH_SOCK} -eq 0 ]; then
         unset -v SSH_AGENT_PID
     fi
+}
+
+# find the oldest (valid) SSH_AUTH_SOCK and (attempt) to use it
+function sshAuthSockReuse() {
+    export SSH_AUTH_SOCK=$(find /tmp -user ${User_Name} -wholename "*ssh*agent*" 2> /dev/null | xargs -r ls -1tr | head -1)
+    sshAgentClean && verbose "WARNING: export SSH_AUTH_SOCK=${SSH_AUTH_SOCK}, reuse successful" || verbose "ALERT: SSH_AUTH_SOCK=reuse failed"
 }
 
 # output more verbose messages based on a verbosity level set in the environment or a specific file
@@ -1360,8 +1367,8 @@ else
     alias s="source ${HOME}/.bashrc"
 fi
 
-alias ssha="export SSH_AUTH_SOCK=$(find /tmp -user ${User_Name} -wholename "*ssh*agent*" 2> /dev/null | xargs -r ls -1tr | head -1); sshAgentClean && echo 'SSH_AUTH_SOCK update success, now using ${SSH_AUTH_SOCK}' || echo 'SSH_AUTH_SOCK update failed'"
-alias authsock=ssha
+alias sshas=sshAuthSockReuse
+alias authsock=sshas
 alias scpo='scp -o IdentitiesOnly=yes'
 alias ssho='ssh -o IdentitiesOnly=yes'
 
