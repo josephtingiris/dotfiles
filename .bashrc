@@ -249,7 +249,7 @@ function gitConfig() {
         rm -f ~/.gitconfig.local &> /dev/null
         Rm_Rc=$?
         if [ ${Rm_Rc} -ne 0 ]; then
-            verbose "ALERT: failed to 'rm -f ~/.gitconfig.local', rc=${Rm_Rc}"
+            verbose "ALERT: failed to 'rm -f ~/.gitconfig.local', Rm_Rc=${Rm_Rc}"
         fi
         unset -v Rm_Rc
     fi
@@ -414,7 +414,7 @@ function sshAgent() {
         # starting ssh-add failed (the first time)
         # rc=1 means 'failure', it's unspecified and may just be that it has no identities
         if [[ "${Ssh_Add_Out}" != *"agent has no identities"* ]]; then
-            verbose "ERROR: '${Ssh_Add}' failed with SSH_AGENT_PID=${SSH_AGENT_PID}, SSH_AUTH_SOCK=${SSH_AUTH_SOCK}, output='${Ssh_Add_Out}', rc=${Ssh_Add_Rc}"
+            verbose "ERROR: '${Ssh_Add}' failed with SSH_AGENT_PID=${SSH_AGENT_PID}, SSH_AUTH_SOCK=${SSH_AUTH_SOCK}, output='${Ssh_Add_Out}', Ssh_Add_Rc=${Ssh_Add_Rc}"
             unset -v SSH_AGENT_PID
             unset -v SSH_AUTH_SOCK
             sshAgentInit
@@ -462,6 +462,7 @@ function sshAgent() {
 
     eval Ssh_Key_Files=($(printf "%q\n" "${Ssh_Key_Files[@]}" | sort -u))
 
+    local ssh_key_file_counter=0
     for Ssh_Key_File in ${Ssh_Key_Files[@]}; do
         Ssh_Agent_Key=""
         Ssh_Key_Public=""
@@ -469,8 +470,12 @@ function sshAgent() {
 
         if [ -r "${Ssh_Key_File}.pub" ]; then
             Ssh_Key_Public=$(awk '{print $2}' "${Ssh_Key_File}.pub" 2> /dev/null)
-            Ssh_Agent_Key=$(${Ssh_Add} -L  2> /dev/null | grep "${Ssh_Key_Public}" 2> /dev/null)
+            if [ ${#Ssh_Key_Public} -eq 0 ]; then
+                # couldn't determine public key
+                continue
+            fi
 
+            Ssh_Agent_Key=$(${Ssh_Add} -L  2> /dev/null | grep "${Ssh_Key_Public}" 2> /dev/null)
             if [ "${Ssh_Agent_Key}" != "" ]; then
                 # public key is already in the agent
                 continue
@@ -491,21 +496,29 @@ function sshAgent() {
             continue
         fi
 
+        let ssh_key_file_counter=${ssh_key_file_counter}+1
+
+        if [ ${ssh_key_file_counter} -eq 1 ] && [ ${Verbose_Counter} -gt 2 ]; then
+            printf "\n"
+        fi
+
         if [ -r "${Ssh_Key_File}" ]; then
             Ssh_Key_Private=$(${Ssh_Keygen} -l -f "${Ssh_Key_File}.pub" 2> /dev/null | awk '{print $2}')
-            Ssh_Agent_Key=$(${Ssh_Add} -l 2> /dev/null | grep ${Ssh_Key_Private} 2> /dev/null)
-            if [ "${Ssh_Agent_Key}" == "" ]; then
+            if  [ ${#Ssh_Key_Private} -gt 0 ]; then
+                Ssh_Agent_Key=$(${Ssh_Add} -l 2> /dev/null | grep ${Ssh_Key_Private} 2> /dev/null)
+                if [ "${Ssh_Agent_Key}" == "" ]; then
 
                 # add the key to the agent
                 ${Ssh_Add} ${Ssh_Key_File} &> /dev/null
                 Ssh_Add_Rc=$?
                 if [ ${Ssh_Add_Rc} -ne 0 ]; then
-                    verbose "ERROR: '${Ssh_Add} ${Ssh_Key_File}' failed, rc=${Ssh_Add_Rc}"
+                    verbose "ERROR: '${Ssh_Add} ${Ssh_Key_File}' failed, Ssh_Add_Rc=${Ssh_Add_Rc}"
                 fi
                 unset -v Ssh_Add_Rc
 
+                fi
+                unset -v Ssh_Agent_Key
             fi
-            unset -v Ssh_Agent_Key
         fi
     done
     unset -v Ssh_Agent_Key Ssh_Key_File Ssh_Key_Private Ssh_Key_Public Ssh_Key_Files
@@ -520,7 +533,7 @@ function sshAgent() {
             mkdir -p "${Ssh_Identities_Dir}"
             Mkdir_Rc=$?
             if [ ${Mkdir_Rc} -ne 0 ]; then
-                verbose "EMERGENCY: failed to 'mkdir -p ${Ssh_Identities_Dir}', rc=${Mkdir_Rc}"
+                verbose "EMERGENCY: failed to 'mkdir -p ${Ssh_Identities_Dir}', Mkdir_Rc=${Mkdir_Rc}"
                 return 1
             fi
             unset -v Mkdir_Rc
@@ -529,7 +542,7 @@ function sshAgent() {
         chmod 0700 "${Ssh_Identities_Dir}" &> /dev/null
         Chmod_Rc=$?
         if [ ${Chmod_Rc} -ne 0 ]; then
-            verbose "EMERGENCY: failed to 'chmod -700 ${Ssh_Identities_Dir}', rc=${Chmod_Rc}"
+            verbose "EMERGENCY: failed to 'chmod -700 ${Ssh_Identities_Dir}', Chmod_Rc=${Chmod_Rc}"
             return 1
         fi
         unset -v Chmod_Rc
@@ -544,7 +557,7 @@ function sshAgent() {
                 chmod 0400 "${Ssh_Identities_Dir}/${Ssh_Public_Key_Md5sum}.pub" &> /dev/null
                 Chmod_Rc=$?
                 if [ ${Chmod_Rc} -ne 0 ]; then
-                    verbose "EMERGENCY: failed to 'chmod 0400 ${Ssh_Identities_Dir}/${Ssh_Public_Key_Md5sum}.pub', rc=${Chmod_Rc}"
+                    verbose "EMERGENCY: failed to 'chmod 0400 ${Ssh_Identities_Dir}/${Ssh_Public_Key_Md5sum}.pub', Chmod_Rc=${Chmod_Rc}"
                     return 1
                 fi
                 unset -v Chmod_Rc
@@ -588,7 +601,7 @@ function sshAgentInit() {
             rm -f "${Ssh_Agent_State}" &> /dev/null
             Rm_Rc=$?
             if [ ${Rm_Rc} -ne 0 ]; then
-                verbose "ALERT: failed to 'rm -f ${Ssh_Agent_State}', rc=${Rm_Rc}"
+                verbose "ALERT: failed to 'rm -f ${Ssh_Agent_State}', Rm_Rc=${Rm_Rc}"
             fi
             unset -v Rm_Rc
         fi
@@ -598,7 +611,7 @@ function sshAgentInit() {
     if [ ${#SSH_AGENT_PID} -gt 0 ]; then
         ssh_agent_socket_command=$(ps -h -o comm -p ${SSH_AGENT_PID} 2> /dev/null)
         if [ "${ssh_agent_socket_command}" != "ssh-agent" ] && [ "${ssh_agent_socket_command}" != "sshd" ]; then
-            verbose "WARNING: SSH_AGENT_PID=${SSH_AGENT_PID} process not valid; missing or defunct"
+            verbose "ERROR: SSH_AGENT_PID=${SSH_AGENT_PID} process not valid; missing or defunct\n"
             kill -9 ${SSH_AGENT_PID} &> /dev/null
             unset -v SSH_AGENT_PID
         fi
@@ -607,7 +620,7 @@ function sshAgentInit() {
     if [ ${#SSH_AUTH_SOCK} -gt 0 ]; then
         if [ -S "${SSH_AUTH_SOCK}" ]; then
             if [ ! -w "${SSH_AUTH_SOCK}" ]; then
-                verbose "WARNING: unset SSH_AUTH_SOCK=${SSH_AUTH_SOCK}, socket not found writable"
+                verbose "ERROR: unset SSH_AUTH_SOCK=${SSH_AUTH_SOCK}, socket not found writable\n"
                 unset -v SSH_AUTH_SOCK
                 if [ ${#SSH_AGENT_PID} -gt 0 ]; then
                     kill -9 ${SSH_AGENT_PID} &> /dev/null
@@ -616,7 +629,7 @@ function sshAgentInit() {
             fi
         else
             # SSH_AUTH_SOCK is not a valid socket
-            verbose "WARNING: unset SSH_AUTH_SOCK=${SSH_AUTH_SOCK}, socket not valid"
+            verbose "ERROR: unset SSH_AUTH_SOCK=${SSH_AUTH_SOCK}, socket not valid\n"
             unset -v SSH_AUTH_SOCK
             if [ ${#SSH_AGENT_PID} -gt 0 ]; then
                 kill ${SSH_AGENT_PID} &> /dev/null
@@ -631,7 +644,7 @@ function sshAgentInit() {
             rm -f "${Ssh_Agent_State}" &> /dev/null
             Rm_Rc=$?
             if [ ${Rm_Rc} -ne 0 ]; then
-                verbose "ALERT: failed to 'rm -f ${Ssh_Agent_State}', rc=${Rm_Rc}"
+                verbose "ALERT: failed to 'rm -f ${Ssh_Agent_State}', Rm_Rc=${Rm_Rc}"
             fi
             unset -v Rm_Rc
         fi
@@ -666,11 +679,11 @@ function sshAgentInit() {
             Ssh_Add_Rc=$?
             if [ ${Ssh_Add_Rc} -gt 1 ]; then
                 # definite error
-                verbose "ALERT: (1) removing unusable ssh_agent_socket ${ssh_agent_socket}, comm=${ssh_agent_socket_command}, pid=${ssh_agent_socket_pid}, ${Ssh_Add} rc=${Ssh_Add_Rc}"
+                verbose "ALERT: removing dead ssh_agent_socket ${ssh_agent_socket}, comm=${ssh_agent_socket_command}, pid=${ssh_agent_socket_pid}, Ssh_Add_Rc=${Ssh_Add_Rc}"
                 rm -f ${ssh_agent_socket} &> /dev/null
                 Rm_Rc=$?
                 if [ ${Rm_Rc} -ne 0 ]; then
-                    verbose "ALERT: failed to 'rm -f ${ssh_agent_socket}', rc=${Rm_Rc}"
+                    verbose "ALERT: failed to 'rm -f ${ssh_agent_socket}', Rm_Rc=${Rm_Rc}"
                 fi
                 unset -v ssh_auth_sock
                 unset -v Rm_Rc
@@ -693,11 +706,11 @@ function sshAgentInit() {
             fi
             unset -v Ssh_Add_Rc
         else
-            verbose "ALERT: (2) removing dead ssh_agent_socket ${ssh_agent_socket}, comm=${ssh_agent_socket_command}, pid=${ssh_agent_socket_pid}, ${Ssh_Add} rc=${Ssh_Add_Rc}"
+            verbose "ALERT: removing unusable ssh_agent_socket ${ssh_agent_socket}, pid=${ssh_agent_socket_pid}"
             rm -f ${ssh_agent_socket} &> /dev/null
             Rm_Rc=$?
             if [ ${Rm_Rc} -ne 0 ]; then
-                verbose "ALERT: failed to 'rm -f ${ssh_agent_socket}', rc=${Rm_Rc}"
+                verbose "ALERT: failed to 'rm -f ${ssh_agent_socket}', Rm_Rc=${Rm_Rc}"
             fi
             unset -v ssh_auth_sock
             unset -v Rm_Rc
@@ -753,13 +766,13 @@ function sshAgentInit() {
         printf "SSH_AGENT_PID=%s; export SSH_AGENT_PID;\n" "${SSH_AGENT_PID}" >> "${Ssh_Agent_State}"
         printf "echo Agent pid %s\n" "${SSH_AGENT_PID}" >> "${Ssh_Agent_State}"
     else
-        verbose "DEBUG: no SSH_AGENT_PID or SSH_AUTH_SOCK"
+        verbose "DEBUG: no SSH_AGENT_PID or SSH_AUTH_SOCK" 15
         if [ -f "${Ssh_Agent_State}" ]; then
             verbose "DEBUG: removing ${Ssh_Agent_State}"
             rm -f "${Ssh_Agent_State}" &> /dev/null
             Rm_Rc=$?
             if [ ${Rm_Rc} -ne 0 ]; then
-                verbose "ALERT: failed to 'rm -f ${Ssh_Agent_State}', rc=${Rm_Rc}"
+                verbose "ALERT: failed to 'rm -f ${Ssh_Agent_State}', Rm_Rc=${Rm_Rc}"
             fi
             unset -v Rm_Rc
         fi
@@ -770,6 +783,8 @@ function sshAgentInit() {
     fi
 
 }
+
+let Verbose_Counter=0
 
 # output more verbose messages based on a verbosity level set in the environment or a specific file
 function verbose() {
@@ -818,27 +833,41 @@ function verbose() {
 
     # convert verbose_message to uppercase & check for presence of keywords
     if [[ "${verbose_message_upper}" == *"ALERT"* ]]; then
-        verbose_level=1
+        if [ ${#verbose_level} -eq 0 ]; then
+            verbose_level=1
+        fi
     else
         if [[ "${verbose_message_upper}" == *"CRIT"* ]]; then
-            verbose_level=1
+            if [ ${#verbose_level} -eq 0 ]; then
+                verbose_level=1
+            fi
         else
             if [[ "${verbose_message_upper}" == *"ERROR"* ]]; then
-                verbose_level=1
+                if [ ${#verbose_level} -eq 0 ]; then
+                    verbose_level=1
+                fi
             else
                 if [[ "${verbose_message_upper}" == *"WARN"* ]]; then
-                    verbose_level=3
+                    if [ ${#verbose_level} -eq 0 ]; then
+                        verbose_level=3
+                    fi
                 else
                     if [[ "${verbose_message_upper}" == *"NOTICE"* ]]; then
-                        verbose_level=2
+                        if [ ${#verbose_level} -eq 0 ]; then
+                            verbose_level=2
+                        fi
                     else
                         if [[ "${verbose_message_upper}" == *"INFO"* ]]; then
-                            verbose_level=4
+                            if [ ${#verbose_level} -eq 0 ]; then
+                                verbose_level=4
+                            fi
                         else
                             if [[ "${verbose_message_upper}" == *"DEBUG"* ]]; then
-                                verbose_level=8
+                                if [ ${#verbose_level} -eq 0 ]; then
+                                    verbose_level=8
+                                fi
                             else
-                                if [[ ! "${verbose_level}" =~ ^[0-9]+$ ]]; then
+                                if [ ${#verbose_level} -eq 0 ]; then
                                     verbose_level=0
                                 fi
                             fi
@@ -980,6 +1009,7 @@ function verbose() {
             unset -v tput_set_af_v
         fi
 
+        let Verbose_Counter=${Verbose_Counter}+1
         (>&2 printf "%b\n" "${verbose_message}")
 
     fi
@@ -1247,18 +1277,6 @@ if [ ! -f ${HOME}/.inputrc ]; then
 fi
 
 ##
-### check ssh, ssh-agent, & add all potential keys (if they're not already added)
-##
-
-Ssh_Agent_Clean_Counter=0
-
-# try twice
-if ! sshAgent; then
-    verbose "ALERT: sshAgent failed, retrying ..."
-    sshAgent
-fi
-
-##
 ### mimic /etc/profile.d in home etc/profile.d directory
 ##
 
@@ -1421,3 +1439,21 @@ verbose "${User_Dir}/.bashrc ${Bashrc_Version}\n" 9
 if [ "${TMUX}" ]; then
     verbose "${Tmux_Info} [${TMUX}]\n" 8
 fi
+
+##
+### check ssh, ssh-agent, & add all potential keys (if they're not already added)
+##
+
+Ssh_Agent_Clean_Counter=0
+
+# try twice
+if ! sshAgent; then
+    verbose "ALERT: sshAgent failed, retrying ...\n"
+    sshAgent
+fi
+
+##
+### clean up ephemeral environment
+##
+
+unset -v Verbose_Counter
