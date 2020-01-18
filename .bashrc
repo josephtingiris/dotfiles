@@ -405,10 +405,11 @@ function sshAgent() {
     if [ ${Ssh_Add_Rc} -eq 0 ]; then
         if [ ${#SSH_AGENT_PID} -eq 0 ] && [ ${#SSH_AUTH_SOCK} -gt 0 ]; then
             # ssh-add works; ssh agent forwarding is on .. start another/local agent anyway?
+            local ssh_agent_home_message="ssh agent forwarding via SSH_AUTH_SOCK=${SSH_AUTH_SOCK}"
             if [ ${#Ssh_Agent_Home} -gt 0 ] && [ -r "${Ssh_Agent_Home}" ]; then
-                verbose "WARNING: ignoring ${Ssh_Agent_Home}"
+                ssh_agent_home_message+="; ignoring ${Ssh_Agent_Home}"
             fi
-            verbose "NOTICE: ssh agent forwarding via SSH_AUTH_SOCK=${SSH_AUTH_SOCK}"
+            verbose "NOTICE: ${ssh_agent_home_message}"
         fi
     else
         # starting ssh-add failed (the first time)
@@ -595,22 +596,12 @@ function sshAgentInit() {
     if [ -s "${Ssh_Agent_State}" ]; then
         # agent state file exists and it's not empty, try to use it
         eval "$(<${Ssh_Agent_State})" &> /dev/null
-    else
-        if [ -f "${Ssh_Agent_State}" ]; then
-            verbose "ALERT: removing empty ${Ssh_Agent_State}"
-            rm -f "${Ssh_Agent_State}" &> /dev/null
-            Rm_Rc=$?
-            if [ ${Rm_Rc} -ne 0 ]; then
-                verbose "ALERT: failed to 'rm -f ${Ssh_Agent_State}', Rm_Rc=${Rm_Rc}"
-            fi
-            unset -v Rm_Rc
-        fi
     fi
 
     local ssh_agent_socket_command
     if [ ${#SSH_AGENT_PID} -gt 0 ]; then
         ssh_agent_socket_command=$(ps -h -o comm -p ${SSH_AGENT_PID} 2> /dev/null)
-        if [ "${ssh_agent_socket_command}" != "ssh-agent" ] && [ "${ssh_agent_socket_command}" != "sshd" ]; then
+        if [ ${#ssh_agent_socket_command} -gt 0 ] && [ "${ssh_agent_socket_command}" != "ssh-agent" ] && [ "${ssh_agent_socket_command}" != "sshd" ]; then
             verbose "ERROR: SSH_AGENT_PID=${SSH_AGENT_PID} process not valid; missing or defunct\n"
             kill -9 ${SSH_AGENT_PID} &> /dev/null
             unset -v SSH_AGENT_PID
@@ -638,18 +629,6 @@ function sshAgentInit() {
         fi
     fi
 
-    if [ ${#SSH_AGENT_PID} -eq 0 ] && [ ${#SSH_AUTH_SOCK} -eq 0 ]; then
-        if [ -s "${Ssh_Agent_State}" ]; then
-            verbose "ALERT: removing invalid ${Ssh_Agent_State}"
-            rm -f "${Ssh_Agent_State}" &> /dev/null
-            Rm_Rc=$?
-            if [ ${Rm_Rc} -ne 0 ]; then
-                verbose "ALERT: failed to 'rm -f ${Ssh_Agent_State}', Rm_Rc=${Rm_Rc}"
-            fi
-            unset -v Rm_Rc
-        fi
-    fi
-
     # remove old ssh_agent_sockets as safely as possible
     local ssh_agent_socket ssh_agent_socket_pid ssh_auth_sock
     ssh_auth_sock=$SSH_AUTH_SOCK
@@ -666,7 +645,7 @@ function sshAgentInit() {
 
             ssh_agent_socket_command=$(ps -h -o comm -p ${ssh_agent_socket_pid} 2> /dev/null)
 
-            if [ "${ssh_agent_socket_command}" != "startkde" ] && [ "${ssh_agent_socket_command}" != "sshd" ]; then
+            if [ ${#ssh_agent_socket_command} -gt 0 ] && [ "${ssh_agent_socket_command}" != "startkde" ] && [ "${ssh_agent_socket_command}" != "sshd" ]; then
                 ((++ssh_agent_socket_pid))
                 ssh_agent_socket_command=$(ps -h -o comm -p ${ssh_agent_socket_pid} 2> /dev/null)
             fi
@@ -679,7 +658,7 @@ function sshAgentInit() {
             Ssh_Add_Rc=$?
             if [ ${Ssh_Add_Rc} -gt 1 ]; then
                 # definite error
-                verbose "ALERT: removing dead ssh_agent_socket ${ssh_agent_socket}, comm=${ssh_agent_socket_command}, pid=${ssh_agent_socket_pid}, Ssh_Add_Rc=${Ssh_Add_Rc}"
+                verbose "ALERT: removing dead ssh_agent_socket ${ssh_agent_socket}, comm=${ssh_agent_socket_command}, Ssh_Add_Rc=${Ssh_Add_Rc}"
                 rm -f ${ssh_agent_socket} &> /dev/null
                 Rm_Rc=$?
                 if [ ${Rm_Rc} -ne 0 ]; then
@@ -691,14 +670,17 @@ function sshAgentInit() {
                 # don't remove valid sockets; reuse them
 
                 if [ ${#SSH_AGENT_PID} -eq 0 ] || [ ${#SSH_AUTH_SOCK} -eq 0 ]; then
-                    if [ ${#ssh_agent_socket_pid} -gt 0 ]; then
-                        export SSH_AGENT_PID=${ssh_agent_socket_pid}
-                        verbose "DEBUG: reusing SSH_AGENT_PID=${SSH_AGENT_PID}"
-                    fi
 
-                    if [ ${#ssh_agent_socket} -gt 0 ]; then
-                        export SSH_AUTH_SOCK=${ssh_agent_socket}
-                        verbose "DEBUG: reusing SSH_AUTH_SOCK=${SSH_AUTH_SOCK}"
+                    if [ ${#SSH_AUTH_SOCK} -eq 0 ]; then
+                        if [ ${#ssh_agent_socket_pid} -gt 0 ] && [ "${ssh_agent_socket_command}" == "ssh-agent" ]; then
+                            export SSH_AGENT_PID=${ssh_agent_socket_pid}
+                            verbose "DEBUG: reusing SSH_AGENT_PID=${SSH_AGENT_PID}"
+                        fi
+
+                        if [ ${#ssh_agent_socket} -gt 0 ]; then
+                            export SSH_AUTH_SOCK=${ssh_agent_socket}
+                            verbose "DEBUG: reusing SSH_AUTH_SOCK=${SSH_AUTH_SOCK}"
+                        fi
                     fi
                 fi
 
@@ -1399,8 +1381,7 @@ else
     alias s="source ${HOME}/.bashrc"
 fi
 
-alias sshas=sshAgentInit
-alias authsock=sshas
+alias authsock=sshAgentInit
 alias scpo='scp -o IdentitiesOnly=yes'
 alias ssho='ssh -o IdentitiesOnly=yes'
 
@@ -1450,6 +1431,10 @@ Ssh_Agent_Clean_Counter=0
 if ! sshAgent; then
     verbose "ALERT: sshAgent failed, retrying ...\n"
     sshAgent
+fi
+
+if [ ${Verbose_Counter} -gt 0 ]; then
+    printf "\n"
 fi
 
 ##
