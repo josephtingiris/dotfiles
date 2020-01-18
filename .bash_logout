@@ -1,26 +1,28 @@
 # .bash_logout
 
-Bash_Logout_Message="$(date) ${USER}@${HOSTNAME}"
+Bash_Logout_Message="$(date) logout ${USER}@${HOSTNAME}"
 
 # prep sshAgentInit to clean up when the last $USER is logging out
 export Bash_Pids=($(pgrep -u ${USER} bash)) # this creates a subshell, so 2=1?
-export Bash_Count=${#Bash_Pids[@]}
-Bash_Logout_Message+=" Bash_Count=${Bash_Count}"
+export Bash_Logins=${#Bash_Pids[@]}
+Bash_Logout_Message+=" (Bash_Logins=${Bash_Logins})"
 
-if [ ${Bash_Count} -le 2 ]; then
-    Bash_Logout_Message+=" (last login?)"
+if [ ${Bash_Logins} -lt 2 ]; then
+    Bash_Logout_Message+=" (last login)"
     verbose_level=3
 else
-    verbose_level=1
+    verbose_level=4
 fi
 
-if [ "$(type -t verbose)" == "function" ]; then
-    verbose "${Bash_Logout_Message}" $verbose_level
-else
-    printf "${Bash_Logout_Message}\n"
+if [ ${#Bash_Logout} -eq 0 ]; then
+    if [ "$(type -t verbose)" == "function" ]; then
+        verbose "${Bash_Logout_Message}" $verbose_level
+    else
+        printf "${Bash_Logout_Message}\n"
+    fi
 fi
 
-if [ ${Bash_Count} -lt 2 ]; then
+if [ ${Bash_Logins} -lt 2 ]; then
     # last login
 
     if [[ "${SSH_AGENT_PID}" =~ ^[0-9].+ ]]; then
