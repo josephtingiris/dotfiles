@@ -1,6 +1,6 @@
 # .bashrc
 
-Bashrc_Version="20200114, joseph.tingiris@gmail.com"
+Bashrc_Version="20200118, joseph.tingiris@gmail.com"
 
 ##
 ### returns to avoid interactive shell enhancements
@@ -346,14 +346,10 @@ fi
 # if necessary, start ssh-agent
 function sshAgent() {
 
-    if ! sshAgentClean; then
-        verbose "EMERGENCY: sshAgentClean failed"
+    if ! sshAgentInit; then
+        verbose "ERROR: sshAgentInit failed"
         return 1
     fi
-
-    verbose "DEBUG: ${FUNCNAME} start"
-    verbose "DEBUG: ${FUNCNAME} SSH_AGENT_PID=${SSH_AGENT_PID}"
-    verbose "DEBUG: ${FUNCNAME} SSH_AUTH_SOCK=${SSH_AUTH_SOCK}"
 
     if [ ${#Ssh_Agent_Home} -gt 0 ]; then
 
@@ -372,7 +368,7 @@ function sshAgent() {
         if [ ${#SSH_AUTH_SOCK} -eq 0 ]; then
             if [ ! -r "${Ssh_Agent_Home}" ]; then
                 # there's no .ssh-agent file and ssh agent forwarding is off
-                verbose "ALERT: no ${Ssh_Agent_Home}; ssh agent forwarding is off"
+                verbose "NOTICE: no ${Ssh_Agent_Home}; ssh agent forwarding is off"
                 return 0
             fi
         fi
@@ -380,13 +376,13 @@ function sshAgent() {
 
     export Ssh_Agent="$(type -P ssh-agent)"
     if [ ${#Ssh_Agent} -eq 0 ] || [ ! -x ${Ssh_Agent} ]; then
-        verbose "EMERGENCY: ssh-agent not usable"
+        verbose "ERROR: ssh-agent not usable"
         return 1
     fi
 
     export Ssh_Keygen="$(type -P ssh-keygen)"
     if [ ${#Ssh_Keygen} -eq 0 ] || [ ! -x ${Ssh_Keygen} ]; then
-        verbose "EMERGENCY: ssh-keygen not usable"
+        verbose "ERROR: ssh-keygen not usable"
         return 1
     fi
 
@@ -404,40 +400,24 @@ function sshAgent() {
     fi
 
     # ensure ssh-add works or output an error message & return
-    Ssh_Add_Out=$(${Ssh_Add} -l 2> /dev/null)
+    Ssh_Add_Out=$(${Ssh_Add} -l 2>&1)
     Ssh_Add_Rc=$?
     if [ ${Ssh_Add_Rc} -eq 0 ]; then
         if [ ${#SSH_AGENT_PID} -eq 0 ] && [ ${#SSH_AUTH_SOCK} -gt 0 ]; then
             # ssh-add works; ssh agent forwarding is on .. start another/local agent anyway?
             if [ ${#Ssh_Agent_Home} -gt 0 ] && [ -r "${Ssh_Agent_Home}" ]; then
-                verbose "ALERT: ignoring ${Ssh_Agent_Home}"
+                verbose "WARNING: ignoring ${Ssh_Agent_Home}"
             fi
-            verbose "ALERT: ssh agent forwarding via SSH_AUTH_SOCK=${SSH_AUTH_SOCK}"
+            verbose "NOTICE: ssh agent forwarding via SSH_AUTH_SOCK=${SSH_AUTH_SOCK}"
         fi
     else
         # starting ssh-add failed (the first time)
-        if [ ${#Ssh_Add_Rc} -eq 1 ]; then
-            # rc=1 means 'failure', it's unspecified and may just be that it has no identities
-            if [[ "${Ssh_Add_Out}" != *"agent has no identities"* ]]; then
-                verbose "ALERT: '${Ssh_Add}' failed with SSH_AGENT_PID=${SSH_AGENT_PID}, SSH_AUTH_SOCK=${SSH_AUTH_SOCK}, output='${Ssh_Add_Out}', rc=${Ssh_Add_Rc}"
-            fi
-        else
-            verbose "EMERGENCY: '${Ssh_Add}' failed with SSH_AGENT_PID=${SSH_AGENT_PID}, SSH_AUTH_SOCK=${SSH_AUTH_SOCK}, output='${Ssh_Add_Out}' rc=${Ssh_Add_Rc}"
-            if [ ${#SSH_AGENT_PID} -gt 0 ] && [ ${#SSH_AUTH_SOCK} -eq 0 ]; then
-                # it's a bad SSH_AGENT_PID
-                unset -v SSH_AGENT_PID
-            else
-                if [ ${#SSH_AGENT_PID} -eq 0 ] && [ ${#SSH_AUTH_SOCK} -gt 0 ]; then
-                    # it's a bad SSH_AUTH_SOCK
-                    verbose "ALERT: no SSH_AGENT_PID, unset SSH_AUTH_SOCK=${SSH_AUTH_SOCK}"
-                    unset -v SSH_AUTH_SOCK
-                else
-                    verbose "ALERT: unset SSH_AGENT_PID=${SSH_AGENT_PID}, unset SSH_AUTH_SOCK=${SSH_AUTH_SOCK}"
-                    unset -v SSH_AGENT_PID
-                    unset -v SSH_AUTH_SOCK
-                fi
-            fi
-            return 1
+        # rc=1 means 'failure', it's unspecified and may just be that it has no identities
+        if [[ "${Ssh_Add_Out}" != *"agent has no identities"* ]]; then
+            verbose "ERROR: '${Ssh_Add}' failed with SSH_AGENT_PID=${SSH_AGENT_PID}, SSH_AUTH_SOCK=${SSH_AUTH_SOCK}, output='${Ssh_Add_Out}', rc=${Ssh_Add_Rc}"
+            unset -v SSH_AGENT_PID
+            unset -v SSH_AUTH_SOCK
+            sshAgentInit
         fi
     fi
     unset -v Ssh_Add_Out Ssh_Add_Rc
@@ -517,11 +497,10 @@ function sshAgent() {
             if [ "${Ssh_Agent_Key}" == "" ]; then
 
                 # add the key to the agent
-                printf "\n"
-                ${Ssh_Add} ${Ssh_Key_File} 2> /dev/null
+                ${Ssh_Add} ${Ssh_Key_File} &> /dev/null
                 Ssh_Add_Rc=$?
                 if [ ${Ssh_Add_Rc} -ne 0 ]; then
-                    verbose "ALERT: '${Ssh_Add} ${Ssh_Key_File}', rc=${Ssh_Add_Rc}"
+                    verbose "ERROR: '${Ssh_Add} ${Ssh_Key_File}' failed, rc=${Ssh_Add_Rc}"
                 fi
                 unset -v Ssh_Add_Rc
 
@@ -577,7 +556,17 @@ function sshAgent() {
 
 }
 
-function sshAgentClean() {
+function sshAgentInit() {
+
+    if [[ ! ${Ssh_Agent_Clean_Counter} =~ ^[0-9]+$ ]]; then
+        Ssh_Agent_Clean_Counter=0
+    fi
+
+    let Ssh_Agent_Clean_Counter=${Ssh_Agent_Clean_Counter}+1
+
+    if [ ${Ssh_Agent_Clean_Counter} -gt 2 ]; then
+        return 1 # prevent infinite, recursive loops
+    fi
 
     export Ssh_Add="$(type -P ssh-add)"
     if [ ${#Ssh_Add} -eq 0 ] || [ ! -x ${Ssh_Add} ]; then
@@ -591,17 +580,8 @@ function sshAgentClean() {
     export Ssh_Agent_Timeout=86400
 
     if [ -s "${Ssh_Agent_State}" ]; then
-        if [ ${#SSH_AGENT_PID} -gt 0 ] || [ ${#SSH_AUTH_SOCK} -eq 0 ]; then
-            # SSH_AUTH_SOCK may not yet be set
-            eval "$(<${Ssh_Agent_State})" &> /dev/null
-        else
-            if [ ${#SSH_AUTH_SOCK} -gt 0 ]; then
-                if grep -q "^SSH_AUTH_SOCK=${SSH_AUTH_SOCK};" "${Ssh_Agent_State}"; then
-                    # SSH_AGENT_PID got unset somehow
-                    eval "$(<${Ssh_Agent_State})" &> /dev/null
-                fi
-            fi
-        fi
+        # agent state file exists and it's not empty, try to use it
+        eval "$(<${Ssh_Agent_State})" &> /dev/null
     else
         if [ -f "${Ssh_Agent_State}" ]; then
             verbose "ALERT: removing empty ${Ssh_Agent_State}"
@@ -611,25 +591,15 @@ function sshAgentClean() {
                 verbose "ALERT: failed to 'rm -f ${Ssh_Agent_State}', rc=${Rm_Rc}"
             fi
             unset -v Rm_Rc
-        else
-            if [ ${#SSH_AGENT_PID} -gt 0 ] && [ ${#SSH_AUTH_SOCK} -gt 0 ]; then
-                # missing Ssh_Agent_State; create one
-                printf "SSH_AUTH_SOCK=%s; export SSH_AUTH_SOCK;\n" "${SSH_AUTH_SOCK}" > "${Ssh_Agent_State}"
-                printf "SSH_AGENT_PID=%s; export SSH_AGENT_PID;\n" "${SSH_AGENT_PID}" >> "${Ssh_Agent_State}"
-                printf "echo Agent pid %s\n" "${SSH_AGENT_PID}" >> "${Ssh_Agent_State}"
-            fi
         fi
-    fi
-
-    if [ -w "${Ssh_Agent_State}" ]; then
-        chmod 0600 "${Ssh_Agent_State}" &> /dev/null
     fi
 
     local ssh_agent_socket_command
     if [ ${#SSH_AGENT_PID} -gt 0 ]; then
         ssh_agent_socket_command=$(ps -h -o comm -p ${SSH_AGENT_PID} 2> /dev/null)
         if [ "${ssh_agent_socket_command}" != "ssh-agent" ] && [ "${ssh_agent_socket_command}" != "sshd" ]; then
-            verbose "WARNING: SSH_AGENT_PID=${SSH_AGENT_PID} process not found"
+            verbose "WARNING: SSH_AGENT_PID=${SSH_AGENT_PID} process not valid; missing or defunct"
+            kill -9 ${SSH_AGENT_PID} &> /dev/null
             unset -v SSH_AGENT_PID
         fi
     fi
@@ -640,24 +610,19 @@ function sshAgentClean() {
                 verbose "WARNING: unset SSH_AUTH_SOCK=${SSH_AUTH_SOCK}, socket not found writable"
                 unset -v SSH_AUTH_SOCK
                 if [ ${#SSH_AGENT_PID} -gt 0 ]; then
-                    kill ${SSH_AGENT_PID} &> /dev/null
+                    kill -9 ${SSH_AGENT_PID} &> /dev/null
                     unset -v SSH_AGENT_PID
                 fi
             fi
         else
             # SSH_AUTH_SOCK is not a valid socket
-            verbose "WARNING: unset SSH_AUTH_SOCK=${SSH_AUTH_SOCK}, socket is invalid"
+            verbose "WARNING: unset SSH_AUTH_SOCK=${SSH_AUTH_SOCK}, socket not valid"
             unset -v SSH_AUTH_SOCK
             if [ ${#SSH_AGENT_PID} -gt 0 ]; then
                 kill ${SSH_AGENT_PID} &> /dev/null
                 unset -v SSH_AGENT_PID
             fi
         fi
-    fi
-
-    if [ ${#SSH_AUTH_SOCK} -eq 0 ]; then
-            verbose "WARNING: no SSH_AUTH_SOCK"
-            sshAuthSockReuse
     fi
 
     if [ ${#SSH_AGENT_PID} -eq 0 ] && [ ${#SSH_AUTH_SOCK} -eq 0 ]; then
@@ -670,32 +635,6 @@ function sshAgentClean() {
             fi
             unset -v Rm_Rc
         fi
-    fi
-
-    # remove old ssh_agent_pids as safely as possible
-    local ssh_agent_pid ssh_agent_state_pid
-    # don't kill the Ssh_Agent_State
-    if [ -s "${Ssh_Agent_State}" ]; then
-        ssh_agent_state_pid=$(grep "^SSH_AGENT_PID=" "${Ssh_Agent_State}" 2> /dev/null | awk -F\; '{print $1}' | awk -F= '{print $NF}')
-    fi
-    if [ ${#Ssh_Agent} -gt 0 ]; then
-        for ssh_agent_pid in $(pgrep -u "${USER}" -f ${Ssh_Agent} -P 1 2> /dev/null); do
-            if [ ${#SSH_AGENT_PID} -gt 0 ]; then
-                if [ "${ssh_agent_pid}" == "${SSH_AGENT_PID}" ]; then
-                    # don't kill a running agent
-                    continue
-                fi
-            fi
-            if [ ${#ssh_agent_state_pid} -gt 0 ]; then
-                if [ "${ssh_agent_pid}" == "${ssh_agent_state_pid}" ]; then
-                    # don't kill a running agent
-                    continue
-                fi
-            fi
-            verbose "ALERT: killing old ssh_agent_pid='${ssh_agent_pid}'"
-            kill ${ssh_agent_pid} &> /dev/null
-        done
-        unset -v ssh_agent_pid ssh_agent_state_pid
     fi
 
     # remove old ssh_agent_sockets as safely as possible
@@ -721,7 +660,6 @@ function sshAgentClean() {
         fi
 
         if [ "${ssh_agent_socket_command}" == "startkde" ] || [ "${ssh_agent_socket_command}" == "sshd" ] || [ "${ssh_agent_socket_command}" == "ssh-agent" ]; then
-            #echo "bug here? SSH_AUTH_SOCK=${ssh_agent_socket} ${Ssh_Add} -l ${ssh_agent_socket}"
             # sometimes ssh-add fails to read the socket & takes 3+ minutes to timeout; if it takes longer than 5 seconds
             # to read the socket then remove it (it's unusable)
             SSH_AUTH_SOCK=${ssh_agent_socket} timeout 5 ${Ssh_Add} -l ${ssh_agent_socket} &> /dev/null
@@ -737,7 +675,20 @@ function sshAgentClean() {
                 unset -v ssh_auth_sock
                 unset -v Rm_Rc
             else
-                # don't remove sockets with running ssh processes
+                # don't remove valid sockets; reuse them
+
+                if [ ${#SSH_AGENT_PID} -eq 0 ] || [ ${#SSH_AUTH_SOCK} -eq 0 ]; then
+                    if [ ${#ssh_agent_socket_pid} -gt 0 ]; then
+                        export SSH_AGENT_PID=${ssh_agent_socket_pid}
+                        verbose "DEBUG: reusing SSH_AGENT_PID=${SSH_AGENT_PID}"
+                    fi
+
+                    if [ ${#ssh_agent_socket} -gt 0 ]; then
+                        export SSH_AUTH_SOCK=${ssh_agent_socket}
+                        verbose "DEBUG: reusing SSH_AUTH_SOCK=${SSH_AUTH_SOCK}"
+                    fi
+                fi
+
                 continue
             fi
             unset -v Ssh_Add_Rc
@@ -752,24 +703,72 @@ function sshAgentClean() {
             unset -v Rm_Rc
         fi
         # also find really old sockets & remove them regardless if they still work or not?
-    done <<<"$(find /tmp -type s -name "agent\.*" 2> /dev/null)"
-
-    if [ ${#ssh_auth_sock} -gt 0 ] && [ -S "${ssh_auth_sock}" ]; then
-        SSH_AUTH_SOCK=$ssh_auth_sock
-    fi
+    done <<<"$(find /tmp -type s -wholename "*/ssh*agent*" 2> /dev/null)"
 
     unset -v ssh_agent_socket ssh_agent_socket_pid ssh_agent_socket_command ssh_auth_sock
+
+    # remove old ssh_agent_pids as safely as possible
+    local ssh_agent_pid ssh_agent_state_pid
+    # don't kill the Ssh_Agent_State
+    if [ -s "${Ssh_Agent_State}" ]; then
+        ssh_agent_state_pid=$(grep "^SSH_AGENT_PID=" "${Ssh_Agent_State}" 2> /dev/null | awk -F\; '{print $1}' | awk -F= '{print $NF}')
+    fi
+
+    if [ ${#Ssh_Agent} -gt 0 ]; then
+        for ssh_agent_pid in $(pgrep -u "${USER}" -f ${Ssh_Agent} -P 1 2> /dev/null); do
+            if [ ${#SSH_AGENT_PID} -gt 0 ]; then
+                if [ "${ssh_agent_pid}" == "${SSH_AGENT_PID}" ]; then
+                    # don't kill a running agent
+                    continue
+                fi
+            fi
+
+            if [ ${#ssh_agent_state_pid} -gt 0 ]; then
+                if [ "${ssh_agent_pid}" == "${ssh_agent_state_pid}" ]; then
+                    # don't kill a running agent
+                    continue
+                fi
+            else
+                if [ ${#SSH_AGENT_PID} -gt 0 ]; then
+                    if [ "${SSH_AGENT_PID}" == "${ssh_agent_pid}" ]; then
+                        # don't kill the current agent
+                        continue
+                    fi
+                fi
+            fi
+
+            verbose "ALERT: killing old ssh_agent_pid='${ssh_agent_pid}'"
+            kill ${ssh_agent_pid} &> /dev/null
+        done
+        unset -v ssh_agent_pid ssh_agent_state_pid
+    fi
 
     # it's possible this condition could happen (again) if a socket's removed
     if [ ${#SSH_AGENT_PID} -gt 0 ] && [ ${#SSH_AUTH_SOCK} -eq 0 ]; then
         unset -v SSH_AGENT_PID
     fi
-}
 
-# find the oldest (valid) SSH_AUTH_SOCK and (attempt) to use it
-function sshAuthSockReuse() {
-    export SSH_AUTH_SOCK=$(find /tmp -user ${User_Name} -wholename "*ssh*agent*" 2> /dev/null | xargs -r ls -1tr | head -1)
-    sshAgentClean && verbose "WARNING: export SSH_AUTH_SOCK=${SSH_AUTH_SOCK}, reuse successful" || verbose "ALERT: SSH_AUTH_SOCK=reuse failed"
+    if [ ${#SSH_AGENT_PID} -gt 0 ] && [ ${#SSH_AUTH_SOCK} -gt 0 ]; then
+        printf "SSH_AUTH_SOCK=%s; export SSH_AUTH_SOCK;\n" "${SSH_AUTH_SOCK}" > "${Ssh_Agent_State}"
+        printf "SSH_AGENT_PID=%s; export SSH_AGENT_PID;\n" "${SSH_AGENT_PID}" >> "${Ssh_Agent_State}"
+        printf "echo Agent pid %s\n" "${SSH_AGENT_PID}" >> "${Ssh_Agent_State}"
+    else
+        verbose "DEBUG: no SSH_AGENT_PID or SSH_AUTH_SOCK"
+        if [ -f "${Ssh_Agent_State}" ]; then
+            verbose "DEBUG: removing ${Ssh_Agent_State}"
+            rm -f "${Ssh_Agent_State}" &> /dev/null
+            Rm_Rc=$?
+            if [ ${Rm_Rc} -ne 0 ]; then
+                verbose "ALERT: failed to 'rm -f ${Ssh_Agent_State}', rc=${Rm_Rc}"
+            fi
+            unset -v Rm_Rc
+        fi
+    fi
+
+    if [ -w "${Ssh_Agent_State}" ]; then
+        chmod 0600 "${Ssh_Agent_State}" &> /dev/null
+    fi
+
 }
 
 # output more verbose messages based on a verbosity level set in the environment or a specific file
@@ -817,29 +816,29 @@ function verbose() {
         verbose_message_upper=$(echo "${verbose_message}" | tr '[:lower:]' '[:upper:]')
     fi
 
-    if [[ ! "${verbose_level}" =~ ^[0-9]+$ ]]; then
-        # convert verbose_message to uppercase & check for presence of keywords
-        if [[ "${verbose_message_upper}" == *"ALERT"* ]]; then
+    # convert verbose_message to uppercase & check for presence of keywords
+    if [[ "${verbose_message_upper}" == *"ALERT"* ]]; then
+        verbose_level=1
+    else
+        if [[ "${verbose_message_upper}" == *"CRIT"* ]]; then
             verbose_level=1
         else
-            if [[ "${verbose_message_upper}" == *"CRIT"* ]]; then
-                verbose_level=2
+            if [[ "${verbose_message_upper}" == *"ERROR"* ]]; then
+                verbose_level=1
             else
-                if [[ "${verbose_message_upper}" == *"ERROR"* ]]; then
+                if [[ "${verbose_message_upper}" == *"WARN"* ]]; then
                     verbose_level=3
                 else
-                    if [[ "${verbose_message_upper}" == *"WARN"* ]]; then
-                        verbose_level=4
+                    if [[ "${verbose_message_upper}" == *"NOTICE"* ]]; then
+                        verbose_level=2
                     else
-                        if [[ "${verbose_message_upper}" == *"NOTICE"* ]]; then
-                            verbose_level=5
+                        if [[ "${verbose_message_upper}" == *"INFO"* ]]; then
+                            verbose_level=4
                         else
-                            if [[ "${verbose_message_upper}" == *"INFO"* ]]; then
-                                verbose_level=6
+                            if [[ "${verbose_message_upper}" == *"DEBUG"* ]]; then
+                                verbose_level=8
                             else
-                                if [[ "${verbose_message_upper}" == *"DEBUG"* ]]; then
-                                    verbose_level=7
-                                else
+                                if [[ ! "${verbose_level}" =~ ^[0-9]+$ ]]; then
                                     verbose_level=0
                                 fi
                             fi
@@ -850,9 +849,12 @@ function verbose() {
         fi
     fi
 
-    if [ ${verbose_level} -eq 0 ] || [ ${#verbose_level} -eq 0 ]; then
-        # unusable
-        return
+    if [ ${#verbose_level} -eq 0 ] || [ ${verbose_level} -eq 0 ]; then
+        return # hide
+    fi
+
+    if [ ${verbose_level} -gt ${verbosity} ]; then
+        return # hide
     fi
 
     local verbose_level_prefix
@@ -868,46 +870,52 @@ function verbose() {
         if [ ${verbose_level_prefix} -eq 0 ] && [[ "${verbose_message_upper}" != *"ALERT"* ]]; then
             verbose_message="ALERT: ${verbose_message}"
         fi
+
+        if [ ${verbose_level_prefix} -eq 0 ] &&  [[ "${verbose_message_upper}" != *"CRIT"* ]]; then
+            verbose_message="CRITICAL: ${verbose_message}"
+        fi
+
+        if [ ${verbose_level_prefix} -eq 0 ] &&  [[ "${verbose_message_upper}" != *"ERROR"* ]]; then
+            verbose_message="ERROR: ${verbose_message}"
+        fi
     else
         if [ ${verbose_level} -eq 2 ]; then
-            verbose_color=3
-            if [ ${verbose_level_prefix} -eq 0 ] &&  [[ "${verbose_message_upper}" != *"CRIT"* ]]; then
-                verbose_message="CRITICAL: ${verbose_message}"
+            verbose_color=2
+            if [ ${verbose_level_prefix} -eq 0 ] &&  [[ "${verbose_message_upper}" != *"NOTICE"* ]]; then
+                verbose_message="NOTICE: ${verbose_message}"
             fi
         else
             if [ ${verbose_level} -eq 3 ]; then
-                verbose_color=5
-                if [ ${verbose_level_prefix} -eq 0 ] &&  [[ "${verbose_message_upper}" != *"ERROR"* ]]; then
-                    verbose_message="ERROR: ${verbose_message}"
+                verbose_color=3
+                if [ ${verbose_level_prefix} -eq 0 ] &&  [[ "${verbose_message_upper}" != *"WARN"* ]]; then
+                    verbose_message="WARNING: ${verbose_message}"
                 fi
             else
                 if [ ${verbose_level} -eq 4 ]; then
-                    verbose_color=2
-                    if [ ${verbose_level_prefix} -eq 0 ] &&  [[ "${verbose_message_upper}" != *"WARN"* ]]; then
-                        verbose_message="WARNING: ${verbose_message}"
+                    verbose_color=4
+                    if [ ${verbose_level_prefix} -eq 0 ] &&  [[ "${verbose_message_upper}" != *"INFO"* ]]; then
+                        verbose_message="INFO: ${verbose_message}"
                     fi
                 else
                     if [ ${verbose_level} -eq 5 ]; then
-                        verbose_color=6
-                        if [ ${verbose_level_prefix} -eq 0 ] &&  [[ "${verbose_message_upper}" != *"NOTICE"* ]]; then
-                            verbose_message="NOTICE: ${verbose_message}"
-                        fi
+                        verbose_color=5
                     else
                         if [ ${verbose_level} -eq 6 ]; then
-                            verbose_color=4
-                            if [ ${verbose_level_prefix} -eq 0 ] &&  [[ "${verbose_message_upper}" != *"INFO"* ]]; then
-                                verbose_message="INFO: ${verbose_message}"
-                            fi
+                            verbose_color=6
                         else
                             if [ ${verbose_level} -eq 7 ]; then
                                 verbose_color=7
-                                if [ ${verbose_level_prefix} -eq 0 ] &&  [[ "${verbose_message_upper}" != *"DEBUG"* ]]; then
-                                    verbose_message="DEBUG: ${verbose_message}"
-                                fi
                             else
-                                verbose_color=8
-                                if [ ${verbose_level_prefix} -eq 0 ] &&  [[ "${verbose_message_upper}" != *"DEBUG"* ]]; then
-                                    verbose_message="XDEBUG: ${verbose_message}"
+                                if [ ${verbose_level} -eq 8 ]; then
+                                    verbose_color=8
+                                    if [ ${verbose_level_prefix} -eq 0 ] &&  [[ "${verbose_message_upper}" != *"DEBUG"* ]]; then
+                                        verbose_message="DEBUG: ${verbose_message}"
+                                    fi
+                                else
+                                    verbose_color=9
+                                    if [ ${verbose_level_prefix} -eq 0 ] &&  [[ "${verbose_message_upper}" != *"DEBUG"* ]]; then
+                                        verbose_message="XDEBUG: ${verbose_message}"
+                                    fi
                                 fi
                             fi
                         fi
@@ -959,12 +967,16 @@ function verbose() {
             unset v1 v2
         fi
 
-        if [ ${#TPUT_BOLD} -gt 0 ] && [ ${#TPUT_SGR0} -gt 0 ]; then
+        if [ ${#TPUT_SGR0} -gt 0 ]; then
             if [ ${#verbose_color} -eq 0 ]; then
                 verbose_color=${verbose_level}
             fi
             local tput_set_af_v="TPUT_SETAF_${verbose_color}"
-            verbose_message="${TPUT_BOLD}${!tput_set_af_v}${verbose_message}${TPUT_SGR0}"
+            if [ ${verbose_level} -le 7 ] && [ ${#TPUT_BOLD} -gt 0 ]; then
+                verbose_message="${TPUT_BOLD}${!tput_set_af_v}${verbose_message}${TPUT_SGR0}"
+            else
+                verbose_message="${!tput_set_af_v}${verbose_message}${TPUT_SGR0}"
+            fi
             unset -v tput_set_af_v
         fi
 
@@ -1024,11 +1036,6 @@ function viLocate() {
 ### trap EXIT to ensure .bash_logout gets called, regardless of whether or not it's a login shell
 ##
 
-# non-login shells will *not* execute .bash_logout, and I want to know ...
-if ! shopt -q login_shell &> /dev/null; then
-    verbose "INFO: interactive, but not a login shell\n"
-fi
-
 if [ -r "${User_Dir}/.bash_logout" ]; then
     if [ ${#TMUX_PANE} -eq 0 ]; then
         trap "source ${User_Dir}/.bash_logout" EXIT
@@ -1044,25 +1051,6 @@ else
         fi
     fi
 fi
-
-##
-### set Verbose variables
-##
-
-Verbose_Pad_Left=11
-Verbose_Pad_Right=50
-
-for verbose_file in "${HOME}/.verbose" "${HOME}/.bashrc.verbose"; do
-    if [ -r "${verbose_file}" ]; then
-        # get digits only from the first line; if they're not digits then set verbosity to one
-        export Verbose=$(grep -m1 "^[0-9]*$" "${verbose_file}" 2> /dev/null)
-        if [ ${#Verbose} -gt 0 ]; then
-            break
-        fi
-    fi
-done
-
-verbose "ALERT: verbose is on\n"
 
 ##
 ### exported functions
@@ -1160,9 +1148,9 @@ if [[ "${TERM}" == *"screen"* ]]; then
 fi
 
 # this is mainly for performance; as long as TERM doesn't change then there's no need to run tput every time
-if [ "$TERM" != "$TPUT_TERM" ]; then
+if [ "${TERM}" != "${TPUT_TERM}" ] || [ ${#TPUT_TERM} -eq 0 ]; then
     if type -P tput &> /dev/null; then
-        export TPUT_TERM=$TERM
+        export TPUT_TERM=${TERM}
         export TPUT_BOLD="$(tput bold 2> /dev/null)"
         if [ $? -eq 0 ]; then
             export TPUT_SETAF_0="$(tput setaf 0 2> /dev/null)" # black
@@ -1178,6 +1166,30 @@ if [ "$TERM" != "$TPUT_TERM" ]; then
             export TPUT_SMSO="$(tput smso 2> /dev/null)" # standout
         fi
     fi
+fi
+
+##
+### set Verbose variables
+##
+
+Verbose_Pad_Left=11
+Verbose_Pad_Right=50
+
+for verbose_file in "${HOME}/.verbose" "${HOME}/.bashrc.verbose"; do
+    if [ -r "${verbose_file}" ]; then
+        # get digits only from the first line; if they're not digits then set verbosity to one
+        export Verbose=$(grep -m1 "^[0-9]*$" "${verbose_file}" 2> /dev/null)
+        if [ ${#Verbose} -gt 0 ]; then
+            break
+        fi
+    fi
+done
+
+verbose "NOTICE: verbose is on"
+
+# non-login shells will *not* execute .bash_logout, and I want to know ...
+if ! shopt -q login_shell &> /dev/null; then
+    verbose "INFO: interactive, but not a login shell"
 fi
 
 ##
@@ -1237,6 +1249,8 @@ fi
 ##
 ### check ssh, ssh-agent, & add all potential keys (if they're not already added)
 ##
+
+Ssh_Agent_Clean_Counter=0
 
 # try twice
 if ! sshAgent; then
@@ -1367,7 +1381,7 @@ else
     alias s="source ${HOME}/.bashrc"
 fi
 
-alias sshas=sshAuthSockReuse
+alias sshas=sshAgentInit
 alias authsock=sshas
 alias scpo='scp -o IdentitiesOnly=yes'
 alias ssho='ssh -o IdentitiesOnly=yes'
@@ -1403,7 +1417,7 @@ if [ -r /etc/redhat-release ]; then
     printf "\n"
 fi
 
-verbose "${User_Dir}/.bashrc ${Bashrc_Version}\n" 2
+verbose "${User_Dir}/.bashrc ${Bashrc_Version}\n" 9
 if [ "${TMUX}" ]; then
-    verbose "${Tmux_Info} [${TMUX}]\n" 4
+    verbose "${Tmux_Info} [${TMUX}]\n" 8
 fi
