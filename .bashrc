@@ -1204,7 +1204,7 @@ verbose "NOTICE: verbose is on"
 
 # non-login shells will *not* execute .bash_logout, and I want to know ...
 if ! shopt -q login_shell &> /dev/null; then
-    verbose "INFO: interactive, but not a login shell"
+    verbose "NOTICE: interactive, but not a login shell"
 fi
 
 ##
@@ -1436,7 +1436,7 @@ if ! sshAgent; then
     sshAgent
 fi
 
-if [ ${Verbose_Counter} -gt 2 ]; then
+if [ ${Verbose_Counter} -gt 3 ]; then
     printf "\n"
 fi
 
