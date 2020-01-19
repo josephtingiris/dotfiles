@@ -22,7 +22,7 @@ if [ ${#Bash_Logout} -eq 0 ]; then
     fi
 fi
 
-if [ ${Bash_Logins} -lt 2 ]; then
+if [ ${Bash_Logins} -lt 2 ] && [ "${USER}" == "${Who}" ]; then
     # last login
 
     if [[ "${SSH_AGENT_PID}" =~ ^[0-9].+ ]]; then
