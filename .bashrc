@@ -746,6 +746,7 @@ function sshAgentInit() {
     fi
 
     if [ ${#SSH_AGENT_PID} -gt 0 ] && [ ${#SSH_AUTH_SOCK} -gt 0 ]; then
+        verbose "DEBUG: creating ${Ssh_Agent_State}"
         printf "SSH_AUTH_SOCK=%s; export SSH_AUTH_SOCK;\n" "${SSH_AUTH_SOCK}" > "${Ssh_Agent_State}"
         printf "SSH_AGENT_PID=%s; export SSH_AGENT_PID;\n" "${SSH_AGENT_PID}" >> "${Ssh_Agent_State}"
         printf "echo Agent pid %s\n" "${SSH_AGENT_PID}" >> "${Ssh_Agent_State}"
@@ -1435,7 +1436,7 @@ if ! sshAgent; then
     sshAgent
 fi
 
-if [ ${Verbose_Counter} -gt 3 ]; then
+if [ ${Verbose_Counter} -gt 2 ]; then
     printf "\n"
 fi
 
