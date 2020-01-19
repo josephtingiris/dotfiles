@@ -1,6 +1,6 @@
 # .bashrc
 
-Bashrc_Version="20200118, joseph.tingiris@gmail.com"
+Bashrc_Version="20200120, joseph.tingiris@gmail.com"
 
 ##
 ### returns to avoid interactive shell enhancements
@@ -1413,6 +1413,25 @@ Ssh_Agent_Clean_Counter=0
 if ! sshAgent; then
     verbose "ALERT: sshAgent failed, retrying ...\n"
     sshAgent
+fi
+
+##
+### if possible, as other users, xauth add ${User_Dir}/.Xuathority
+##
+
+if [ "${USER}" != "${Who}" ]; then
+    if [ ${#DISPLAY} -gt 0 ]; then
+        if type -P xauth &> /dev/null; then
+            verbose "DEBUG: xauth DISPLAY=${DISPLAY}"
+
+            if [ -r "${User_Dir}/.Xauthority" ]; then
+                verbose "DEBUG: ${User_Dir}/.Xauthority file found readble" 22
+                while read Xauth_Add; do
+                    xauth add ${Xauth_Add} 2> /dev/null
+                done <<< "$(xauth -f "${User_Dir}/.Xauthority" list)"
+            fi
+        fi
+    fi
 fi
 
 ##
