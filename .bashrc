@@ -418,7 +418,6 @@ function sshAgent() {
             verbose "ERROR: '${Ssh_Add}' failed with SSH_AGENT_PID=${SSH_AGENT_PID}, SSH_AUTH_SOCK=${SSH_AUTH_SOCK}, output='${Ssh_Add_Out}', Ssh_Add_Rc=${Ssh_Add_Rc}"
             unset -v SSH_AGENT_PID
             unset -v SSH_AUTH_SOCK
-            sshAgentInit
         fi
     fi
     unset -v Ssh_Add_Out Ssh_Add_Rc
@@ -593,12 +592,15 @@ function sshAgentInit() {
     export Ssh_Agent_State="${Ssh_Agent_Home}.${Who}@${HOSTNAME}"
     export Ssh_Agent_Timeout=86400
 
-    if [ -s "${Ssh_Agent_State}" ]; then
-        # agent state file exists and it's not empty, try to use it
-        eval "$(<${Ssh_Agent_State})" &> /dev/null
+    if [ ${#SSH_AUTH_SOCK} -eq 0 ]; then
+        if [ -s "${Ssh_Agent_State}" ]; then
+            # agent state file exists and it's not empty, try to use it
+            eval "$(<${Ssh_Agent_State})" &> /dev/null
+        fi
     fi
 
     local ssh_agent_socket_command
+
     if [ ${#SSH_AGENT_PID} -gt 0 ]; then
         ssh_agent_socket_command=$(ps -h -o comm -p ${SSH_AGENT_PID} 2> /dev/null)
         if [ ${#ssh_agent_socket_command} -gt 0 ] && [ "${ssh_agent_socket_command}" != "ssh-agent" ] && [ "${ssh_agent_socket_command}" != "sshd" ]; then
