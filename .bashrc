@@ -1427,8 +1427,8 @@ if [ "${USER}" != "${Who}" ]; then
             if [ -r "${User_Dir}/.Xauthority" ]; then
                 verbose "DEBUG: ${User_Dir}/.Xauthority file found readble" 22
                 while read Xauth_Add; do
-                    xauth add ${Xauth_Add} 2> /dev/null
-                done <<< "$(xauth -f "${User_Dir}/.Xauthority" list)"
+                    xauth -b add ${Xauth_Add} 2> /dev/null
+                done <<< "$(xauth -b -f "${User_Dir}/.Xauthority" list)"
             fi
         fi
     fi
