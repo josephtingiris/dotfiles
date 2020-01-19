@@ -509,7 +509,7 @@ map <Leader>t gt
 set autoindent                              " copy indet from current line when starting a new line
 set autoread                                " automatically re-read files that have changed outside of VIM
 set backspace=indent,eol,start              " allow backspace in insert mode
-"set clipboard=unnamedplus                   " Set default clipboard name ;
+set clipboard=unnamedplus                   " Set default clipboard name ;
 set complete-=i                             " do not complete for included files; .=current buffer, w=buffers in other windows, b=other loaded buffers, u=unloaded buffers, t=tags, i=include files
 set directory=/var/tmp                      " where to store swap files
 set noerrorbells                            " turn off error bells
