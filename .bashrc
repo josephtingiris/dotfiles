@@ -588,7 +588,7 @@ function sshAgentInit() {
         return 1
     fi
 
-    export Ssh_Agent_Home="${HOME}/.ssh-agent"
+    export Ssh_Agent_Home="${User_Dir}/.ssh-agent"
     export Ssh_Agent_State="${Ssh_Agent_Home}.${Who}@${HOSTNAME}"
     export Ssh_Agent_Timeout=86400
 
@@ -745,21 +745,23 @@ function sshAgentInit() {
         unset -v SSH_AGENT_PID
     fi
 
-    if [ ${#SSH_AGENT_PID} -gt 0 ] && [ ${#SSH_AUTH_SOCK} -gt 0 ]; then
-        verbose "DEBUG: creating ${Ssh_Agent_State}" 15
-        printf "SSH_AUTH_SOCK=%s; export SSH_AUTH_SOCK;\n" "${SSH_AUTH_SOCK}" > "${Ssh_Agent_State}"
-        printf "SSH_AGENT_PID=%s; export SSH_AGENT_PID;\n" "${SSH_AGENT_PID}" >> "${Ssh_Agent_State}"
-        printf "echo Agent pid %s\n" "${SSH_AGENT_PID}" >> "${Ssh_Agent_State}"
-    else
-        verbose "DEBUG: no SSH_AGENT_PID or SSH_AUTH_SOCK" 15
-        if [ -f "${Ssh_Agent_State}" ]; then
-            verbose "DEBUG: removing ${Ssh_Agent_State}"
-            rm -f "${Ssh_Agent_State}" &> /dev/null
-            Rm_Rc=$?
-            if [ ${Rm_Rc} -ne 0 ]; then
-                verbose "ALERT: failed to 'rm -f ${Ssh_Agent_State}', Rm_Rc=${Rm_Rc}"
+    if [ "${USER}" == "${Who}" ]; then
+        if [ ${#SSH_AGENT_PID} -gt 0 ] && [ ${#SSH_AUTH_SOCK} -gt 0 ]; then
+            verbose "DEBUG: creating ${Ssh_Agent_State}" 15
+            printf "SSH_AUTH_SOCK=%s; export SSH_AUTH_SOCK;\n" "${SSH_AUTH_SOCK}" > "${Ssh_Agent_State}"
+            printf "SSH_AGENT_PID=%s; export SSH_AGENT_PID;\n" "${SSH_AGENT_PID}" >> "${Ssh_Agent_State}"
+            printf "echo Agent pid %s\n" "${SSH_AGENT_PID}" >> "${Ssh_Agent_State}"
+        else
+            verbose "DEBUG: no SSH_AGENT_PID or SSH_AUTH_SOCK" 15
+            if [ -f "${Ssh_Agent_State}" ]; then
+                verbose "DEBUG: removing ${Ssh_Agent_State}"
+                rm -f "${Ssh_Agent_State}" &> /dev/null
+                Rm_Rc=$?
+                if [ ${Rm_Rc} -ne 0 ]; then
+                    verbose "ALERT: failed to 'rm -f ${Ssh_Agent_State}', Rm_Rc=${Rm_Rc}"
+                fi
+                unset -v Rm_Rc
             fi
-            unset -v Rm_Rc
         fi
     fi
 
@@ -1058,7 +1060,7 @@ if [ -r "${User_Dir}/.bash_logout" ]; then
         trap "source ${User_Dir}/.bash_logout;tmux kill-pane -t ${TMUX_PANE}" EXIT
     fi
 else
-    if [ -r "${HOME}/.bash_logout" ]; then
+    if [ -r "${User_Dir}/.bash_logout" ]; then
         if [ ${#TMUX_PANE} -eq 0 ]; then
             trap "source ${HOME}/.bash_logout" EXIT
         else
@@ -1190,7 +1192,7 @@ fi
 Verbose_Pad_Left=11
 Verbose_Pad_Right=50
 
-for verbose_file in "${HOME}/.verbose" "${HOME}/.bashrc.verbose"; do
+for verbose_file in "${User_Dir}/.verbose" "${User_Dir}/.bashrc.verbose"; do
     if [ -r "${verbose_file}" ]; then
         # get digits only from the first line; if they're not digits then set verbosity to one
         export Verbose=$(grep -m1 "^[0-9]*$" "${verbose_file}" 2> /dev/null)
@@ -1435,6 +1437,11 @@ if ! sshAgent; then
     verbose "ALERT: sshAgent failed, retrying ...\n"
     sshAgent
 fi
+
+verbose "DEBUG: Who=${Who}" 18
+verbose "DEBUG: User_Dir=${User_Dir}" 18
+verbose "DEBUG: Ssh_Agent_Home=${Ssh_Agent_Home}" 18
+verbose "DEBUG: Ssh_Agent_State=${Ssh_Agent_State}" 18
 
 if [ ${Verbose_Counter} -gt 3 ]; then
     printf "\n"
