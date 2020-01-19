@@ -498,10 +498,6 @@ function sshAgent() {
 
         let ssh_key_file_counter=${ssh_key_file_counter}+1
 
-        if [ ${ssh_key_file_counter} -eq 1 ] && [ ${Verbose_Counter} -gt 2 ]; then
-            printf "\n"
-        fi
-
         if [ -r "${Ssh_Key_File}" ]; then
             Ssh_Key_Private=$(${Ssh_Keygen} -l -f "${Ssh_Key_File}.pub" 2> /dev/null | awk '{print $2}')
             if  [ ${#Ssh_Key_Private} -gt 0 ]; then
@@ -771,8 +767,6 @@ function sshAgentInit() {
 
 }
 
-let Verbose_Counter=0
-
 # output more verbose messages based on a verbosity level set in the environment or a specific file
 function verbose() {
     # verbose level is usually the last argument
@@ -996,7 +990,6 @@ function verbose() {
             unset -v tput_set_af_v
         fi
 
-        let Verbose_Counter=${Verbose_Counter}+1
         (>&2 printf "%b\n" "${verbose_message}")
 
     fi
@@ -1411,22 +1404,6 @@ if type -P screen &> /dev/null; then
 fi
 
 ##
-### display some useful information
-##
-
-printf "\n"
-
-if [ -r /etc/redhat-release ]; then
-    cat /etc/redhat-release
-    printf "\n"
-fi
-
-verbose "${User_Dir}/.bashrc ${Bashrc_Version}\n" 9
-if [ "${TMUX}" ]; then
-    verbose "${Tmux_Info} [${TMUX}]\n" 8
-fi
-
-##
 ### check ssh, ssh-agent, & add all potential keys (if they're not already added)
 ##
 
@@ -1438,17 +1415,23 @@ if ! sshAgent; then
     sshAgent
 fi
 
+##
+### display some useful information
+##
+
 verbose "DEBUG: Who=${Who}" 18
 verbose "DEBUG: User_Dir=${User_Dir}" 18
 verbose "DEBUG: Ssh_Agent_Home=${Ssh_Agent_Home}" 18
 verbose "DEBUG: Ssh_Agent_State=${Ssh_Agent_State}" 18
 
-if [ ${Verbose_Counter} -gt 3 ]; then
+if [ -r /etc/redhat-release ]; then
+    printf "\n"
+    cat /etc/redhat-release
     printf "\n"
 fi
 
-##
-### clean up ephemeral environment
-##
+printf "${User_Dir}/.bashrc ${Bashrc_Version}\n\n"
 
-unset -v Verbose_Counter
+if [ "${TMUX}" ]; then
+    verbose "${Tmux_Info} [${TMUX}]\n" 8
+fi
