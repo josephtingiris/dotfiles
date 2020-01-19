@@ -645,7 +645,7 @@ function sshAgentInit() {
 
             ssh_agent_socket_command=$(ps -h -o comm -p ${ssh_agent_socket_pid} 2> /dev/null)
 
-            if [ ${#ssh_agent_socket_command} -gt 0 ] && [ "${ssh_agent_socket_command}" != "startkde" ] && [ "${ssh_agent_socket_command}" != "sshd" ]; then
+            if [ "${ssh_agent_socket_command}" != "startkde" ] && [ "${ssh_agent_socket_command}" != "sshd" ]; then
                 ((++ssh_agent_socket_pid))
                 ssh_agent_socket_command=$(ps -h -o comm -p ${ssh_agent_socket_pid} 2> /dev/null)
             fi
@@ -1433,7 +1433,7 @@ if ! sshAgent; then
     sshAgent
 fi
 
-if [ ${Verbose_Counter} -gt 0 ]; then
+if [ ${Verbose_Counter} -gt 3 ]; then
     printf "\n"
 fi
 
