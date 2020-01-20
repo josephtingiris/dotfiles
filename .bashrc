@@ -1289,15 +1289,16 @@ fi
 ##
 
 unset -v EDITOR
-Editors=(nvim vim vi)
+Editors=(nvim vimx vim vi)
 for Editor in ${Editors[@]}; do
     if type -P ${Editor} &> /dev/null; then
         export EDITOR="$(type -P ${Editor} 2> /dev/null)"
         if [[ "${EDITOR}" == *"vim"* ]] && [ -r "${User_Dir}/.vimrc" ]; then
-            alias vi="HOME=\"${User_Dir}\" ${EDITOR} --cmd \"let User_Name='${User_Name}'\" --cmd \"let User_Dir='${User_Dir}'\""
+            alias vim="HOME=\"${User_Dir}\" ${EDITOR} --cmd \"let User_Name='${User_Name}'\" --cmd \"let User_Dir='${User_Dir}'\""
         else
-            alias vi="${EDITOR}"
+            alias vim="${EDITOR}"
         fi
+        alias vi=vim
         break
     fi
 done
