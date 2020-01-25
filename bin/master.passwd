@@ -44,6 +44,7 @@ fi
 # 0=true, 1=false
 let Delete_Flag=1
 let Mkhome_Flag=1
+let Nomount_Flag=1
 let Reboot_Flag=1
 let Report_Flag=1
 let Sync_Flag=1
@@ -824,10 +825,10 @@ function updatePGM() {
 
 function usage() {
     printf "\nusage:\n\n"
-    printf "$0 report [verbose] [mkhome]        # harmless; show a report of what would be done\n"
-    printf "$0 sync [verbose] [mkhome]          # updates master files only, with users & groups that only exist in the active files\n"
-    printf "$0 rm \"<username(s)>\" [verbose]     # if found, remove usernames from active and master passwd & group files\n"
-    printf "$0 yes [verbose] [mkhome]           # HARMFUL! changes everything the report shows\n"
+    printf "$0 report [verbose] [mkhome|nomount]  # harmless; show a report of what would be done\n"
+    printf "$0 sync [verbose] [mkhome|nomount]    # sync master files with /etc/passwd and /etc/group\n"
+    printf "$0 rm \"<username(s)>\" [verbose]       # if found, remove usernames from active and master passwd & group files\n"
+    printf "$0 yes [verbose] [mkhome|nomount]     # HARMFUL! changes everything the report shows\n"
     printf "\n"
     printf "note: export Exclude_Mounts='egrep regex' to exclude specific mounts from find\n\n"
 
@@ -854,7 +855,7 @@ else
     source /etc/os-release
     Tested_Ok=1 # false
     if [ "$ID" == "centos" ]; then
-        if [ "$VERSION_ID" == "7" ]; then
+        if [ "$VERSION_ID" == "7" ] || [ "$VERSION_ID" == "8" ]; then
             Tested_Ok=0 # true
         fi
     fi
@@ -864,7 +865,7 @@ else
         fi
     fi
     if [ "$ID" == "rhel" ]; then
-        if [[ "$VERSION_ID" =~ ^7. ]]; then
+        if [[ "$VERSION_ID" =~ ^7. ]] || [[ "$VERSION_ID" =~ ^8. ]]; then
             Tested_Ok=0 # true
         fi
     fi
@@ -902,6 +903,9 @@ case "$2" in
     mkhome)
         Mkhome_Flag=0
         ;;
+    nomount)
+        Nomount_Flag=0
+        ;;
     verbose)
         Verbose_Flag=0
         ;;
@@ -910,6 +914,9 @@ esac
 case "$3" in
     mkhome)
         Mkhome_Flag=0
+        ;;
+    nomount)
+        Nomount_Flag=0
         ;;
     verbose)
         Verbose_Flag=0
@@ -922,12 +929,14 @@ else
     Egrep_Exclude_Mounts="egrep -v ${Exclude_Mounts}"
 fi
 
-while read Local_Dir; do
-    Local_Mounts+=("$Local_Dir")
-done <<< "$(mount | egrep -e 'type ext[2-4]|type xfs' | sed -nEe 's#^.* on (.*) type.*#\1#p' | ${Egrep_Exclude_Mounts})"
+if [ ${Nomount_Flag} -ne 0 ]; then
+    while read Local_Dir; do
+        Local_Mounts+=("$Local_Dir")
+    done <<< "$(mount | egrep -e 'type ext[2-4]|type xfs' | sed -nEe 's#^.* on (.*) type.*#\1#p' | ${Egrep_Exclude_Mounts})"
 
-if [ "$Local_Mounts" == "" ]; then
-    aborting "no local ext or xfs mounts found"
+    if [ "$Local_Mounts" == "" ]; then
+        aborting "no local ext or xfs mounts found"
+    fi
 fi
 
 #
@@ -1100,11 +1109,11 @@ if [ ${Sync_Flag} -eq 0 ]; then
             unset Sync_Passwd Sync_Group
         else
             aborting "syncing all matching files in ${2} only works if there are valid master passwd & group files"
-            fi
-            exit
         fi
+        exit
+    fi
 
-        let Resort=1
+    let Resort=1
 
     #
     # sync all 'new' users from the active passwd and put them in the master passwd
@@ -1164,7 +1173,7 @@ if [ ${Sync_Flag} -eq 0 ]; then
         ((++Queue_Count))
         exit
     fi
-    fi
+fi
 
 # at this point, nothing in the command queue should be irreversible
 queueEval "${Yes_Flag}"
