@@ -645,11 +645,11 @@ function sshAgentInit() {
 
             # TODO: test with gnome
             if [[ "${ssh_agent_socket_command}" == *"kde"* ]] || [[ "${ssh_agent_socket_command}" == *"plasma"* ]] || [ "${ssh_agent_socket_command}" == "sshd" ]; then
-                verbose "DEBUG: ssh_agent_socket_command = ${ssh_agent_socket_command}"
+                verbose "DEBUG: ssh_agent_socket_command = ${ssh_agent_socket_command} (pid=${ssh_agent_socket_pid})"
             else
                 ((++ssh_agent_socket_pid))
                 ssh_agent_socket_command=$(ps -h -o comm -p ${ssh_agent_socket_pid} 2> /dev/null)
-                verbose "DEBUG: ssh_agent_socket_command = ${ssh_agent_socket_command} (++)"
+                verbose "DEBUG: ssh_agent_socket_command = ${ssh_agent_socket_command} (pid=${ssh_agent_socket_pid}) [++]"
             fi
         fi
 
