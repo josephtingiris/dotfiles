@@ -652,7 +652,6 @@ function sshAgentInit() {
                 ssh_agent_socket_command=$(ps -h -o comm -p ${ssh_agent_socket_pid} 2> /dev/null)
                 ssh_agent_socket_identifier=" [++]"
             fi
-            verbose "DEBUG: ssh_agent_socket_command = ${ssh_agent_socket_command} (pid=${ssh_agent_socket_pid})${ssh_agent_socket_identifier}"
         fi
 
         # TODO: test with gnome
@@ -686,6 +685,8 @@ function sshAgentInit() {
                             verbose "DEBUG: reusing SSH_AUTH_SOCK=${SSH_AUTH_SOCK}"
                         fi
                     fi
+                else
+                    verbose "DEBUG: ssh_agent_socket_command = ${ssh_agent_socket_command} (pid=${ssh_agent_socket_pid})${ssh_agent_socket_identifier} [OK]"
                 fi
 
                 continue
@@ -701,6 +702,7 @@ function sshAgentInit() {
             unset -v ssh_auth_sock
             unset -v Rm_Rc
         fi
+        verbose "ALERT: ssh_agent_socket_command = ${ssh_agent_socket_command} (pid=${ssh_agent_socket_pid})${ssh_agent_socket_identifier} [OK?]" # should be dead code
     done <<<"$(find /tmp -type s -wholename "*/ssh*agent*" 2> /dev/null)"
 
     unset -v ssh_agent_socket ssh_agent_socket_pid ssh_agent_socket_command ssh_auth_sock
