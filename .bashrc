@@ -1,6 +1,6 @@
 # .bashrc
 
-Bashrc_Version="20200120, joseph.tingiris@gmail.com"
+Bashrc_Version="20200126, joseph.tingiris@gmail.com"
 
 ##
 ### returns to avoid interactive shell enhancements
@@ -643,20 +643,25 @@ function sshAgentInit() {
 
             ssh_agent_socket_command=$(ps -h -o comm -p ${ssh_agent_socket_pid} 2> /dev/null)
 
-            if [ "${ssh_agent_socket_command}" != "startkde" ] && [ "${ssh_agent_socket_command}" != "sshd" ]; then
+            # TODO: test with gnome
+            if [[ "${ssh_agent_socket_command}" == *"kde"* ]] || [[ "${ssh_agent_socket_command}" == *"plasma"* ]] || [ "${ssh_agent_socket_command}" == "sshd" ]; then
+                verbose "DEBUG: ssh_agent_socket_command = ${ssh_agent_socket_command}"
+            else
                 ((++ssh_agent_socket_pid))
                 ssh_agent_socket_command=$(ps -h -o comm -p ${ssh_agent_socket_pid} 2> /dev/null)
+                verbose "DEBUG: ssh_agent_socket_command = ${ssh_agent_socket_command} (++)"
             fi
         fi
 
-        if [ "${ssh_agent_socket_command}" == "startkde" ] || [ "${ssh_agent_socket_command}" == "sshd" ] || [ "${ssh_agent_socket_command}" == "ssh-agent" ]; then
-            # sometimes ssh-add fails to read the socket & takes 3+ minutes to timeout; if it takes longer than 5 seconds
-            # to read the socket then remove it (it's unusable)
+        # TODO: test with gnome
+        if [[ "${ssh_agent_socket_command}" == *"kde"* ]] || [[ "${ssh_agent_socket_command}" == *"plasma"* ]] || [ "${ssh_agent_socket_command}" == "ssh-agent" ]; then
+            # sometimes ssh-add fails to read the socket & takes 3+ minutes to timeout
+            # if it takes longer than 5 seconds to read the socket then remove it (it's unusable)
             SSH_AUTH_SOCK=${ssh_agent_socket} timeout 5 ${Ssh_Add} -l ${ssh_agent_socket} &> /dev/null
             Ssh_Add_Rc=$?
             if [ ${Ssh_Add_Rc} -gt 1 ]; then
                 # definite error
-                verbose "ALERT: removing dead ssh_agent_socket ${ssh_agent_socket}, comm=${ssh_agent_socket_command}, Ssh_Add_Rc=${Ssh_Add_Rc}"
+                verbose "ALERT: removing dead ssh_agent_socket ${ssh_agent_socket}, command=${ssh_agent_socket_command}, Ssh_Add_Rc=${Ssh_Add_Rc}"
                 rm -f ${ssh_agent_socket} &> /dev/null
                 Rm_Rc=$?
                 if [ ${Rm_Rc} -ne 0 ]; then
@@ -665,7 +670,7 @@ function sshAgentInit() {
                 unset -v ssh_auth_sock
                 unset -v Rm_Rc
             else
-                # don't remove valid sockets; reuse them
+                # don't remove valid sockets; try to reuse them
 
                 if [ ${#SSH_AGENT_PID} -eq 0 ] || [ ${#SSH_AUTH_SOCK} -eq 0 ]; then
 
@@ -686,7 +691,7 @@ function sshAgentInit() {
             fi
             unset -v Ssh_Add_Rc
         else
-            verbose "ALERT: removing unusable ssh_agent_socket ${ssh_agent_socket}, pid=${ssh_agent_socket_pid}"
+            verbose "ALERT: removing unusable ssh_agent_socket ${ssh_agent_socket}, pid=${ssh_agent_socket_pid}, command=${ssh_agent_socket_command}"
             rm -f ${ssh_agent_socket} &> /dev/null
             Rm_Rc=$?
             if [ ${Rm_Rc} -ne 0 ]; then
@@ -695,7 +700,6 @@ function sshAgentInit() {
             unset -v ssh_auth_sock
             unset -v Rm_Rc
         fi
-        # also find really old sockets & remove them regardless if they still work or not?
     done <<<"$(find /tmp -type s -wholename "*/ssh*agent*" 2> /dev/null)"
 
     unset -v ssh_agent_socket ssh_agent_socket_pid ssh_agent_socket_command ssh_auth_sock
