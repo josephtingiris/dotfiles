@@ -654,7 +654,7 @@ function sshAgentInit() {
         fi
 
         # TODO: test with gnome
-        if [[ "${ssh_agent_socket_command}" == *"kde"* ]] || [[ "${ssh_agent_socket_command}" == *"plasma"* ]] || [ "${ssh_agent_socket_command}" == "ssh-agent" ]; then
+        if [[ "${ssh_agent_socket_command}" == *"kde"* ]] || [[ "${ssh_agent_socket_command}" == *"plasma"* ]] || [ "${ssh_agent_socket_command}" == "sshd" ] || [ "${ssh_agent_socket_command}" == "ssh-agent" ]; then
             # sometimes ssh-add fails to read the socket & takes 3+ minutes to timeout
             # if it takes longer than 5 seconds to read the socket then remove it (it's unusable)
             SSH_AUTH_SOCK=${ssh_agent_socket} timeout 5 ${Ssh_Add} -l ${ssh_agent_socket} &> /dev/null
