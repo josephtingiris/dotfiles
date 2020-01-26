@@ -644,13 +644,15 @@ function sshAgentInit() {
             ssh_agent_socket_command=$(ps -h -o comm -p ${ssh_agent_socket_pid} 2> /dev/null)
 
             # TODO: test with gnome
+            local ssh_agent_socket_identifier
             if [[ "${ssh_agent_socket_command}" == *"kde"* ]] || [[ "${ssh_agent_socket_command}" == *"plasma"* ]] || [ "${ssh_agent_socket_command}" == "sshd" ]; then
-                verbose "DEBUG: ssh_agent_socket_command = ${ssh_agent_socket_command} (pid=${ssh_agent_socket_pid})"
+                ssh_agent_socket_identifier=""
             else
                 ((++ssh_agent_socket_pid))
                 ssh_agent_socket_command=$(ps -h -o comm -p ${ssh_agent_socket_pid} 2> /dev/null)
-                verbose "DEBUG: ssh_agent_socket_command = ${ssh_agent_socket_command} (pid=${ssh_agent_socket_pid}) [++]"
+                ssh_agent_socket_identifier=" [++]"
             fi
+            verbose "DEBUG: ssh_agent_socket_command = ${ssh_agent_socket_command} (pid=${ssh_agent_socket_pid})${ssh_agent_socket_identifier}"
         fi
 
         # TODO: test with gnome
@@ -673,7 +675,6 @@ function sshAgentInit() {
                 # don't remove valid sockets; try to reuse them
 
                 if [ ${#SSH_AGENT_PID} -eq 0 ] || [ ${#SSH_AUTH_SOCK} -eq 0 ]; then
-
                     if [ ${#SSH_AUTH_SOCK} -eq 0 ]; then
                         if [ ${#ssh_agent_socket_pid} -gt 0 ] && [ "${ssh_agent_socket_command}" == "ssh-agent" ]; then
                             export SSH_AGENT_PID=${ssh_agent_socket_pid}
