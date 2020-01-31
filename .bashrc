@@ -1,6 +1,6 @@
 # .bashrc
 
-Bashrc_Version="20200126, joseph.tingiris@gmail.com"
+Bashrc_Version="20200131, joseph.tingiris@gmail.com"
 
 ##
 ### returns to avoid interactive shell enhancements
@@ -430,8 +430,13 @@ function sshAgent() {
     Ssh_Key_Files=()
 
     Ssh_Dirs=()
-    Ssh_Dirs+=(${HOME})
     Ssh_Dirs+=(${User_Dir})
+
+    if [ "${User_Dir}" != "${HOME}" ]; then
+        Ssh_Dirs+=(${HOME})
+    fi
+
+    verbose "DEBUG: Ssh_Dirs=${Ssh_Dirs[@]}" 22
 
     for Ssh_Dir in ${Ssh_Dirs[@]}; do
         if [ -r "${Ssh_Dir}/.ssh" ] && [ -d "${Ssh_Dir}/.ssh" ]; then
@@ -440,15 +445,18 @@ function sshAgent() {
             done <<< "$(find "${Ssh_Dir}/.ssh/" -name "*id_dsa" -o -name "*id_rsa" -o -name "*ecdsa_key" -o -name "*id_ed25519" 2> /dev/null)"
         fi
     done
-    unset -v Ssh_Add_Rc
+    unset -v Ssh_Add_Rc Ssh_Dir
+
 
     Ssh_Configs=()
-    Ssh_Configs+=("${HOME}/.ssh/config")
-    Ssh_Configs+=("${User_Dir}/.ssh/config")
-    Ssh_Configs+=("${HOME}/.git/GIT_SSH.config")
-    Ssh_Configs+=("${User_Dir}/.git/GIT_SSH.config")
-    Ssh_Configs+=("${HOME}/.subversion/SVN_SSH.config")
-    Ssh_Configs+=("${User_Dir}/.subversion/SVN_SSH.config")
+    for Ssh_Dir in ${Ssh_Dirs[@]}; do
+        Ssh_Configs+=("${Ssh_Dir}/.ssh/config")
+        Ssh_Configs+=("${Ssh_Dir}/.git/GIT_SSH.config")
+        Ssh_Configs+=("${Ssh_Dir}/.subversion/SVN_SSH.config")
+    done
+    unset -v Ssh_Dir
+
+    verbose "DEBUG: Ssh_Configs=${Ssh_Configs[@]}" 22
 
     for Ssh_Config in ${Ssh_Configs[@]}; do
         if [ -r "${Ssh_Config}" ]; then
@@ -461,6 +469,8 @@ function sshAgent() {
     unset -v Ssh_Config Ssh_Configs
 
     eval Ssh_Key_Files=($(printf "%q\n" "${Ssh_Key_Files[@]}" | sort -u))
+
+    verbose "DEBUG: Ssh_Key_Files=${Ssh_Key_Files[@]}" 22
 
     local ssh_key_file_counter=0
     for Ssh_Key_File in ${Ssh_Key_Files[@]}; do
