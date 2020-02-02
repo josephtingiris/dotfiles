@@ -1443,10 +1443,12 @@ if [ "${USER}" != "${Who}" ]; then
             verbose "DEBUG: xauth DISPLAY=${DISPLAY}"
 
             if [ -r "${User_Dir}/.Xauthority" ]; then
-                verbose "DEBUG: ${User_Dir}/.Xauthority file found readble" 22
+                verbose "DEBUG: ${User_Dir}/.Xauthority file found readable" 22
                 while read Xauth_Add; do
                     xauth -b add ${Xauth_Add} 2> /dev/null
                 done <<< "$(xauth -b -f "${User_Dir}/.Xauthority" list)"
+            else
+                verbose "DEBUG: ${User_Dir}/.Xauthority file not found readable" 22
             fi
         fi
     fi
