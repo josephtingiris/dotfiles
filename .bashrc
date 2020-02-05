@@ -1,6 +1,6 @@
 # .bashrc
 
-Bashrc_Version="20200131, joseph.tingiris@gmail.com"
+Bashrc_Version="20200205, joseph.tingiris@gmail.com"
 
 ##
 ### returns to avoid interactive shell enhancements
@@ -167,7 +167,7 @@ unset -v Find_Path Find_Paths
 # after .Auto_Path, put /opt/rh bin & sbin directories in the path too
 # rhscl; see https://wiki.centos.org/SpecialInterestGroup/SCLo/CollectionsList
 if [ -d /opt/rh ] && [ -r ${User_Dir}/.Auto_Scl ]; then
-    Rhscl_Roots=$(find /opt/rh/ -type f -name enable 2> /dev/null | sort -Vr)
+    Rhscl_Roots=$(find /opt/rh/ -maxdepth 2 -type f -name enable 2> /dev/null | sort -Vr)
     for Rhscl_Root in ${Rhscl_Roots}; do
         if [ -r "${Rhscl_Root}" ] && [ "${Rhscl_Root}" != "" ]; then
             Unset_Variables=$(grep ^export "${Rhscl_Root}" 2> /dev/null | awk -F= '{print $1}' 2> /dev/null | awk '{print $2}' 2> /dev/null | grep -v ^PATH$ | sort -u)
@@ -713,7 +713,7 @@ function sshAgentInit() {
             unset -v Rm_Rc
         fi
         verbose "ALERT: ssh_agent_socket_command = ${ssh_agent_socket_command} (pid=${ssh_agent_socket_pid})${ssh_agent_socket_identifier} [OK?]" # should be dead code
-    done <<<"$(find /tmp -type s -wholename "*/ssh*agent*" 2> /dev/null)"
+    done <<<"$(find /tmp/ssh* -type s -wholename "*/ssh*agent*" 2> /dev/null)"
 
     unset -v ssh_agent_socket ssh_agent_socket_pid ssh_agent_socket_command ssh_auth_sock
 
