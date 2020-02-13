@@ -1,5 +1,7 @@
 #!/bin/bash
 
+unset SSH_AUTH_SOCK
+
 dotfiles_rsync=$(type -P rsync)
 if [ ! -x ${dotfiles_rsync} ]; then
     echo "can't find executable rsync"
@@ -95,12 +97,12 @@ if [ "${home_src_dotfiles}" != "" ] && [ -d "${home_src_dotfiles}" ]; then
     echo
     echo "rsync ${rsync_args} ${home_src_dotfiles}/ ${dotfiles_to}/"
     echo
-    rsync ${rsync_args} ${home_src_dotfiles}/ ${dotfiles_to}/
+    ${dotfiles_rsync} ${rsync_args} ${home_src_dotfiles}/ ${dotfiles_to}/
 
     echo
     echo "rsync ${rsync_args} --delete-after ${home_src_dotfiles}/.git/ ${dotfiles_to}/.git/"
     echo
-    rsync ${rsync_args} --delete-after ${home_src_dotfiles}/.git/ ${dotfiles_to}/.git/
+    ${dotfiles_rsync} ${rsync_args} --delete-after ${home_src_dotfiles}/.git/ ${dotfiles_to}/.git/
 
 else
     echo "${HOME}/src/dotfiles directory not found"
