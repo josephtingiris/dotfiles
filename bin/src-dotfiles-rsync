@@ -1,7 +1,5 @@
 #!/bin/bash
 
-unset SSH_AUTH_SOCK
-
 dotfiles_rsync=$(type -P rsync)
 if [ ! -x ${dotfiles_rsync} ]; then
     echo "can't find executable rsync"
@@ -34,7 +32,7 @@ else
                 dotfiles_to_host=${HOSTNAME}
                 dotfiles_to_dir="${1}"
             else
-                echo "${1} directory not found"
+                echo "${1} ping failed"
                 exit 1
             fi
         fi
@@ -83,12 +81,14 @@ if ! ${remote_host}; then
     fi
 fi
 
+unset SSH_AUTH_SOCK
+
 if [ "${home_src_dotfiles}" != "" ] && [ -d "${home_src_dotfiles}" ]; then
     echo
-    echo "${HOME}/src/dotfiles directory found"
+    echo "${home_src_dotfiles} directory found"
     echo
 
-    cd "${HOME}/src/dotfiles"
+    cd "${home_src_dotfiles}"
 
     git pull || exit
 
@@ -97,15 +97,19 @@ if [ "${home_src_dotfiles}" != "" ] && [ -d "${home_src_dotfiles}" ]; then
     echo
     echo "rsync ${rsync_args} ${home_src_dotfiles}/ ${dotfiles_to}/"
     echo
-    ${dotfiles_rsync} ${rsync_args} ${home_src_dotfiles}/ ${dotfiles_to}/
+    ${dotfiles_rsync} ${rsync_args} ${home_src_dotfiles}/ ${dotfiles_to}/ || exit
 
     echo
     echo "rsync ${rsync_args} --delete-after ${home_src_dotfiles}/.git/ ${dotfiles_to}/.git/"
     echo
-    ${dotfiles_rsync} ${rsync_args} --delete-after ${home_src_dotfiles}/.git/ ${dotfiles_to}/.git/
+    ${dotfiles_rsync} ${rsync_args} --delete-after ${home_src_dotfiles}/.git/ ${dotfiles_to}/.git/ || exit
 
 else
-    echo "${HOME}/src/dotfiles directory not found"
+    if [ "${home_src_dotfiles}" != "" ]; then
+        echo "home_src_dotfiles is empty"
+    else
+        echo "${home_src_dotfiles} directory not found"
+    fi
 fi
 
 cd "${HERE}"
