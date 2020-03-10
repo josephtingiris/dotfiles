@@ -536,6 +536,8 @@ set showcmd                                 " show (partial) command in the last
 "set smartindent                             " smart autoindent when starting a new line; shouldn't use with filtetype indent
 set smarttab                                " when on a <Tab> in front of a line, insert blanks according to shiftwidth
 set softtabstop=4                           " default tabs are too big
+set title                                   " set term title
+set titleold=                               " restore term title
 set tabstop=4                               " default tabs are too big
 set textwidth=0                             " prevent vim from automatically inserting line breaks
 set ttyfast                                 " indicates a fast terminal connection
