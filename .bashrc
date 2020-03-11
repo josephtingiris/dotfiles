@@ -1,6 +1,6 @@
 # .bashrc
 
-Bashrc_Version="20200205, joseph.tingiris@gmail.com"
+Bashrc_Version="20200311, joseph.tingiris@gmail.com"
 
 ##
 ### returns to avoid interactive shell enhancements
@@ -1227,11 +1227,11 @@ case "${TERM}" in
     ansi|*color|*xterm)
 
         # default PROMPT_COMMAND
-        export PROMPT_COMMAND='printf "\033]0;%s\007" "${USER}@${HOSTNAME}:${PWD} [bash]"'
+        export PROMPT_COMMAND='printf "\033]2;%s\007" "[bash] ${USER}@${HOSTNAME}:${PWD}"'
 
         function bash_command_prompt_command() {
             case "${BASH_COMMAND}" in
-                *\033]0*)
+                *\033]2*)
                     # nested escapes can confuse the terminal, don't output them.
                     ;;
                 *)
@@ -1242,8 +1242,7 @@ case "${TERM}" in
 
         # trap DEBUG to update window titles
 
-        trap bash_command_prompt_command DEBUG
-
+        #trap bash_command_prompt_command DEBUG
 
         ;;
     *)
