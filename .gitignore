@@ -49,6 +49,7 @@
 !.tmux.conf.2.0-
 !.tmux.conf.2.1+
 !.tmux.conf.2.9+
+!.tmux.conf.3.0+
 
 # except .vimrc
 !.vimrc

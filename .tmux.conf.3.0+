@@ -1,6 +1,6 @@
-# specific settings for tmux 1.x - 2.0
+# 3.0+
 
-display-message 'sourced .tmux.conf.2.0-'
+display-message 'sourced .tmux.conf.3.0+'
 
 ##
 #### bind-key
@@ -8,34 +8,17 @@ display-message 'sourced .tmux.conf.2.0-'
 
 # Toggle mouse on
 bind-key M \
-    set-window-option -g mode-mouse on \;\
-    set-option -g mouse-resize-pane on \;\
-    set-option -g mouse-select-pane on \;\
-    set-option -g mouse-select-window on \;\
+    set-option -g mouse on \;\
     display-message 'Mouse: ON'
 
 # Toggle mouse off
 bind-key m \
-    set-window-option -g mode-mouse off \;\
-    set-option -g mouse-resize-pane off \;\
-    set-option -g mouse-select-pane off \;\
-    set-option -g mouse-select-window off \;\
+    set-option -g mouse off \;\
     display-message 'Mouse: OFF'
 
 # split panes using <alt>\ (vertical) and <alt>- (horizontal)
-bind-key -n M-\ split-window -h
+bind-key -n M-\\ split-window -h
 bind-key -n M-- split-window -v
-
-##
-### set-option
-##
-
-# disable the display of various information messages
-set-option -sg quiet on
-
-# ensure utf8 is on
-set-option -g utf8 on
-set-option -g status-utf8 on
 
 ##
 ### theme
@@ -44,21 +27,18 @@ set-option -g status-utf8 on
 set-option -g status-interval 1
 
 # Basic status bar colors
-set-option -g status-bg black
-set-option -g status-fg colour8
+set-option -g status-style bg=black,fg=colour8
 
 # Left side of status bar
-set-option -g status-left-bg colour19
-set-option -g status-left-fg white
+set-option -g status-left-style bg=colour19,fg=white
 set-option -g status-left-length 50
-# » 
+# »
 set-option -g status-left " #[fg=colour10]session #{session_name}#[fg=white] » #[fg=colour11]window #{window_index}#[fg=white] » #[fg=colour9]pane #{pane_index}/#{window_panes} [#{pane_tty}]#[fg=white] "
 
 # Right side of status bar
-set-option -g status-right-bg colour19
-set-option -g status-right-fg white
+set-option -g status-right-style bg=colour19,fg=white
 set-option -g status-right-length 50
-# « 
+# «
 set-option -g status-right " #[fg=colour9]#{pane_current_command}#[fg=white] « #[fg=colour11][#{cursor_x},#{cursor_y}]#[fg=white] « #[fg=colour10]%Y-%m-%d · %H:%M:%S#[fg=white] "
 
 # Window status
@@ -68,12 +48,10 @@ set-option -g window-status-format " i·#{window_index}·#{window_flags}·#{wind
 set-option -g window-status-current-format " a·#{window_index}·#{window_flags}·#{window_name} "
 
 # Current/active window status
-set-option -g window-status-current-bg blue
-set-option -g window-status-current-fg white
+set-option -g window-status-style bg=blue,fg=white
 
 # Window with activity status
-set-option -g window-status-activity-bg red # fg and bg are flipped here due to a
-set-option -g window-status-activity-fg white  # bug in tmux
+set-option -g window-status-activity-style bg=red,fg=white
 
 # Window separator
 set-option -g window-status-separator ""
@@ -82,12 +60,10 @@ set-option -g window-status-separator ""
 set-option -g status-justify centre
 
 # Pane border
-set-option -g pane-border-bg default
-set-option -g pane-border-fg default
+set-option -g pane-border-style bg=default,fg=default
 
 # Active pane border
-set-option -g pane-active-border-bg default
-set-option -g pane-active-border-fg brightred
+set-option -g pane-active-border-style bg=default,fg=brightred
 
 # Pane number indicator
 set-option -g display-panes-colour default
@@ -98,16 +74,13 @@ set-option -g clock-mode-colour red
 set-option -g clock-mode-style 24
 
 # Message
-set-option -g message-bg blue
-set-option -g message-fg white
+set-option -g message-style bg=blue,fg=white
 
 # Command message
-set-option -g message-command-bg default
-set-option -g message-command-fg default
+set-option -g message-command-style bg=default,fg=default
 
 # Mode
-set-option -g mode-bg red
-set-option -g mode-fg default
+set-option -g mode-style bg=red,fg=default
 
 # Position of status bar
 set-option -g status-position top
@@ -115,3 +88,4 @@ set-option -g status-position top
 # Titles
 set-option -g set-titles on
 set-option -g set-titles-string '#H:#S.#I.#P #T'
+
