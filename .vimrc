@@ -536,10 +536,13 @@ set showcmd                                 " show (partial) command in the last
 "set smartindent                             " smart autoindent when starting a new line; shouldn't use with filtetype indent
 set smarttab                                " when on a <Tab> in front of a line, insert blanks according to shiftwidth
 set softtabstop=4                           " default tabs are too big
-set title                                   " set term title
-set titleold=                               " restore term title
 set tabstop=4                               " default tabs are too big
 set textwidth=0                             " prevent vim from automatically inserting line breaks
+if has ("title")
+    set titlestring=[vi\ %t]\ %{$USER}@%{hostname()}:%F " :h statusline
+    set title                               " set term title
+    set titleold=                           " uset term title"
+endif
 set ttyfast                                 " indicates a fast terminal connection
 if exists("&undodir")
     set undodir=~/.vim/undo                 " set undo directory location
