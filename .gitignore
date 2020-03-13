@@ -73,6 +73,7 @@
 !/bin/fif
 !/bin/mysql-cp
 !/bin/mysql-kill
+!/bin/onedrive-sync
 !/bin/passwd.master
 !/bin/snmpwalk*
 !/bin/scpmv
