@@ -89,3 +89,4 @@
 # except specific files in the opt directory
 !/opt/
 !/opt/*
+.nfs*
