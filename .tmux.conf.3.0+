@@ -1,6 +1,7 @@
 # 3.0+
 
-display-message 'sourced .tmux.conf.3.0+'
+# there's no active pane until the config is loaded; this used to work ...
+# display-message 'sourced .tmux.conf.3.0+'
 
 ##
 #### bind-key
