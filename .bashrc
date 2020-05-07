@@ -1,6 +1,6 @@
 # .bashrc
 
-Bashrc_Version="20200311, joseph.tingiris@gmail.com"
+Bashrc_Version="20200507, joseph.tingiris@gmail.com"
 
 ##
 ### returns to avoid interactive shell enhancements
@@ -442,7 +442,7 @@ function sshAgent() {
         if [ -r "${Ssh_Dir}/.ssh" ] && [ -d "${Ssh_Dir}/.ssh" ]; then
             while read Ssh_Key_File; do
                 Ssh_Key_Files+=(${Ssh_Key_File})
-            done <<< "$(find "${Ssh_Dir}/.ssh/" -name "*id_dsa" -o -name "*id_rsa" -o -name "*ecdsa_key" -o -name "*id_ed25519" 2> /dev/null)"
+            done <<< "$(find "${Ssh_Dir}/.ssh/" -user ${User_Name} -name "*id_dsa" -o -name "*id_rsa" -o -name "*ecdsa_key" -o -name "*id_ed25519" 2> /dev/null)"
         fi
     done
     unset -v Ssh_Add_Rc Ssh_Dir
@@ -713,7 +713,7 @@ function sshAgentInit() {
             unset -v Rm_Rc
         fi
         verbose "ALERT: ssh_agent_socket_command = ${ssh_agent_socket_command} (pid=${ssh_agent_socket_pid})${ssh_agent_socket_identifier} [OK?]" # should be dead code
-    done <<<"$(find /tmp/ssh* -type s -wholename "*/ssh*agent*" 2> /dev/null)"
+    done <<<"$(find /tmp/ssh* -type s -user ${User_Name} -wholename "*/ssh*agent*" 2> /dev/null)"
 
     unset -v ssh_agent_socket ssh_agent_socket_pid ssh_agent_socket_command ssh_auth_sock
 
