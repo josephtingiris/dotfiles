@@ -1,0 +1,40 @@
+#!/bin/bash
+
+function aborting() {
+    printf "\naborting ... $@\n\n"
+    exit 1
+}
+
+function usage() {
+    printf "\nusage: $0 <file>\n\n"
+    exit 2
+}
+
+if [ ${#1} -eq 0 ]; then usage; fi
+
+FILE="${1//.rpmnew/}"
+FILE_RPMNEW="${FILE}.rpmnew"
+
+if [ ! -f "${FILE}" ]; then
+    aborting "${FILE} file not found"
+fi
+
+if [ ! -f "${FILE_RPMNEW}" ]; then
+    aborting "${FILE_RPMNEW} file not found"
+fi
+
+echo diff "${FILE}" "${FILE_RPMNEW}"
+diff "${FILE}" "${FILE_RPMNEW}"
+
+echo
+echo  mv "${FILE_RPMNEW}" "${FILE}"
+echo
+EPOCH="$(date +%s)"
+mv "${FILE}" "${FILE}.rpmold-${EPOCH}"
+if [ $? -eq 0 ]; then
+    mv "${FILE_RPMNEW}" "${FILE}"
+else
+    aborting "failed to mv ${FILE} ${FILE}.rpmold-${EPOCH}"
+fi
+
+ls -ld ${FILE}*

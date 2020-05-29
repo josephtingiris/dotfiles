@@ -75,6 +75,7 @@
 !/bin/mysql-kill
 !/bin/onedrive-sync
 !/bin/passwd.master
+!/bin/rpmnew
 !/bin/snmpwalk*
 !/bin/scpmv
 !/bin/src-dotfiles-rsync
