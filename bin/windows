@@ -1,0 +1,244 @@
+#!/bin/bash
+
+# begin Base.bash.include
+
+if [ "$Debug" == "" ]; then
+    Debug=0
+fi
+
+Base_Bashes="/base/include/Base.bash /apex/include/Apex.bash"
+for Base_Bash in $Base_Bashes; do
+    if [ -r "$Base_Bash" ]; then
+        source "$Base_Bash"
+        break
+    fi
+done
+
+if [ ! -r "$Base_Bash" ]; then
+    echo "$Base_Bash not readable"
+    exit 1;
+fi
+
+# end Base.bash.include
+
+function windowsVirtSetup() {
+    local debug_level=10
+
+    local virt_disk="$1"
+    debugValue virt_disk $debug_level
+
+    if [ ! -r "${virt_disk}" ]; then
+        aborting "${virt_disk} file not found readable"
+    fi
+
+    virt_boot=${virt_disk%%,*}
+    debugValue virt_boot $debug_level
+
+    local -l virt_mode="$2"
+    if [ "$virt_mode" == "" ]; then
+        virt_mode=${virt_disk##*,}
+        if [ "${virt_mode}" != "bios" ] && [ "${virt_mode}" != "uefi" ]; then
+            virt_mode=""
+        fi
+    fi
+
+    if [ "$virt_mode" == "" ]; then
+        virt_mode="bios"
+    fi
+    debugValue virt_mode $debug_level
+
+    local virt_action="$3"
+    if [ ${#virt_action} -eq 0 ]; then
+        virt_action="start"
+    fi
+    debugValue virt_action $debug_level
+
+    local virsh=$(which virsh 2> /dev/null)
+    if [ ! -x "$virsh" ]; then
+        aborting "virsh executable not found" 3
+    fi
+    debugValue virsh $debug_level
+
+    local virt_install=$(which virt-install 2> /dev/null)
+    if [ ! -x "$virt_install" ]; then
+        aborting "virt-install executable not found" 3
+    fi
+    debugValue virt_install $debug_level
+
+    local virt_basename=$(basename ${virt_boot})
+    debugValue virt_basename $debug_level
+
+    local virt_dirname=$(dirname ${virt_boot})
+    debugValue virt_dirname $debug_level
+
+    virt_name=${virt_basename}-${virt_mode}
+    virt_name=${virt_basename%%.*}
+    debugValue virt_name $debug_value $debug_level
+
+    if [ -d "${virt_dirname}" ]; then
+        local virt_dir=${virt_dirname}
+    else
+        local virt_dir=${HOME}
+    fi
+    debugValue virt_dir $debug_level
+
+    ${virsh} domstate ${virt_name} &> /dev/null
+    if [ $? -eq 0 ]; then
+        # domain already exists
+        local virt_state=$(${virsh} domstate ${virt_name})
+        echo
+        echo "virt '${virt_name}' is ${virt_state}"
+        echo
+
+        local virt_viewer=$(which virt-viewer 2> /dev/null)
+        if [ ! -x "$virt_viewer" ]; then
+            aborting "virt-viewer executable not found" 3
+        fi
+        debugValue virt_viewer $debug_level
+
+        if [ "${virt_action}" == "status" ]; then
+            ${virsh} dominfo ${virt_name}
+            return
+        fi
+
+        if [ "${virt_state}" == "running" ]; then
+            if [ "${virt_action}" == "start" ]; then
+                ${virt_viewer} ${virt_name} -a &
+            else
+                if [ "${virt_action}" == "stop" ]; then
+                    echo stopping ${virt_name}
+                    ${virsh} destroy ${virt_name}
+                fi
+            fi
+        fi
+
+        if [ "${virt_state}" == "shut off" ]; then
+            if [ "${virt_action}" == "start" ]; then
+                ${virsh} start ${virt_name}
+                ${virt_viewer} ${virt_name} -a &
+            fi
+        fi
+        return
+    fi
+
+    local virt_mac_address_prefix="52:54:00"
+
+    # create a 'consistent' mac address based on the node name
+    # otherwise dhcp leases will quickly run out during testing ...
+    local virt_mac_address_suffix_1=$(echo "${virt_name}" | md5sum 2> /dev/null | cut -c 1-2)
+    if [ "${#virt_mac_address_suffix_1}" -ne 2 ]; then
+        aborting "virt_mac_address_suffix_1 length is not 2 ($virt_mac_address_suffix_1)"
+    fi
+    local virt_mac_address_suffix_2=$(echo "${virt_name}" | md5sum | cut -c 5-6)
+    if [ "${#virt_mac_address_suffix_2}" -ne 2 ]; then
+        aborting "virt_mac_address_suffix_2 length is not 2 ($virt_mac_address_suffix_2)"
+    fi
+    local virt_mac_address_suffix_3=$(echo "${virt_name}" | md5sum | cut -c 9-10)
+    if [ "${#virt_mac_address_suffix_3}" -ne 2 ]; then
+        aborting "virt_mac_address_suffix_3 length is not 2 ($virt_mac_address_suffix_3)"
+    fi
+
+    local virt_mac_address=$(echo "${virt_mac_address_prefix}:${virt_mac_address_suffix_1}:${virt_mac_address_suffix_2}:${virt_mac_address_suffix_3}" | awk '{print tolower($NF)}')
+    if [ "${#virt_mac_address}" -ne 17 ]; then
+        aborting "virt_mac_address length is not 17 ($virt_mac_address)"
+    fi
+
+    debugValue virt_mac_address $debug_level
+
+    let host_cpus=$(lscpu | grep "^CPU(s)" | awk '{print $NF}')
+    debugValue host_cpus $debug_level
+
+    if [ ${host_cpus} -ge 4 ]; then
+        local virt_cpus=3
+    else
+        local virt_cpus=1
+    fi
+    debugValue virt_cpus $debug_level
+
+    let host_ram=$(free | grep ^Mem: | awk '{print $2}')
+    let host_ram=${host_ram}/1000/1000
+    debugValue host_ram $debug_level
+
+    if [ ${host_ram} -ge 32 ]; then
+        #local virt_ram=16384
+        local virt_ram=8192
+    else
+        if [ ${host_ram} -ge 16 ]; then
+            local virt_ram=8192
+        else
+            local virt_ram=2048
+        fi
+    fi
+    debugValue virt_ram $debug_level
+
+    if [ -e /sys/class/net/br0 ]; then
+        local virt_network="bridge=br0"
+    else
+        local virt_network="$(ip r s default | awk -Fdev '{print $NF}' | awk '{print $1}' | head -1)"
+    fi
+    local virt_network="default"
+
+    if [ "$virt_mac_address" != "" ]; then
+        virt_network+=",mac=$virt_mac_address"
+    fi
+
+    debugValue virt_network $debug_level
+
+    if [ "${virt_mode}" == "uefi" ]; then
+        local virt_boot_options="${virt_mode},"
+    else
+        local virt_boot_options=""
+    fi
+    virt_boot_options+="hd,"
+    #virt_boot_options+="cdrom,"
+    #virt_boot_options+="useserial=on,"
+    #virt_boot_options+="menu=on"
+
+    # trim trailing commas
+    while [ "${virt_boot_options:${#virt_boot_options}-1:1}" == "," ]; do 
+        virt_boot_options=${virt_boot_options%,*}
+    done
+
+    debugValue virt_boot_options $debug_level
+
+    local virt_os_variant="win10"
+
+    printf "setup ${virt_name}, virt_os_variant=${virt_os_variant}\n\n"
+
+    local virt_install_args=""
+    #virt_install_args+=" --machine pc"
+    virt_install_args+=" --name ${virt_name}"
+    virt_install_args+=" --cpus ${virt_cpus}"
+    virt_install_args+=" --boot ${virt_boot_options}"
+    virt_install_args+=" --disk path=${virt_disk},device=disk,bus=virtio,size=100,sparse=true,format=qcow2"
+    #virt_install_args+=" --disk path=/home/jtingiris/VM/jt0708-x-it-l/tmp.qcow2,device=disk,bus=virtio,size=1,sparse=true,format=qcow2"
+    #virt_install_args+=" --disk /usr/share/virtio-win/virtio-win.iso,device=cdrom,bus=sata"
+    virt_install_args+=" --network ${virt_network},model=virtio"
+    virt_install_args+=" --metadata name=${virt_name},title=${virt_name}"
+    virt_install_args+=" --graphics spice"
+    virt_install_args+=" --os-type=windows"
+    if [ ${#virt_os_variant} -gt 0 ]; then
+        virt_install_args+=" --os-variant $virt_os_variant"
+    fi
+    virt_install_args+=" --memory ${virt_ram}"
+    virt_install_args+=" --serial pty"
+    virt_install_args+=" --virt-type kvm"
+    virt_install_args+=" --rng /dev/random"
+
+    virt_install_args=${virt_install_args## } # trim leading spaces
+    virt_install_args=${virt_install_args%% } # trim trailing spaces
+
+    debugValue "virt_install_args" $((debug_level+1))
+
+    ${virt_install} ${virt_install_args}
+}
+
+if [ -r "$1" ]; then
+    Windows_Disk="$1"
+    Windows_Action="$2"
+else
+    Windows_Action="$1"
+    Windows_Disk=$(find ~/VM/ -name "*qcow2" | head -1)
+fi
+
+windowsVirtSetup ${Windows_Disk} uefi ${Windows_Action}
