@@ -1,6 +1,6 @@
 # .bashrc
 
-Bashrc_Version="20200507, joseph.tingiris@gmail.com"
+Bashrc_Version="20200620, joseph.tingiris@gmail.com"
 
 ##
 ### returns to avoid interactive shell enhancements
@@ -85,11 +85,15 @@ if [ "$EUID" == "0" ]; then
     USER="root"
 fi
 
-if type -P logname &> /dev/null; then
-    export User_Name=$(logname 2> /dev/null)
+if [ -f ~/.User_Name ]; then
+    export User_Name=$(cat ~/.User_Name)
 else
-    if type -P who &> /dev/null; then
-        export User_Name=$(who -m 2> /dev/null)
+    if type -P logname &> /dev/null; then
+        export User_Name=$(logname 2> /dev/null)
+    else
+        if type -P who &> /dev/null; then
+            export User_Name=$(who -m 2> /dev/null)
+        fi
     fi
 fi
 if [ ${#User_Name} -eq 0 ] && [ ${#SUDO_USER} -ne 0 ]; then export User_Name=${SUDO_USER}; fi
@@ -1105,6 +1109,9 @@ alias cl='cd;clear'
 alias cp='cp -i'
 alias duh='export HISTSIZE=0; unset HISTSIZE'
 alias forget=duh
+alias gerp=grep
+alias grpe=grep
+alias gpre=grep
 alias h='history'
 alias hs='export HISTSIZE=0'
 alias jc=journalctl
@@ -1412,7 +1419,7 @@ if [ ${#Sudo} -gt 0 ]; then
     alias root="${Sudo} SSH_AUTH_SOCK=${SSH_AUTH_SOCK} -u root /bin/bash --init-file ${User_Dir}/.bashrc"
     alias suroot="${Sudo} su -"
 else
-    alias root="su - root -c '/bin/bash --init-file /home/jtingiris/.bashrc'"
+    alias root="su - root -c '/bin/bash --init-file ${User_Dir}/.bashrc'"
     alias suroot='su -'
 fi
 
