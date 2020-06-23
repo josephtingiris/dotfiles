@@ -80,6 +80,7 @@
 !/bin/scpmv
 !/bin/src-dotfiles-rsync
 !/bin/test-loop
+!/bin/windows
 
 # except specific files in the etc/profile.d directory
 !/etc/
