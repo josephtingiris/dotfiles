@@ -51,6 +51,12 @@ if [ -r /etc/os-release ]; then
     if [ ${#Os_Id} -eq 0 ]; then
         Os_Id=$(sed -nEe 's#"##g;s#^ID=(.*)$#\1#p' /etc/os-release)
     fi
+    if [ ${#Os_Name} -eq 0 ]; then
+        Os_Name=$(sed -nEe 's#"##g;s#^NAME=(.*)$#\1#p' /etc/os-release)
+    fi
+    if [ ${#Os_Pretty_Name} -eq 0 ]; then
+        Os_Pretty_Name=$(sed -nEe 's#"##g;s#^PRETTY_NAME=(.*)$#\1#p' /etc/os-release)
+    fi
     if [ ${#Os_Version_Id} -eq 0 ]; then
         Os_Version_Id=$(sed -nEe 's#"##g;s#^VERSION_ID=(.*)$#\1#p' /etc/os-release)
     fi
@@ -1509,6 +1515,11 @@ if [ -r /etc/redhat-release ]; then
     printf "\n"
     cat /etc/redhat-release
     printf "\n"
+else
+    printf "\n"
+    if [ ${#Os_Pretty_Name} -gt 0 ]; then
+        printf "${Os_Pretty_Name}\n\n"
+    fi
 fi
 
 printf "${User_Dir}/.bashrc ${Bashrc_Version}\n\n"
