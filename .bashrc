@@ -1,6 +1,6 @@
 # .bashrc
 
-Bashrc_Version="20200620, joseph.tingiris@gmail.com"
+Bashrc_Version="20200623, joseph.tingiris@gmail.com"
 
 ##
 ### returns to avoid interactive shell enhancements
@@ -1093,7 +1093,13 @@ export -f verbose
 ### set history control
 ##
 
-export HISTCONTROL=ignoredups
+shopt -s histappend
+if [ "${USER}" == "root" ]; then
+    export HISTCONTROL=ignoreboth
+else
+    export HISTCONTROL=ignoreboth:erasedups
+fi
+export HISTTIMEFORMAT="[%Y-%m-%d %H:%M:%S] "
 
 ##
 ### set default timezone
@@ -1105,18 +1111,28 @@ export TZ='America/New_York'
 ### static alias definitions
 ##
 
+alias alert='notify-send --urgency=low -i "$([ $? = 0 ] && echo terminal || echo error)" "$(history|tail -n1|sed -e '\''s/^\s*[0-9]\+\s*//;s/[;&|]\s*alert$//'\'')"'
 alias cl='cd;clear'
 alias cp='cp -i'
-alias duh='export HISTSIZE=0; unset HISTSIZE'
+alias duh='export HISTSIZE=0; unset HISTSIZE; history -c'
 alias forget=duh
+alias egrep='egrep --color=auto'
+alias egerp=egrep
+alias egpre=egrep
+alias egrpe=egrep
+alias fgrep='fgrep --color=auto'
+alias fgerp=fgrep
+alias fgpre=fgrep
+alias fgrpe=fgrep
 alias gerp=grep
-alias grpe=grep
+alias grep='grep --color=auto'
 alias gpre=grep
+alias grpe=grep
 alias h='history'
 alias hs='export HISTSIZE=0'
 alias jc=journalctl
 alias l='ls -lFhart'
-alias ls='ls --color=tty'
+alias ls='ls --color=auto'
 alias mv='mv -i'
 alias nouser="find . -nouser 2> /dev/null"
 alias rm='rm -i'
@@ -1425,6 +1441,26 @@ fi
 
 if type -P screen &> /dev/null; then
     alias sd='screen -S $(basename $(pwd))'
+fi
+
+##
+### user alias definitions (allow overriding; after all embedded aliases)
+##
+
+if [ -f ~/.bash_aliases ]; then
+    . ~/.bash_aliases
+fi
+
+##
+### bash completion
+##
+
+if ! shopt -oq posix; then
+    if [ -f /usr/share/bash-completion/bash_completion ]; then
+        . /usr/share/bash-completion/bash_completion
+    elif [ -f /etc/bash_completion ]; then
+        . /etc/bash_completion
+    fi
 fi
 
 ##
