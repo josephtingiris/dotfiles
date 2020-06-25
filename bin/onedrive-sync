@@ -7,7 +7,7 @@ for OneDrive_User in "${OneDrive_Users[@]}"; do
         echo "resyncing onedrive-${OneDrive_User}"
         echo
         systemctl --user stop onedrive-${OneDrive_User}
-        onedrive --confdir=/home/jtingiris/.config/onedrive-${OneDrive_User} --synchronize --resync
+        onedrive --confdir=/home/jtingiris/.config/onedrive-${OneDrive_User} --synchronize --resync --verbose
         systemctl --user start onedrive-${OneDrive_User}
         journalctl --user -u onedrive-${OneDrive_User} --since "-5m" | grep -v Syncing
         echo
