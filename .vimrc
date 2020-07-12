@@ -279,6 +279,9 @@ if has("autocmd")
                         " extensions
                         let g:coc_global_extensions = ['coc-gitignore', 'coc-go', 'coc-json', 'coc-yaml']
 
+                        " warnings
+                        let g:coc_disable_startup_warning = 1
+
                     endif " if node_valid
 
 
