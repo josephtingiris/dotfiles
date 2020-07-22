@@ -1,5 +1,19 @@
 #!/bin/bash
 
+# To convert a device directly to sparse, qcow2 format ...
+# qemu-img convert -p -S 512 /dev/nvme0n1 -O qcow2 nvme01n1.qcow2
+#
+# These should be set in /etc/libvirt/libvirtd.conf:
+# unix_sock_group = "libvirt"
+# unix_sock_rw_perms = "0770"
+#
+# /etc/qemu/bridge.conf:
+# allow virbr0
+# include /etc/qemu/jtingiris.conf
+#
+# /etc/qemu/jtingiris.conf
+# allow all
+
 # begin Base.bash.include
 
 if [ "$Debug" == "" ]; then
@@ -21,6 +35,8 @@ fi
 
 # end Base.bash.include
 
+#export LIBVIRT_DEFAULT_URI="qemu:///system"
+
 function windowsVirtSetup() {
     local debug_level=10
 
@@ -41,11 +57,6 @@ function windowsVirtSetup() {
             virt_mode=""
         fi
     fi
-
-    if [ "$virt_mode" == "" ]; then
-        virt_mode="bios"
-    fi
-    debugValue virt_mode $debug_level
 
     local virt_action="$3"
     if [ ${#virt_action} -eq 0 ]; then
@@ -82,8 +93,25 @@ function windowsVirtSetup() {
     fi
     debugValue virt_dir $debug_level
 
+    virt_data="${virt_dirname}/${virt_name}.data"
+    debugValue virt_data $debug_level
+
+    if [ -f "${virt_data}" ]; then
+        source "${virt_data}"
+    fi
+
+    if [ "${Virt_Mode}" == "bios" ] || [ "${Virt_Mode}" == "uefi" ]; then
+        virt_mode=${Virt_Mode}
+    fi
+
+    if [ "$virt_mode" == "" ]; then
+        virt_mode="bios"
+    fi
+    debugValue virt_mode $debug_level
+
     ${virsh} domstate ${virt_name} &> /dev/null
-    if [ $? -eq 0 ]; then
+    RC_Domstate=$?
+    if [ ${RC_Domstate} -eq 0 ]; then
         # domain already exists
         local virt_state=$(${virsh} domstate ${virt_name})
         echo
@@ -105,7 +133,7 @@ function windowsVirtSetup() {
             if [ "${virt_action}" == "start" ]; then
                 ${virt_viewer} ${virt_name} -a &
             else
-                if [ "${virt_action}" == "stop" ]; then
+                if [ "${virt_action}" == "stop" ] || [ "${virt_action}" == "undefine" ]; then
                     echo stopping ${virt_name}
                     ${virsh} destroy ${virt_name}
                 fi
@@ -118,27 +146,43 @@ function windowsVirtSetup() {
                 ${virt_viewer} ${virt_name} -a &
             fi
         fi
+
+        if [ "${virt_action}" == "undefine" ]; then
+            ${virsh} undefine ${virt_name} --nvram &> /dev/null
+            ${virsh} undefine ${virt_name} &> /dev/null
+        fi
+
         return
+    else
+        if [ "${virt_action}" == "stop" ] || [ "${virt_action}" == "undefine" ]; then
+            return
+        fi
+        echo "RC_Domstate=${RC_Domstate}"
     fi
 
-    local virt_mac_address_prefix="52:54:00"
+    if [ "${Virt_MAC}" == "" ]; then
+        local virt_mac_address_prefix="52:54:00"
 
-    # create a 'consistent' mac address based on the node name
-    # otherwise dhcp leases will quickly run out during testing ...
-    local virt_mac_address_suffix_1=$(echo "${virt_name}" | md5sum 2> /dev/null | cut -c 1-2)
-    if [ "${#virt_mac_address_suffix_1}" -ne 2 ]; then
-        aborting "virt_mac_address_suffix_1 length is not 2 ($virt_mac_address_suffix_1)"
-    fi
-    local virt_mac_address_suffix_2=$(echo "${virt_name}" | md5sum | cut -c 5-6)
-    if [ "${#virt_mac_address_suffix_2}" -ne 2 ]; then
-        aborting "virt_mac_address_suffix_2 length is not 2 ($virt_mac_address_suffix_2)"
-    fi
-    local virt_mac_address_suffix_3=$(echo "${virt_name}" | md5sum | cut -c 9-10)
-    if [ "${#virt_mac_address_suffix_3}" -ne 2 ]; then
-        aborting "virt_mac_address_suffix_3 length is not 2 ($virt_mac_address_suffix_3)"
+        # create a 'consistent' mac address based on the node name
+        # otherwise dhcp leases will quickly run out during testing ...
+        local virt_mac_address_suffix_1=$(echo "${virt_name}" | md5sum 2> /dev/null | cut -c 1-2)
+        if [ "${#virt_mac_address_suffix_1}" -ne 2 ]; then
+            aborting "virt_mac_address_suffix_1 length is not 2 ($virt_mac_address_suffix_1)"
+        fi
+        local virt_mac_address_suffix_2=$(echo "${virt_name}" | md5sum | cut -c 5-6)
+        if [ "${#virt_mac_address_suffix_2}" -ne 2 ]; then
+            aborting "virt_mac_address_suffix_2 length is not 2 ($virt_mac_address_suffix_2)"
+        fi
+        local virt_mac_address_suffix_3=$(echo "${virt_name}" | md5sum | cut -c 9-10)
+        if [ "${#virt_mac_address_suffix_3}" -ne 2 ]; then
+            aborting "virt_mac_address_suffix_3 length is not 2 ($virt_mac_address_suffix_3)"
+        fi
+
+        local virt_mac_address=$(echo "${virt_mac_address_prefix}:${virt_mac_address_suffix_1}:${virt_mac_address_suffix_2}:${virt_mac_address_suffix_3}" | awk '{print tolower($NF)}')
+    else
+        local virt_mac_address="${Virt_MAC}"
     fi
 
-    local virt_mac_address=$(echo "${virt_mac_address_prefix}:${virt_mac_address_suffix_1}:${virt_mac_address_suffix_2}:${virt_mac_address_suffix_3}" | awk '{print tolower($NF)}')
     if [ "${#virt_mac_address}" -ne 17 ]; then
         aborting "virt_mac_address length is not 17 ($virt_mac_address)"
     fi
@@ -148,41 +192,44 @@ function windowsVirtSetup() {
     let host_cpus=$(lscpu | grep "^CPU(s)" | awk '{print $NF}')
     debugValue host_cpus $debug_level
 
-    if [ ${host_cpus} -ge 4 ]; then
-        local virt_cpus=3
+    local virt_cpus virt_vcpus
+    if [ ${host_cpus} -ge 8 ]; then
+        virt_cpus=4
+        virt_vcpus="4,cores=4,cpuset=auto"
     else
-        local virt_cpus=1
-    fi
-    debugValue virt_cpus $debug_level
-
-    let host_ram=$(free | grep ^Mem: | awk '{print $2}')
-    let host_ram=${host_ram}/1000/1000
-    debugValue host_ram $debug_level
-
-    if [ ${host_ram} -ge 32 ]; then
-        #local virt_ram=16384
-        local virt_ram=8192
-    else
-        if [ ${host_ram} -ge 16 ]; then
-            local virt_ram=8192
+        if [ ${host_cpus} -ge 4 ]; then
+            virt_cpus=2
+            virt_vcpus=2
+            virt_vcpus="2,cores=2,cpuset=auto"
         else
-            local virt_ram=2048
+            virt_cpus=1
         fi
     fi
-    debugValue virt_ram $debug_level
 
-    if [ -e /sys/class/net/br0 ]; then
-        local virt_network="bridge=br0"
+    debugValue virt_cpus $debug_level
+    debugValue virt_vcpus $debug_level
+
+    if [ "${Virt_RAM_MB}" != "" ]; then
+        virt_ram="${Virt_RAM_MB}"
     else
-        local virt_network="$(ip r s default | awk -Fdev '{print $NF}' | awk '{print $1}' | head -1)"
-    fi
-    local virt_network="default"
+        local host_ram
+        let host_ram=$(free | grep ^Mem: | awk '{print $2}')
+        let host_ram=${host_ram}/1000/1000
+        debugValue host_ram $debug_level
 
-    if [ "$virt_mac_address" != "" ]; then
-        virt_network+=",mac=$virt_mac_address"
+        if [ ${host_ram} -ge 32 ]; then
+            #local virt_ram=16384
+            local virt_ram=8192
+        else
+            if [ ${host_ram} -ge 16 ]; then
+                local virt_ram=8192
+            else
+                local virt_ram=2048
+            fi
+        fi
     fi
 
-    debugValue virt_network $debug_level
+    debugValue virt_ram $debug_level
 
     if [ "${virt_mode}" == "uefi" ]; then
         local virt_boot_options="${virt_mode},"
@@ -201,21 +248,75 @@ function windowsVirtSetup() {
 
     debugValue virt_boot_options $debug_level
 
-    local virt_os_variant="win10"
+    if [ "${Virt_OS_Variant}" == "" ]; then
+        local virt_os_variant="win10"
+    else
+        local virt_os_variant="${Virt_OS_Variant}"
+    fi
 
-    printf "setup ${virt_name}, virt_os_variant=${virt_os_variant}\n\n"
+    local virt_install_disk_bus=""
+    if [ "${Virt_Disk_Bus}" == "" ]; then
+        virt_install_disk_bus="virtio"
+    else
+        virt_install_disk_bus="${Virt_Disk_Bus}"
+    fi
+
+    debugValue virt_install_disk_bus ${debug_level}
+
+    local virt_network
+    if [ -e /sys/class/net/br0 ]; then
+        virt_network="bridge=br0"
+    else
+        local default_interface="$(ip r s default | awk -Fdev '{print $NF}' | awk '{print $1}' | head -1)"
+        if [ "${default_interface}" != "" ]; then
+            if [ "$USER" == "root" ]; then
+                local virt_network="type=direct,source=${default_interface}"
+            fi
+        fi
+    fi
+
+    if [ "${virt_network}" == "" ]; then
+        if ip a s virbr0 &> /dev/null; then
+            virt_network="bridge=virbr0"
+        fi
+    fi
+
+    if [ "$virt_mac_address" != "" ]; then
+        if [ "${virt_network}" != "" ]; then
+            virt_network+=","
+        fi
+        virt_network+="mac=$virt_mac_address"
+    fi
+
+    debugValue virt_network $debug_level
+
+    local virt_install_network_model=""
+    if [ "${Virt_Network_Model}" == "" ]; then
+        virt_install_network_model=",model=virtio"
+    else
+        if [ "${Virt_Network_Model}" != "none" ]; then
+            virt_install_network_model=",model=${Virt_Network_Model}"
+        fi
+    fi
 
     local virt_install_args=""
+    printf "setup ${virt_name}, virt_os_variant=${virt_os_variant}\n\n"
+
     #virt_install_args+=" --machine pc"
     virt_install_args+=" --name ${virt_name}"
+    virt_install_args+=" --cpu host"
     virt_install_args+=" --cpus ${virt_cpus}"
+    if [ "${virt_vcpus}" != "" ]; then
+        virt_install_args+=" --vcpus vcpus=${virt_vcpus}"
+    fi
     virt_install_args+=" --boot ${virt_boot_options}"
-    virt_install_args+=" --disk path=${virt_disk},device=disk,bus=virtio,size=100,sparse=true,format=qcow2"
-    #virt_install_args+=" --disk path=/home/jtingiris/VM/jt0708-x-it-l/tmp.qcow2,device=disk,bus=virtio,size=1,sparse=true,format=qcow2"
-    #virt_install_args+=" --disk /usr/share/virtio-win/virtio-win.iso,device=cdrom,bus=sata"
-    virt_install_args+=" --network ${virt_network},model=virtio"
-    virt_install_args+=" --metadata name=${virt_name},title=${virt_name}"
+    virt_install_args+=" --disk path=${virt_disk},device=disk,bus=${virt_install_disk_bus},size=100,sparse=true,format=qcow2"
+    if [ -f "${Virt_CDROM}" ]; then
+        virt_install_args+=" --disk ${Virt_CDROM},device=cdrom,bus=sata"
+    fi
+    virt_install_args+=" --network ${virt_network}${virt_install_network_model}"
     virt_install_args+=" --graphics spice"
+    virt_install_args+=" --video model.type=qxl,model.ram=262144,model.vram=524288,model.vgamem=131072"
     virt_install_args+=" --os-type=windows"
     if [ ${#virt_os_variant} -gt 0 ]; then
         virt_install_args+=" --os-variant $virt_os_variant"
@@ -225,20 +326,50 @@ function windowsVirtSetup() {
     virt_install_args+=" --virt-type kvm"
     virt_install_args+=" --rng /dev/random"
 
+    local virt_install_metadata=""
+
+    if [ "${Virt_Metadata_name}" != "" ]; then
+        virt_install_metadata+="name=\"${Virt_Metadata_name}\","
+        if [ "${virt_name}" != "" ]; then
+            virt_install_metadata+="title=${virt_name},"
+        fi
+    else
+        if [ "${virt_name}" != "" ]; then
+            virt_install_metadata+="name=${virt_name},title=${virt_name},"
+        fi
+    fi
+
+    if [ "${Virt_Metadata_uuid}" != "" ]; then
+        virt_install_metadata+="uuid='${Virt_Metadata_uuid}',"
+    fi
+
+    virt_install_metadata=${virt_install_metadata%%,} # trim trailing commas
+
+    if [ "${virt_install_metadata}" != "" ]; then
+        debugValue "virt_install_metadata" $((debug_level+1))
+        virt_install_args+=" --metadata ${virt_install_metadata}"
+    fi
+
     virt_install_args=${virt_install_args## } # trim leading spaces
     virt_install_args=${virt_install_args%% } # trim trailing spaces
 
     debugValue "virt_install_args" $((debug_level+1))
 
-    ${virt_install} ${virt_install_args}
+    if [ "${virt_action}" != "stop" ] && [ "${virt_action}" != "undefine" ]; then
+        ${virt_install} ${virt_install_args} &
+    fi
 }
 
 if [ -r "$1" ]; then
-    Windows_Disk="$1"
-    Windows_Action="$2"
+    Virt_Disk="$1"
+    Virt_Action="$2"
 else
-    Windows_Action="$1"
-    Windows_Disk=$(find ~/VM/ -name "*qcow2" | head -1)
+    Virt_Action="$1"
+    Virt_Disk=$(find ~/VM/ -name "*qcow2" | sort | head -1)
 fi
 
-windowsVirtSetup ${Windows_Disk} uefi ${Windows_Action}
+if [ "${Virt_Action}" == "" ]; then
+    Virt_Action=start
+fi
+
+windowsVirtSetup ${Virt_Disk} uefi ${Virt_Action}
