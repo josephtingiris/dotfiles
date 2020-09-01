@@ -1,6 +1,6 @@
 # .bashrc
 
-Bashrc_Version="20200623, joseph.tingiris@gmail.com"
+Bashrc_Version="20200831, joseph.tingiris@gmail.com"
 
 ##
 ### returns to avoid interactive shell enhancements
@@ -242,6 +242,18 @@ done
 ##
 ### functions
 ##
+
+# update bash files in other homes
+function bashrc() {
+    if [ -d /home ]; then
+        while read bashrc; do
+            local bashrc_dir=${bashrc%/*}
+            for bash_file in ~/.bash*; do
+                sudo cp ${bash_file} ${bashrc_dir} 2> /dev/null
+            done
+        done <<< $(sudo find /home -name .bashrc | sudo xargs -r grep -l Bashrc_Version | grep -v src/dotfiles)
+    fi
+}
 
 # override dmesg
 function dmesg() {
@@ -1281,12 +1293,17 @@ case "${TERM}" in
 esac
 
 PS="[\u@\H \w]"
-if [ "${USER}" == "root" ]; then
-    PS+="# "
-    PS1="\[${TPUT_BOLD}${TPUT_SETAF_3}\]${PS}\[${TPUT_SGR0}\]" # bold yellow
-else
+if [ "${USER}" == "jjt" ] || [ "${USER}" == "jtingiris" ]; then
     PS+="$ "
     PS1="\[${TPUT_BOLD}${TPUT_SETAF_6}\]${PS}\[${TPUT_SGR0}\]" # bold cyan
+else
+    if [ "${USER}" == "root" ]; then
+        PS+="# "
+        PS1="\[${TPUT_BOLD}${TPUT_SETAF_3}\]${PS}\[${TPUT_SGR0}\]" # bold yellow
+    else
+        PS+="$ "
+        PS1="\[${TPUT_BOLD}${TPUT_SETAF_5}\]${PS}\[${TPUT_SGR0}\]" # bold purple
+    fi
 fi
 if [ ${#TPUT_BOLD} -eq 0 ]; then
     PS1=$PS
@@ -1425,6 +1442,10 @@ else
     alias s="source ${HOME}/.bashrc"
 fi
 
+if type -P google-chrome &> /dev/null; then
+    alias chrome="google-chrome 2> /dev/null &"
+fi
+
 alias authsock=sshAgentInit
 alias scpo='scp -o IdentitiesOnly=yes'
 alias ssho='ssh -o IdentitiesOnly=yes'
@@ -1499,6 +1520,8 @@ if [ "${USER}" != "${Who}" ]; then
                 verbose "DEBUG: ${User_Dir}/.Xauthority file not found readable" 22
             fi
         fi
+    else
+        export DISPLAY=:0
     fi
 fi
 
