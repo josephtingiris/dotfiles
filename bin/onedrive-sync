@@ -1,15 +1,106 @@
 #!/bin/bash
 
-OneDrive_Users=(jtingiris livinginside)
+function usage() {
+    printf "\n$0 [local|remote|init <email addres>\n\n"
+    exit 1
+}
 
-for OneDrive_User in "${OneDrive_Users[@]}"; do
-    if [ -d /home/jtingiris/.config/onedrive-${OneDrive_User} ]; then
-        echo "resyncing onedrive-${OneDrive_User}"
+if [ "$1" == "" ]; then
+    usage
+fi
+
+if [ "${1}" != "local" ] && [ "${1}" != "remote" ] && [ "${1}" != "init" ]; then
+    usage
+fi
+
+if [ "$1" == "init" ]; then
+    if [ "$2" == "" ]; then
+        echo "aborting, must supply an email address to init"
+        exit 2
+    fi
+    mkdir -p ~/.config/onedrive-$2 &> /dev/null
+    mkdir -p ~"/onedrive/$2"
+
+    SyncDir=$(realpath ~/onedrive/$2)
+
+
+    OneDrive_Config_Dir=$(realpath ~/.config/onedrive-$2)
+    if [ -d "${OneDrive_Config_Dir}" ]; then
+        OneDrive_Config_File="${OneDrive_Config_Dir}/config"
+        echo "# OneDrive_Config_File=${OneDrive_Config_File}"
         echo
-        systemctl --user stop onedrive-${OneDrive_User}
-        onedrive --confdir=/home/jtingiris/.config/onedrive-${OneDrive_User} --synchronize --resync --verbose
-        systemctl --user start onedrive-${OneDrive_User}
-        journalctl --user -u onedrive-${OneDrive_User} --since "-5m" | grep -v Syncing
+
+        echo "sync_dir = \"${SyncDir}\"" > "${OneDrive_Config_File}"
+
+        cat "${OneDrive_Config_File}"
+
+        mkdir -p ~/.config/systemd/user &> /dev/null
+        OneDrive_Service="onedrive-$2"
+        OneDrive_Service_File=$(realpath ~/.config/systemd/user/${OneDrive_Service}.service)
+
+        echo
+        echo "# OneDrive_Service_File=$OneDrive_Service_File"
+        echo
+
+        echo "[Unit]" > "${OneDrive_Service_File}"
+        echo "Description=OneDrive Client for $2" >> "${OneDrive_Service_File}"
+        echo "Documentation=https://github.com/abraunegg/onedrive" >> "${OneDrive_Service_File}"
+        echo "After=network-online.target" >> "${OneDrive_Service_File}"
+        echo "Wants=network-online.target" >> "${OneDrive_Service_File}"
+        echo >> "${OneDrive_Service_File}"
+        echo "[Service]" >> "${OneDrive_Service_File}"
+        echo "ExecStart=/usr/bin/onedrive --monitor --confdir=\"${OneDrive_Config_Dir}\"" >> "${OneDrive_Service_File}"
+        echo "Restart=on-failure" >> "${OneDrive_Service_File}"
+        echo "RestartSec=3" >> "${OneDrive_Service_File}"
+        echo "RestartPreventExitStatus=3" >> "${OneDrive_Service_File}"
+        echo >> "${OneDrive_Service_File}"
+        echo "[Install]" >> "${OneDrive_Service_File}"
+        echo "WantedBy=default.target" >> "${OneDrive_Service_File}"
+
+        cat "${OneDrive_Service_File}"
+
+        if [ ! -f "${OneDrive_Config_Dir}/refresh_token" ]; then
+            onedrive --confdir=${OneDrive_Config_Dir} --synchronize --verbose
+        fi
+
+        systemctl --user daemon-reload
+        systemctl --user enable ${OneDrive_Service}.service
+        systemctl --user restart ${OneDrive_Service}.service
+        systemctl --user status ${OneDrive_Service}.service -l --no-pager
+    fi
+
+    exit
+fi
+
+while read OneDrive_Config; do
+    OneDrive_Config_Dir=${OneDrive_Config%/*}
+    OneDrive_Service=${OneDrive_Config%/*}
+    OneDrive_Service=${OneDrive_Service##*/}
+
+    if [ "$2" != "" ]; then
+        if [[ "${OneDrive_Service}" != *${2}* ]]; then
+            continue
+        fi
+    fi
+
+    if [ -d "${OneDrive_Config_Dir}" ]; then
+        echo "[${1}] resyncing ${OneDrive_Service}"
+        echo
+
+        systemctl --user stop ${OneDrive_Service}.service
+        if [ "$1" == "local" ]; then
+            onedrive --confdir=${OneDrive_Config_Dir} --synchronize --local-first --verbose
+        else
+            onedrive --confdir=${OneDrive_Config_Dir} --synchronize --resync --verbose
+        fi
+        echo
+        systemctl --user start ${OneDrive_Service}.service
+        systemctl --user status ${OneDrive_Service}.service -l --no-pager
+        if [ $? -ne 0 ]; then
+            echo
+                journalctl --user -u ${OneDrive_Service} --since "-5m"
+            echo
+        fi
         echo
     fi
-done
+done <<< $(ls -1d ~/.config/onedrive-*/config | sort)
