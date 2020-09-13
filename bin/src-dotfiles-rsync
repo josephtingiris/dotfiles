@@ -1,117 +1,122 @@
 #!/bin/bash
 
-dotfiles_rsync=$(type -P rsync)
-if [ ! -x ${dotfiles_rsync} ]; then
+dotfiles_src="${HOME}/src/dotfiles"
+if [ ! -d "${dotfiles_src}" ]; then
+    echo "${dotfiles_src} directory not found"
+fi
+
+rsync=$(type -P rsync)
+if [ ! -x ${rsync} ]; then
     echo "can't find executable rsync"
     exit 1
 fi
 
 HERE=$(pwd)
 
-remote_host=false
-
-dotfiles_to="${1}"
-if [ "${dotfiles_to}" == "" ]; then
+dotfiles_to_input="${1}"
+if [ "${dotfiles_to_input}" == "" ]; then
     echo
-    echo "usage: $0 <host>"
+    echo "usage: $0 [user@]<host|directory>[:<directory>]"
     echo
     exit 1
-else
-    dotfiles_to_dir=""
+fi
+
+dotfiles_to_dir=""
+dotfiles_to_host=""
+dotfiles_to_remote=false
+dotfiles_to_user=""
+
+if [[ "${dotfiles_to_input}" == *"@"* ]]; then
+    dotfiles_to_user=${1%%@*}
+    dotfiles_to_host=${1##*@}
+fi
+
+if [[ "${dotfiles_to_input}" == *":"* ]]; then
+    dotfiles_to_dir=${1##*:}
+    dotfiles_to_host=${1%%:*}
+fi
+
+if [[ "${dotfiles_to_host}" == *"@"* ]]; then
+    dotfiles_to_user=${dotfiles_to_host%%@*}
+    dotfiles_to_host=${dotfiles_to_host##*@}
+fi
+
+if [ "${dotfiles_to_host}" == "" ] && [ "${dotfiles_to_user}" == "" ] && [ "${dotfiles_to_dir}" == "" ]; then
+    dotfiles_to_host="${dotfiles_to_input}"
+fi
+
+if [ "${dotfiles_to_user}" == "" ]; then
+    dotfiles_to_user=$(logname)
+fi
+
+if [ -d "${dotfiles_to_input}" ]; then
+    dotfiles_to_dir="${dotfiles_to_input}"
     dotfiles_to_host=""
-    if [[ "${dotfiles_to}" == *":"* ]]; then
-        dotfiles_to_dir=${1##*:}
-        dotfiles_to_host=${1%%:*}
+else
+    if [ "${dotfiles_to_dir}" == "" ]; then
+        dotfiles_to_dir="~"
+    fi
+    dotfiles_to_remote=true
+fi
+
+if ${dotfiles_to_remote}; then
+    if ping -c 1 "${dotfiles_to_host}" &> /dev/null; then
+        dotfiles_to_remote=true
     else
-        if ping -c 1 "${1}" &> /dev/null; then
-            remote_host=true
-            dotfiles_to_host="${1}"
-            dotfiles_to_dir="~"
-        else
-            if [ -d "${1}" ]; then
-                dotfiles_to_host=${HOSTNAME}
-                dotfiles_to_dir="${1}"
-            else
-                echo "${1} ping failed"
-                exit 1
-            fi
-        fi
+        echo "${dotfiles_to_host} ping failed"
+        exit 1
     fi
 fi
 
-if [ "${dotfiles_to_host}" == "" ] ;then
-    dotfiles_to=${dotfiles_to_dir}
-else
-    if [ "${dotfiles_to_host}" == "${HOSTNAME}" ]; then
-        remote_host=false
-        dotfiles_to=${dotfiles_to_dir}
-        if [ "${dotfiles_to_dir}" == "~" ]; then
-            dotfiles_to="${HOME}"
-        fi
-    else
-        if ping -c 1 "${dotfiles_to_host}" &> /dev/null; then
-            remote_host=true
-            dotfiles_to=${dotfiles_to_host}:${dotfiles_to_dir}
-        else
-            echo "${dotfiles_to_host} is dead"
-            exit 1
-        fi
-    fi
+ssh_copy_id=""
+dotfiles_to=""
+
+if [ ${#dotfiles_to_user} -gt 0 ] && ${dotfiles_to_remote}; then
+    ssh_copy_id+="${dotfiles_to_user}@"
+    dotfiles_to+="${dotfiles_to_user}@"
 fi
+
+if [ ${#dotfiles_to_host} -gt 0 ] && ${dotfiles_to_remote}; then
+    ssh_copy_id+="${dotfiles_to_host}"
+    dotfiles_to+="${dotfiles_to_host}:"
+fi
+
+dotfiles_to+="${dotfiles_to_dir}"
 
 echo
-echo "dotfiles_to_host  = ${dotfiles_to_host}"
-echo "dotfiles_to_dir   = ${dotfiles_to_dir}"
-echo "dotfiles_to       = ${dotfiles_to}"
+echo "dotfiles_to_input  = ${dotfiles_to_input}"
+echo "dotfiles_to_user   = ${dotfiles_to_user}"
+[ ${dotfiles_to_host} ] && echo "dotfiles_to_host   = ${dotfiles_to_host}"
+echo "dotfiles_to_dir    = ${dotfiles_to_dir}"
+${dotfiles_to_remote} && echo "dotfiles_to_remote = ${dotfiles_to_remote}"
+echo "dotfiles_to        = ${dotfiles_to}"
+[ ${ssh_copy_id} ] && echo "ssh_copy_id        = ${ssh_copy_id}"
 echo
 
-home_src_dotfiles="${HOME}/src/dotfiles"
+echo
+echo "${dotfiles_src} directory found, pulling ..."
+echo
 
-if ! ${remote_host}; then
-    if [ "${HERE}" != "${home_src_dotfiles}" ]; then
-        if ! git status | grep nothing\ to\ commit 2> /dev/null; then
-            git status
+cd "${dotfiles_src}"
+git pull || exit
+echo
 
-            echo
-            echo "take care of that and try again"
-            echo
 
-            exit
-        fi
+if ${dotfiles_to_remote}; then
+    ssh ${ssh_copy_id} ls &> /dev/null
+    if [ $? -ne 0 ]; then
+        unset SSH_AUTH_SOCK
     fi
 fi
 
-unset SSH_AUTH_SOCK
+rsync_args="-avp"
 
-if [ "${home_src_dotfiles}" != "" ] && [ -d "${home_src_dotfiles}" ]; then
-    echo
-    echo "${home_src_dotfiles} directory found"
-    echo
+echo
+echo "rsync ${rsync_args} ${dotfiles_src}/ ${dotfiles_to}/"
+echo
+${rsync} ${rsync_args} ${dotfiles_src}/ ${dotfiles_to}/ || exit
 
-    cd "${home_src_dotfiles}"
-
-    git pull || exit
-
-    rsync_args="-avp"
-
-    echo
-    echo "rsync ${rsync_args} ${home_src_dotfiles}/ ${dotfiles_to}/"
-    echo
-    ${dotfiles_rsync} ${rsync_args} ${home_src_dotfiles}/ ${dotfiles_to}/ || exit
-
-    echo
-    echo "rsync ${rsync_args} --delete-after ${home_src_dotfiles}/.git/ ${dotfiles_to}/.git/"
-    echo
-    ${dotfiles_rsync} ${rsync_args} --delete-after ${home_src_dotfiles}/.git/ ${dotfiles_to}/.git/ || exit
-
-else
-    if [ "${home_src_dotfiles}" != "" ]; then
-        echo "home_src_dotfiles is empty"
-    else
-        echo "${home_src_dotfiles} directory not found"
-    fi
-fi
-
-cd "${HERE}"
-
-exit
+echo
+echo "rsync ${rsync_args} --delete-after ${dotfiles_src}/.git/ ${dotfiles_to}/.git/"
+echo
+${rsync} ${rsync_args} --delete-after ${dotfiles_src}/.git/ ${dotfiles_to}/.git/ || exit
