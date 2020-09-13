@@ -19,7 +19,7 @@ if [ "$1" == "init" ]; then
         exit 2
     fi
     mkdir -p ~/.config/onedrive-$2 &> /dev/null
-    mkdir -p ~"/onedrive/$2"
+    mkdir -p ~/onedrive/$2
 
     SyncDir=$(realpath ~/onedrive/$2)
 
