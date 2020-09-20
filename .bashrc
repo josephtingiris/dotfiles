@@ -1,6 +1,6 @@
 # .bashrc
 
-Bashrc_Version="20200831, joseph.tingiris@gmail.com"
+Bashrc_Version="20200917, joseph.tingiris@gmail.com"
 
 ##
 ### returns to avoid interactive shell enhancements
@@ -1152,6 +1152,8 @@ alias jc=journalctl
 alias l='ls -lFhart'
 alias ls='ls --color=auto'
 alias mv='mv -i'
+alias noduh=nohistcontrol
+alias nohistcontrol='unset HISTCONTROL'
 alias nouser="find . -nouser 2> /dev/null"
 alias rm='rm -i'
 alias sal='ps -ef | grep ssh-agent; echo && env | grep -i ssh | sort -V; echo; ssh-add -l'
