@@ -126,11 +126,18 @@ function windowsVirtSetup() {
 
         if [ "${virt_action}" == "status" ]; then
             ${virsh} dominfo ${virt_name}
+            echo
+            ${virsh} domiflist ${virt_name}
+            echo
             return
         fi
 
         if [ "${virt_state}" == "running" ]; then
             if [ "${virt_action}" == "start" ]; then
+                ${virsh} dominfo ${virt_name}
+                echo
+                ${virsh} domiflist ${virt_name}
+                echo
                 ${virt_viewer} ${virt_name} -a &
             else
                 if [ "${virt_action}" == "stop" ] || [ "${virt_action}" == "undefine" ]; then
