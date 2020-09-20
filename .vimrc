@@ -148,7 +148,8 @@ if has("autocmd")
                         !cargo build --release
                     endif
                 endfunction
-                Plug 'euclio/vim-markdown-composer', { 'do': function('BuildComposer') }
+                " don't automatically load vim-markdown-composer
+                "Plug 'euclio/vim-markdown-composer', { 'do': function('BuildComposer') }
 
                 let node_valid = 0 " true
                 let use_ycm = 0 " true
