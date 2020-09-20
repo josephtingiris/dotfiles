@@ -1,7 +1,7 @@
 #!/bin/bash
 
 function usage() {
-    printf "\n$0 [local|remote|init <email addres>\n\n"
+    printf "\n$0 [local|remote|init <email addres> [sharepoint] [sharepoint name]\n\n"
     exit 1
 }
 
@@ -14,10 +14,16 @@ if [ "${1}" != "local" ] && [ "${1}" != "remote" ] && [ "${1}" != "init" ]; then
 fi
 
 if [ "$1" == "init" ]; then
+    Sharepoint=0
     if [ "$2" == "" ]; then
         echo "aborting, must supply an email address to init"
         exit 2
     fi
+
+    if [ "$3" == "sharepoint" ]; then
+        Sharepoint=1
+    fi
+
     mkdir -p ~/.config/onedrive-$2 &> /dev/null
     mkdir -p ~/onedrive/$2
 
@@ -27,10 +33,41 @@ if [ "$1" == "init" ]; then
     OneDrive_Config_Dir=$(realpath ~/.config/onedrive-$2)
     if [ -d "${OneDrive_Config_Dir}" ]; then
         OneDrive_Config_File="${OneDrive_Config_Dir}/config"
+        OneDrive_Config_Hash="${OneDrive_Config_Dir}/.config.hash"
+        if [ -f "${OneDrive_Config_Hash}" ]; then
+            echo "Removing "$OneDrive_Config_Hash}""
+            rm "${OneDrive_Config_Hash}"
+        fi
+
+        echo
         echo "# OneDrive_Config_File=${OneDrive_Config_File}"
         echo
 
         echo "sync_dir = \"${SyncDir}\"" > "${OneDrive_Config_File}"
+
+        if [ ${Sharepoint} -eq 1 ]; then
+            if [ "$4" != "" ]; then
+                Sharepoint_Name="$4"
+            else
+                Sharepoint_Name=${2%%@*}
+            fi
+            echo
+            echo "# Sharepoint_Name=${Sharepoint_Name}"
+            echo
+            echo "onedrive --confdir=${OneDrive_Config_Dir} --get-O365-drive-id \"${Sharepoint_Name}\""
+            echo
+            onedrive --confdir=${OneDrive_Config_Dir} --get-O365-drive-id "${Sharepoint_Name}"
+            Sharepoint_DriveID=$(onedrive --confdir=${OneDrive_Config_Dir} --get-O365-drive-id "${Sharepoint_Name}" | grep ^drive_id | awk '{print $NF}' | head -1)
+            if [ ${#Sharepoint_DriveID} -eq 0 ]; then
+                echo
+                echo "ERROR: Couldn't get Sharepoint drive_id for $2}"
+                exit
+            fi
+            echo
+            echo "# Sharepoint_DriveID=${Sharepoint_DriveID}"
+            echo
+            echo "drive_id=\"${Sharepoint_DriveID}\"" >> "${OneDrive_Config_File}"
+        fi
 
         cat "${OneDrive_Config_File}"
 
@@ -58,6 +95,7 @@ if [ "$1" == "init" ]; then
         echo "WantedBy=default.target" >> "${OneDrive_Service_File}"
 
         cat "${OneDrive_Service_File}"
+        echo
 
         if [ ! -f "${OneDrive_Config_Dir}/refresh_token" ]; then
             onedrive --confdir=${OneDrive_Config_Dir} --synchronize --verbose
@@ -98,7 +136,7 @@ while read OneDrive_Config; do
         systemctl --user status ${OneDrive_Service}.service -l --no-pager
         if [ $? -ne 0 ]; then
             echo
-                journalctl --user -u ${OneDrive_Service} --since "-5m"
+            journalctl --user -u ${OneDrive_Service} --since "-5m"
             echo
         fi
         echo
