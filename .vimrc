@@ -503,6 +503,7 @@ noremap <silent> <F3> <Esc>:call ToggleSpell()<CR>
 noremap <silent> <F4> <Esc>:call TogglePaste()<CR>
 " <F5> is conditionally mapped to IndentBuffer() (above)
 noremap <F6> <Esc>:syntax sync fromstart<CR>
+noremap <F12> <Esc>:Explore<CR>
 noremap <silent> <F9> <Esc>:call ToggleListchars()<CR>
 nnoremap qb :silent! normal mpea}<Esc>bi{<Esc>`pl " put {} (braces) around a word
 map <Leader>jcf :%!python -m json.tool<CR>   " format/indent json better
