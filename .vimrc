@@ -283,6 +283,9 @@ if has("autocmd")
                         " warnings
                         let g:coc_disable_startup_warning = 1
 
+                        " colors
+                        highlight CocErrorHighlight ctermfg=Red  guifg=#ff0000
+
                     endif " if node_valid
 
 
@@ -421,6 +424,17 @@ if !exists("*Reconfigure")
     map <Leader>s :call Reconfigure()<CR>
 endif
 
+" show highlight under cursor
+function! SynStack ()
+    for i1 in synstack(line("."), col("."))
+        let i2 = synIDtrans(i1)
+        let n1 = synIDattr(i1, "name")
+        let n2 = synIDattr(i2, "name")
+        echo n1 "->" n2
+    endfor
+endfunction
+map <Leader>h :call SynStack()<CR>
+
 if !exists("*ToggleClipboard")
     function! ToggleClipboard()
         if &clipboard ==# "unnamedplus"
@@ -484,6 +498,25 @@ endif
 "
 " preferences
 "
+
+" customize colors (before loading colorscheme)
+func! s:customize_colors() abort
+    " https://vim.fandom.com/wiki/Xterm256_color_names_for_console_Vim
+    hi ALEError ctermbg=52
+    hi Comment ctermfg=8
+    hi Constant ctermfg=4
+    hi ErrorMsg ctermfg=white
+    hi Identifier ctermfg=83
+    hi Pmenu ctermbg=grey
+    hi Special ctermfg=46
+    "hi PmenuSel guibg=#b7c7b7 gui=NONE
+    "hi PmenuSbar guibg=#bcbcbc
+    "hi PmenuThumb guibg=#585858
+endfunc
+
+augroup customize_colorscheme | au!
+    au ColorScheme * call s:customize_colors()
+augroup END
 
 " color preferences
 silent! colorscheme elflord
