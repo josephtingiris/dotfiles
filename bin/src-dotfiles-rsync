@@ -1,5 +1,20 @@
 #!/bin/bash
 
+# 20201012, joseph.tingiris@gmail.com
+
+function usage() {
+    echo
+    echo "usage: $0 [user@]<host|directory>[:<directory>] [noping]"
+    echo
+    exit 1
+}
+
+NOPING=0
+
+if [ "$2" == "noping" ]; then
+    NOPING=1
+fi
+
 dotfiles_src="${HOME}/src/dotfiles"
 if [ ! -d "${dotfiles_src}" ]; then
     echo "${dotfiles_src} directory not found"
@@ -15,10 +30,7 @@ HERE=$(pwd)
 
 dotfiles_to_input="${1}"
 if [ "${dotfiles_to_input}" == "" ]; then
-    echo
-    echo "usage: $0 [user@]<host|directory>[:<directory>]"
-    echo
-    exit 1
+    usage
 fi
 
 dotfiles_to_dir=""
@@ -59,12 +71,14 @@ else
     dotfiles_to_remote=true
 fi
 
-if ${dotfiles_to_remote}; then
-    if ping -c 1 "${dotfiles_to_host}" &> /dev/null; then
-        dotfiles_to_remote=true
-    else
-        echo "${dotfiles_to_host} ping failed"
-        exit 1
+if [ ${NOPING} -eq 0 ]; then
+    if ${dotfiles_to_remote}; then
+        if ping -c 1 "${dotfiles_to_host}" &> /dev/null; then
+            dotfiles_to_remote=true
+        else
+            echo "${dotfiles_to_host} ping failed"
+            exit 1
+        fi
     fi
 fi
 
