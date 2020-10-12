@@ -507,7 +507,8 @@ func! s:customize_colors() abort
     hi Constant ctermfg=4
     hi ErrorMsg ctermfg=white
     hi Identifier ctermfg=83
-    hi Pmenu ctermbg=grey
+    hi Operator ctermfg=15
+    hi Pmenu ctermfg=white ctermbg=18
     hi Special ctermfg=46
     "hi PmenuSel guibg=#b7c7b7 gui=NONE
     "hi PmenuSbar guibg=#bcbcbc
