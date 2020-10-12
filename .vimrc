@@ -550,7 +550,7 @@ set autoread                                " automatically re-read files that h
 set backspace=indent,eol,start              " allow backspace in insert mode
 set clipboard=unnamedplus                   " Set default clipboard name ;
 set complete-=i                             " do not complete for included files; .=current buffer, w=buffers in other windows, b=other loaded buffers, u=unloaded buffers, t=tags, i=include files
-set directory=/var/tmp                      " where to store swap files
+set directory=~/.config/tmp                 " where to store swap files
 set noerrorbells                            " turn off error bells
 set expandtab                               " use spaces for tabs, not <Tab>
 set exrc                                    " source .exrc in the current directory (use .exrc for both vim/nvim compatibility, not .vimrc or .nvimrc)
