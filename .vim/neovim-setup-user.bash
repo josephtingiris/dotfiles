@@ -2,7 +2,7 @@
 
 # install/upgrade neovim user dependencies
 
-sudo chown -R $USER:"$(id -gn $USER)" ~/.config
+chown -R $USER:"$(id -gn $USER)" ~/.config
 pip2 uninstall neovim
 pip2 install --user --upgrade pynvim
 pip3 uninstall neovim
