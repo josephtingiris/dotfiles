@@ -1297,14 +1297,14 @@ esac
 PS="[\u@\H \w]"
 if [ "${USER}" == "jjt" ] || [ "${USER}" == "jtingiris" ]; then
     PS+="$ "
-    PS1="\[${TPUT_BOLD}${TPUT_SETAF_6}\]${PS}\[${TPUT_SGR0}\]" # bold cyan
+    PS1="\[${TPUT_BOLD}${TPUT_SETAF_2}\]${PS}\[${TPUT_SGR0}\]" # bold green
 else
     if [ "${USER}" == "root" ]; then
         PS+="# "
         PS1="\[${TPUT_BOLD}${TPUT_SETAF_3}\]${PS}\[${TPUT_SGR0}\]" # bold yellow
     else
         PS+="$ "
-        PS1="\[${TPUT_BOLD}${TPUT_SETAF_5}\]${PS}\[${TPUT_SGR0}\]" # bold purple
+        PS1="\[${TPUT_BOLD}${TPUT_SETAF_8}\]${PS}\[${TPUT_SGR0}\]" # bold grey
     fi
 fi
 if [ ${#TPUT_BOLD} -eq 0 ]; then
