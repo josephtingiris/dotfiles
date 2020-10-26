@@ -71,6 +71,7 @@
 /bin/*
 !/bin/ff
 !/bin/fif
+!/bin/heic
 !/bin/mysql-cp
 !/bin/mysql-kill
 !/bin/onedrive-sync

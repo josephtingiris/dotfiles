@@ -1,0 +1,52 @@
+#!/bin/bash
+
+# 20201026, joseph.tingiris@gmail.com
+
+if ! type -P heif-convert; then
+    printf "\naborting ... heif-convert file not found executable\n\n"
+    exit 2
+fi
+
+function convertHEIC() {
+    if [ -r "${1}" ]; then
+        echo heif-convert ${input} ${output}
+        heif-convert ${input} ${output}
+    fi
+}
+
+function rotateJPG() {
+    if [ "${CONVERT_TO}" == "jpg" ]; then
+        if [ -r "${1}" ]; then
+            if type -P mogrify; then
+                echo mogrify -rotate -90 ${1}
+                mogrify -rotate -90 ${1}
+            fi
+        fi
+    fi
+}
+
+if [ -f "$1" ]; then
+    CONVERT_TO="$2"
+else
+    CONVERT_TO="$1"
+fi
+
+if [ "${CONVERT_TO}" != "jpg" ] && [ "${CONVERT_TO}" != "png" ]; then
+    CONVERT_TO=jpg
+fi
+
+if [ -f "$1" ]; then
+    input="$1"
+    output=${input//heic/}
+    output=${output}${CONVERT_TO}
+    convertHEIC "${output}"
+    rotateJPG "${output}"
+else
+    while read input; do
+        output=${input//heic/}
+        output=${output}${CONVERT_TO}
+        convertHEIC "${output}"
+        rotateJPG "${output}"
+        echo
+    done <<< "$(find . -name "*.heic" -o -name "*.HEIC" -type f )"
+fi
