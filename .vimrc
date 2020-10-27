@@ -2,6 +2,12 @@
 " global variables
 "
 
+" source .vimrc.first (before plugins)
+if filereadable(".vimrc.first")
+    source .vimrc.first
+    echom "sourced .vimrc.first"
+endif
+
 " could be passed via cli, e.g. vim --cmd="let User_Dir='$HOME'"
 if (!exists("User_Dir"))
     let User_Dir="~"
@@ -189,7 +195,11 @@ if has("autocmd")
                         endfunction
 
                         " Use <c-space> to trigger completion.
-                        inoremap <silent><expr> <c-space> coc#refresh()
+                        if has('nvim')
+                            inoremap <silent><expr> <c-space> coc#refresh()
+                        else
+                            inoremap <silent><expr> <c-@> coc#refresh()
+                        endif
 
                         " Use <cr> to confirm completion, `<C-g>u` means break undo chain at current position.
                         " Coc only does snippet and additional edit on confirm.
@@ -323,6 +333,7 @@ if has("autocmd")
 
     " autocmd Buf preferences
     autocmd BufNewFile,BufRead *.d set filetype=sh
+    autocmd BufNewFile,BufRead *.env set filetype=sh
     autocmd BufNewFile,BufRead *.md set filetype=markdown
     autocmd BufNewFile,BufRead http* set filetype=xml syntax=apache
     autocmd BufNewFile,BufRead named*.conf set filetype=named
@@ -353,7 +364,7 @@ function! CtagsUpdate(scope)
         let ctags_command="!ctags --fields=+l -f " .expand('%:p:h'). "/.tags ".expand('%:p:h')."/*"
     elseif a:scope == 'recursive'
         " tags for all files in the directory of the buffer, recursively
-        let ctags_command="!ctags --fields=+l -f " .expand('%:p:h'). "/.tags ".expand('%:p:h')."/. -R"
+        let ctags_command="!ctags --fields=+l -f " .expand('%:p:h'). "/.tags ".expand('%:p:h')."/* -R --append"
     else
         " tags for the current file in the buffer
         let ctags_command="!ctags --fields=+l --append --language-force=" . &filetype . " -f " .expand('%:p:h'). "/.tags " . expand('%:p') . " &> /dev/null"
@@ -373,6 +384,7 @@ command! CtagsRecursive call CtagsUpdate('recursive')
 map <Leader>ctd :CtagsDirectory<CR>
 map <Leader>ctf :CtagsFile<CR>
 map <Leader>ctr :CtagsRecursive<CR>
+map <Leader>ctu :CtagsUpdate<CR>
 
 " preserve cursor et al and indent the whole buffer
 if !exists("*IndentBuffer")
@@ -590,3 +602,10 @@ set updatetime=300                          " diagnostic messages
 set wildmenu                                " enhanced command-line completion
 set wrap                                    " turn on word wrapping
 set wrapmargin=0                            " number of characters from the right window border where wrapping starts
+
+" source .vimrc.last (override anything)
+if filereadable(".vimrc.last")
+    source .vimrc.last
+    echom "sourced .vimrc.last"
+endif
+
