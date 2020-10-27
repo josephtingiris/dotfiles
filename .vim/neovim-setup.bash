@@ -55,4 +55,6 @@ for Package in ${Packages[@]}; do
     fi
 done
 
-~/.vim/neovim-setup-user.bash
+if  [ -x ~/.vim/neovim-setup-user.bash ]; then
+    ~/.vim/neovim-setup-user.bash
+fi
