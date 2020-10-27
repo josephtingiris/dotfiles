@@ -13,7 +13,6 @@ source /etc/os-release
 Packages=(
 epel-release
 cargo
-ctags-etags
 golang
 mono-devel
 neovim
@@ -31,6 +30,11 @@ if [ "${ID}" == "centos" ]; then
         Packages+=(python36-devel)
         Packages+=(python36-pip)
         Packages+=(rh-ruby24-ruby-devel)
+        Packages+=(ctags-etags)
+    else
+        Packages+=(ctags)
+        Packages+=(python3)
+        Packages+=(python3-devel)
     fi
 else
     if [ "${ID}" == "fedora" ]; then
