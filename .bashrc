@@ -1,6 +1,6 @@
 # .bashrc
 
-Bashrc_Version="20201012, joseph.tingiris@gmail.com"
+Bashrc_Version="20201114, joseph.tingiris@gmail.com"
 
 ##
 ### returns to avoid interactive shell enhancements
@@ -1149,7 +1149,9 @@ alias grpe=grep
 alias h='history'
 alias hs='export HISTSIZE=0'
 alias jc=journalctl
-alias l='ls -lFhart'
+alias l='ls -lFhart --color=auto'
+alias ll='ls -lFha --color=auto'
+alias llv='ls -lFha --color=auto | sort -k 9 -V'
 alias ls='ls --color=auto'
 alias mv='mv -i'
 alias noduh=nohistcontrol
