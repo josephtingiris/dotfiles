@@ -1,6 +1,6 @@
 # .bashrc
 
-Bashrc_Version="20201114, joseph.tingiris@gmail.com"
+Bashrc_Version="20201122, joseph.tingiris@gmail.com"
 
 ##
 ### returns to avoid interactive shell enhancements
@@ -1362,6 +1362,14 @@ fi
 
 if type -P ctags &> /dev/null; then
     alias ctags="ctags --fields=+l --c-kinds=+p --c++-kinds=+p -f .tags"
+fi
+
+##
+### set docker (podman)
+##
+
+if type -P podman &> /dev/null; then
+    alias docker=podman
 fi
 
 ##
