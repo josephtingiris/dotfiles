@@ -1,7 +1,7 @@
 #!/bin/bash
 
 function usage() {
-    printf "\n$0 [local|remote|resync|init <email addres>] [sharepoint] [sharepoint name]\n\n"
+    printf "\n$0 [local|remote|resync|status}init <email addres>] [sharepoint] [sharepoint name]\n\n"
     exit 1
 }
 
@@ -9,7 +9,7 @@ if [ "$1" == "" ]; then
     usage
 fi
 
-if [ "${1}" != "local" ] && [ "${1}" != "remote" ] && [ "${1}" != "resync" ] && [ "${1}" != "init" ]; then
+if [ "${1}" != "local" ] && [ "${1}" != "remote" ] && [ "${1}" != "resync" ] && [ "${1}" != "status" ] && [ "${1}" != "init" ]; then
     usage
 fi
 
@@ -122,21 +122,25 @@ while read OneDrive_Config; do
     fi
 
     if [ -d "${OneDrive_Config_Dir}" ]; then
-        echo "[${1}] resyncing ${OneDrive_Service}"
-        echo
 
-        systemctl --user stop ${OneDrive_Service}.service
-        if [ "$1" == "local" ]; then
-            onedrive --confdir=${OneDrive_Config_Dir} --synchronize --local-first --verbose
-        else
-            if [ "$1" == "remote" ]; then
-                onedrive --confdir=${OneDrive_Config_Dir} --synchronize --download-only --verbose
+        if [ "$1" != "status" ]; then
+            echo "[${1}] resyncing ${OneDrive_Service}"
+            echo
+
+            systemctl --user stop ${OneDrive_Service}.service
+            if [ "$1" == "local" ]; then
+                onedrive --confdir=${OneDrive_Config_Dir} --synchronize --local-first --verbose
             else
-                onedrive --confdir=${OneDrive_Config_Dir} --synchronize --resync --verbose
+                if [ "$1" == "remote" ]; then
+                    onedrive --confdir=${OneDrive_Config_Dir} --synchronize --download-only --verbose
+                else
+                    onedrive --confdir=${OneDrive_Config_Dir} --synchronize --resync --verbose
+                fi
             fi
+            echo
+            systemctl --user start ${OneDrive_Service}.service
         fi
-        echo
-        systemctl --user start ${OneDrive_Service}.service
+
         systemctl --user status ${OneDrive_Service}.service -l --no-pager
         if [ $? -ne 0 ]; then
             echo
