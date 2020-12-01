@@ -1,12 +1,28 @@
 #!/bin/bash
 
 function usage() {
-    printf "\n$0 [local|remote|resync|status}init <email addres>] [sharepoint] [sharepoint name]\n\n"
+    printf "\n$0 [local|remote|resync|start|status|stop|init <email addres>] [sharepoint] [sharepoint name]\n\n"
     exit 1
 }
 
 if [ "$1" == "" ]; then
     usage
+fi
+
+if [ "${1}" == "start" ] || [ "${1}" == "stop" ]; then
+    while read service; do
+        if [ "${1}" == "start" ]; then
+            echo systemctl --user start ${service}
+            echo
+            systemctl --user start ${service}
+        else
+            echo systemctl --user stop ${service}
+            echo
+            systemctl --user stop ${service}
+        fi
+        systemctl --user status ${service} --no-pager
+    done <<< "$(find ~/.config -type f -name "onedrive-*.service" | awk -F/ '{print $NF}')"
+    exit
 fi
 
 if [ "${1}" != "local" ] && [ "${1}" != "remote" ] && [ "${1}" != "resync" ] && [ "${1}" != "status" ] && [ "${1}" != "init" ]; then
