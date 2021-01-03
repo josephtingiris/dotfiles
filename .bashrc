@@ -1,6 +1,6 @@
 # .bashrc
 
-Bashrc_Version="20201122, joseph.tingiris@gmail.com"
+Bashrc_Version="20210103, joseph.tingiris@gmail.com"
 
 ##
 ### returns to avoid interactive shell enhancements
@@ -278,6 +278,9 @@ function gitConfig() {
 
     local git_config_globals=()
     git_config_globals+=("alias.b branch")
+    git_config_globals+=("alias.d diff")
+    git_config_globals+=("alias.di diff")
+    git_config_globals+=("alias.dif diff")
     git_config_globals+=("alias.info 'remote -v'")
     git_config_globals+=("alias.ls ls-files")
     git_config_globals+=("alias.restore 'checkout --'")
@@ -354,6 +357,11 @@ function githubDotfiles() {
     fi
 
     cd "${cwd}"
+}
+
+# ls version sort
+function llv() {
+    ls -lFha $@ | sort -k 9 -V
 }
 
 # colorize make output
@@ -1149,9 +1157,8 @@ alias grpe=grep
 alias h='history'
 alias hs='export HISTSIZE=0'
 alias jc=journalctl
-alias l='ls -lFhart --color=auto'
-alias ll='ls -lFha --color=auto'
-alias llv='ls -lFha --color=auto | sort -k 9 -V'
+alias l='ls -lFhart'
+alias ll='ls -lFha'
 alias ls='ls --color=auto'
 alias mv='mv -i'
 alias noduh=nohistcontrol
