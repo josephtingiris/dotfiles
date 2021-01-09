@@ -1,6 +1,6 @@
 # .bashrc
 
-Bashrc_Version="20210103, joseph.tingiris@gmail.com"
+Bashrc_Version="20210109, joseph.tingiris@gmail.com"
 
 ##
 ### returns to avoid interactive shell enhancements
@@ -295,6 +295,8 @@ function gitConfig() {
     git_config_globals+=("color.status auto")
 
     git_config_globals+=("core.filemode false")
+
+    git_config_globals+=("pull.rebase false")
 
     git_config_globals+=("user.email ${USER}@${HOSTNAME}")
     git_config_globals+=("user.name ${USER}@${HOSTNAME}")
