@@ -1,7 +1,14 @@
 #!/bin/bash
 
+function aborting() {
+    echo
+    echo "aborting ... $@"
+    echo
+    exit 2
+}
+
 function usage() {
-    printf "\n$0 [local|remote|resync|start|status|stop|init <email addres>] [sharepoint] [sharepoint name]\n\n"
+    printf "\n$0 [authorize|init|local|remote|resync|start|status|stop] [sharepoint] [sharepoint name]\n\n"
     exit 1
 }
 
@@ -11,6 +18,11 @@ fi
 
 if [ "${1}" == "start" ] || [ "${1}" == "stop" ]; then
     while read service; do
+        echo
+        echo "------------------------------------------------------------------------------------------------------"
+        echo "[${1}] ${service}"
+        echo
+
         if [ "${1}" == "start" ]; then
             echo systemctl --user start ${service}
             echo
@@ -20,20 +32,42 @@ if [ "${1}" == "start" ] || [ "${1}" == "stop" ]; then
             echo
             systemctl --user stop ${service}
         fi
-        systemctl --user status ${service} --no-pager
+        systemctl --user status ${service} --no-pager | grep Active:
     done <<< "$(find ~/.config -type f -name "onedrive-*.service" | awk -F/ '{print $NF}')"
     exit
 fi
 
-if [ "${1}" != "local" ] && [ "${1}" != "remote" ] && [ "${1}" != "resync" ] && [ "${1}" != "status" ] && [ "${1}" != "init" ]; then
+if [ "${1}" != "authorize" ] && [ "${1}" != "local" ] && [ "${1}" != "remote" ] && [ "${1}" != "resync" ] && [ "${1}" != "status" ] && [ "${1}" != "init" ]; then
     usage
+fi
+
+if [ "$1" == "authorize" ]; then
+    if [ "$2" == "" ]; then
+        aborting "must supply an email address to authorize"
+    fi
+
+    OneDrive_Config_Dir=$(realpath ~/.config/onedrive-$2)
+    if [ -d "${OneDrive_Config_Dir}" ]; then
+        echo
+        echo "Authorizing $2 ..."
+        echo
+        OneDrive_Service="onedrive-$2"
+        systemctl --user stop ${OneDrive_Service}.service -l --no-pager
+        /usr/bin/onedrive --confdir="${OneDrive_Config_Dir}" --logout
+        systemctl --user enable ${OneDrive_Service}.service
+        systemctl --user start ${OneDrive_Service}.service
+        systemctl --user status ${OneDrive_Service}.service --no-pager
+    else
+        aborting "~/.config/onedrive-$2 directory not found"
+    fi
+
+    exit
 fi
 
 if [ "$1" == "init" ]; then
     Sharepoint=0
     if [ "$2" == "" ]; then
-        echo "aborting, must supply an email address to init"
-        exit 2
+        aborting "must supply an email address to init"
     fi
 
     if [ "$3" == "sharepoint" ]; then
@@ -139,6 +173,11 @@ while read OneDrive_Config; do
 
     if [ -d "${OneDrive_Config_Dir}" ]; then
 
+        echo
+        echo "------------------------------------------------------------------------------------------------------"
+        echo "[${1}] ${OneDrive_Service}"
+        echo
+
         if [ "$1" != "status" ]; then
             echo "[${1}] resyncing ${OneDrive_Service}"
             echo
@@ -157,10 +196,10 @@ while read OneDrive_Config; do
             systemctl --user start ${OneDrive_Service}.service
         fi
 
-        systemctl --user status ${OneDrive_Service}.service -l --no-pager
-        if [ $? -ne 0 ]; then
+        systemctl --user status ${OneDrive_Service}.service -l --no-pager | grep Active:
+        if [ $? -eq 0 ]; then
             echo
-            journalctl --user -u ${OneDrive_Service} --since "-5m"
+            journalctl --user -u ${OneDrive_Service} --since "-5m" --no-pager
             echo
         fi
         echo
