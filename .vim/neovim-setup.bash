@@ -11,20 +11,20 @@ fi
 source /etc/os-release
 
 Packages=(
-epel-release
 cargo
 golang
 mono-devel
 neovim
 nodejs
 npm
-python2-pip
 tmux
 xsel
 yamllint
 )
 
 if [ "${ID}" == "centos" ]; then
+    Packages+=(epel-release)
+    Packages+=(python2-pip)
     if [ ${VERSION_ID} -le 7 ]; then
         Packages+=(centos-release-scl)
         Packages+=(python36-devel)
@@ -38,6 +38,9 @@ if [ "${ID}" == "centos" ]; then
     fi
 else
     if [ "${ID}" == "fedora" ]; then
+        if [ ${VERSION_ID} -lt 28 ]; then
+            Packages+=(python2.7)
+        fi
         if [ ${VERSION_ID} -ge 28 ]; then
             Packages+=(ruby-devel)
             Packages+=(python3-devel)
@@ -56,5 +59,7 @@ for Package in ${Packages[@]}; do
 done
 
 if  [ -x ~/.vim/neovim-setup-user.bash ]; then
-    ~/.vim/neovim-setup-user.bash
+    echo
+    echo "now run ~/.vim/neovim-setup-user.bash"
+    echo
 fi
