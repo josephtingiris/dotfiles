@@ -1,6 +1,6 @@
 # .bashrc
 
-Bashrc_Version="20210109, joseph.tingiris@gmail.com"
+Bashrc_Version="20210126, joseph.tingiris@gmail.com"
 
 ##
 ### returns to avoid interactive shell enhancements
@@ -1559,6 +1559,12 @@ if [ "${USER}" != "${Who}" ]; then
         export DISPLAY=:0
     fi
 fi
+
+##
+### additional exports
+##
+
+export S_COLORS=${S_COLORS:-"auto"} # color output for systat (et al)
 
 ##
 ### display some useful information
