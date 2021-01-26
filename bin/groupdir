@@ -1,0 +1,48 @@
+#!/bin/bash
+
+function usage() {
+    printf "\n$0 <group> <directory>\n\n"
+    exit 1
+}
+
+if [ "$1" == "" ]; then
+    usage
+fi
+
+OneDrive_Group="$1"
+OneDrive_Directory="$2"
+
+GID=$(id -g "${OneDrive_Group}" 2> /dev/null)
+if [ "${GID}" == "" ]; then
+    echo "aborting, '${OneDrive_Group}' group not found"
+    exit 2
+fi
+
+if [ ! -d "${OneDrive_Directory}" ]; then
+    echo "aborting, '${OneDrive_Directory}' directory not found"
+    exit
+fi
+
+echo chgrp -R "${OneDrive_Group}" "${OneDrive_Directory}"
+chgrp -R ${OneDrive_Group} ${OneDrive_Directory}
+
+echo chmod 0770 "${OneDrive_Directory}"
+chmod 0770 ${OneDrive_Directory}
+
+echo chmod g+s "${OneDrive_Directory}"
+chmod g+s ${OneDrive_Directory}
+
+echo setfacl -d -m group:${OneDrive_Group}:rwx ${OneDrive_Directory}
+setfacl -d -m group:${OneDrive_Group}:rwx ${OneDrive_Directory}
+
+echo
+ls -ld "${OneDrive_Directory}"
+
+echo
+find "${OneDrive_Directory}" -type d -exec chmod 0770 {} \;
+find "${OneDrive_Directory}" -type d -exec chmod g+s {} \;
+find "${OneDrive_Directory}" -type d -ls
+
+echo
+find "${OneDrive_Directory}" -type f -exec chmod g+rw {} \;
+find "${OneDrive_Directory}" -type f -ls
