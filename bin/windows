@@ -149,6 +149,15 @@ function windowsVirtSetup() {
 
         if [ "${virt_state}" == "shut off" ]; then
             if [ "${virt_action}" == "start" ]; then
+
+                # f33, and maybe others, have a bug where sometimes the bridge interface doesn't work
+                # these will get virbr0 to go away & come back again ...
+                # i'm still not exactly sure why this is needed, but it works
+
+                sudo ${virsh} net-destroy default
+                sudo ${virsh} net-start default
+                sudo ${virsh} net-info default
+
                 ${virsh} start ${virt_name}
                 ${virt_viewer} ${virt_name} -a &
             fi
@@ -372,7 +381,7 @@ if [ -r "$1" ]; then
     Virt_Action="$2"
 else
     Virt_Action="$1"
-    Virt_Disk=$(find ~/VM/ -name "*qcow2" | sort | head -1)
+    Virt_Disk=$(find ~/VM/ -name "*win*qcow2" | sort | head -1)
 fi
 
 if [ "${Virt_Action}" == "" ]; then
