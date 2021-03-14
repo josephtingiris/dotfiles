@@ -1,6 +1,6 @@
 # .bashrc
 
-Bashrc_Version="20210126, joseph.tingiris@gmail.com"
+Bashrc_Version="20210314, joseph.tingiris@gmail.com"
 
 ##
 ### returns to avoid interactive shell enhancements
@@ -1173,16 +1173,6 @@ alias vil=viLocate
 alias viw=viLocate
 
 ##
-### global key bindings
-##
-
-set -o vi
-
-# showkey -a
-bind '"\x18\x40\x73\x6c":"'${User_Name}'"' # Super+l
-bind '"\x18\x40\x73\x75":"'${USER}'"' # Super+u
-
-##
 ### tmux info
 ##
 
@@ -1565,6 +1555,79 @@ fi
 ##
 
 export S_COLORS=${S_COLORS:-"auto"} # color output for systat (et al)
+
+##
+### global key bindings
+##
+
+# bind -p # prints key bindings
+# showkey -a # shows typed key codes
+
+set editing-mode vi
+set keymap vi
+
+set -o vi
+
+# emacs bindings; re-bind some of the default emacs keys set -o vi leaves as 'not bound'
+bind '"\C-g": abort'
+bind '"\C-x\C-?": backward-kill-line'
+bind '"\e\C-h": backward-kill-word'
+bind '"\e\C-?": backward-kill-word'
+bind '"\e<": beginning-of-history'
+bind '"\C-xe": call-last-kbd-macro'
+bind '"\ec": capitalize-word'
+bind '"\C-]": character-search'
+bind '"\e\C-]": character-search-backward'
+bind '"\C-l": clear-screen'
+bind '"\e!": complete-command'
+bind '"\e/": complete-filename'
+bind '"\e@": complete-hostname'
+bind '"\e{": complete-into-braces'
+bind '"\e~": complete-username'
+bind '"\e$": complete-variable'
+bind '"\e\\": delete-horizontal-space'
+bind '"\e\C-i": dynamic-complete-history'
+bind '"\C-x\C-e": edit-and-execute-command'
+bind '"\C-x\C-x": exchange-point-and-mark'
+bind '"\eg": glob-complete-word'
+bind '"\C-x*": glob-expand-word'
+bind '"\C-xg": glob-list-expansions'
+bind '"\e^": history-expand-line'
+bind '"\e#": insert-comment'
+bind '"\e*": insert-completions'
+bind '"\e.": insert-last-argument'
+bind '"\e_": insert-last-argument'
+bind '"\en": non-incremental-forward-search-history'
+bind '"\ep": non-incremental-reverse-search-history'
+bind '"\C-o": operate-and-get-next'
+bind '"\C-x!": possible-command-completions'
+bind '"\e=": possible-completions'
+bind '"\e?": possible-completions'
+bind '"\C-x/": possible-filename-completions'
+bind '"\C-x@": possible-hostname-completions'
+bind '"\C-x~": possible-username-completions'
+bind '"\C-x$": possible-variable-completions'
+bind '"\C-x\C-r": re-read-init-file'
+bind '"\e\C-r": revert-line'
+bind '"\C-@": set-mark'
+bind '"\e ": set-mark'
+bind '"\e\C-e": shell-expand-line'
+bind '"\C-x(": start-kbd-macro'
+bind '"\e&": tilde-expand'
+bind '"\et": transpose-words'
+bind '"\C-x\C-u": undo'
+bind '"\C-w": unix-word-rubout'
+bind '"\eu": upcase-word'
+bind '"\e.": yank-last-arg'
+bind '"\e_": yank-last-arg'
+bind '"\e\C-y": yank-nth-arg'
+bind '"\ey": yank-pop'
+
+# custom bindings
+bind '"\x18\x40\x73\x6e": "'${User_Name}'"' # Super+n prints ${User_Name}
+bind '"\x18\x40\x73\x75": "'${USER}'"' # Super+u prints ${USER}
+
+
 
 ##
 ### display some useful information
