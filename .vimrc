@@ -138,7 +138,9 @@ if has("autocmd")
                 let g:go_def_mode = "gopls"
                 let g:go_def_mapping_enabled = 0
                 let g:go_info_mode = "gopls"
-                autocmd BufNewFile,BufRead *.go set filetype=go
+                autocmd BufNewFile,BufRead *.go set filetype=go expandtab!
+                let g:go_fmt_autosave = 0
+                let g:go_fmt_fail_silently = 1
                 "autocmd FileType go map <C-n> :cnext<CR>
                 "autocmd FileType go map <C-m> :cprevious<CR>
                 "autocmd FileType go nnoremap <leader>a :cclose<CR>
@@ -608,4 +610,3 @@ if filereadable(".vimrc.last")
     source .vimrc.last
     echom "sourced .vimrc.last"
 endif
-
