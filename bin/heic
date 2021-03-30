@@ -9,8 +9,8 @@ fi
 
 function convertHEIC() {
     if [ -r "${1}" ]; then
-        echo heif-convert ${input} ${output}
-        heif-convert ${input} ${output}
+        echo heif-convert ${1} ${2}
+        heif-convert ${1} ${2}
     fi
 }
 
@@ -37,15 +37,19 @@ fi
 
 if [ -f "$1" ]; then
     input="$1"
+    echo "input: ${input}"
     output=${input//heic/}
     output=${output}${CONVERT_TO}
-    convertHEIC "${output}"
+    echo "output: ${output}"
+    convertHEIC "${input}" "${output}"
     rotateJPG "${output}"
 else
     while read input; do
+        echo "input: ${input}"
         output=${input//heic/}
         output=${output}${CONVERT_TO}
-        convertHEIC "${output}"
+        echo "output: ${output}"
+        convertHEIC "${input}" "${output}"
         rotateJPG "${output}"
         echo
     done <<< "$(find . -name "*.heic" -o -name "*.HEIC" -type f )"
