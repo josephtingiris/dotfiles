@@ -2,6 +2,12 @@
 " global variables
 "
 
+" source .vimrc.first (before plugins)
+if filereadable(".vimrc.first")
+    source .vimrc.first
+    echom "sourced .vimrc.first"
+endif
+
 " could be passed via cli, e.g. vim --cmd="let User_Dir='$HOME'"
 if (!exists("User_Dir"))
     let User_Dir="~"
@@ -132,7 +138,9 @@ if has("autocmd")
                 let g:go_def_mode = "gopls"
                 let g:go_def_mapping_enabled = 0
                 let g:go_info_mode = "gopls"
-                autocmd BufNewFile,BufRead *.go set filetype=go
+                autocmd BufNewFile,BufRead *.go set filetype=go expandtab!
+                let g:go_fmt_autosave = 0
+                let g:go_fmt_fail_silently = 1
                 "autocmd FileType go map <C-n> :cnext<CR>
                 "autocmd FileType go map <C-m> :cprevious<CR>
                 "autocmd FileType go nnoremap <leader>a :cclose<CR>
@@ -148,7 +156,8 @@ if has("autocmd")
                         !cargo build --release
                     endif
                 endfunction
-                Plug 'euclio/vim-markdown-composer', { 'do': function('BuildComposer') }
+                " don't automatically load vim-markdown-composer
+                "Plug 'euclio/vim-markdown-composer', { 'do': function('BuildComposer') }
 
                 let node_valid = 0 " true
                 let use_ycm = 0 " true
@@ -188,7 +197,11 @@ if has("autocmd")
                         endfunction
 
                         " Use <c-space> to trigger completion.
-                        inoremap <silent><expr> <c-space> coc#refresh()
+                        if has('nvim')
+                            inoremap <silent><expr> <c-space> coc#refresh()
+                        else
+                            inoremap <silent><expr> <c-@> coc#refresh()
+                        endif
 
                         " Use <cr> to confirm completion, `<C-g>u` means break undo chain at current position.
                         " Coc only does snippet and additional edit on confirm.
@@ -279,6 +292,12 @@ if has("autocmd")
                         " extensions
                         let g:coc_global_extensions = ['coc-gitignore', 'coc-go', 'coc-json', 'coc-yaml']
 
+                        " warnings
+                        let g:coc_disable_startup_warning = 1
+
+                        " colors
+                        highlight CocErrorHighlight ctermfg=Red  guifg=#ff0000
+
                     endif " if node_valid
 
 
@@ -316,6 +335,7 @@ if has("autocmd")
 
     " autocmd Buf preferences
     autocmd BufNewFile,BufRead *.d set filetype=sh
+    autocmd BufNewFile,BufRead *.env set filetype=sh
     autocmd BufNewFile,BufRead *.md set filetype=markdown
     autocmd BufNewFile,BufRead http* set filetype=xml syntax=apache
     autocmd BufNewFile,BufRead named*.conf set filetype=named
@@ -346,7 +366,7 @@ function! CtagsUpdate(scope)
         let ctags_command="!ctags --fields=+l -f " .expand('%:p:h'). "/.tags ".expand('%:p:h')."/*"
     elseif a:scope == 'recursive'
         " tags for all files in the directory of the buffer, recursively
-        let ctags_command="!ctags --fields=+l -f " .expand('%:p:h'). "/.tags ".expand('%:p:h')."/. -R"
+        let ctags_command="!ctags --fields=+l -f " .expand('%:p:h'). "/.tags ".expand('%:p:h')."/* -R --append"
     else
         " tags for the current file in the buffer
         let ctags_command="!ctags --fields=+l --append --language-force=" . &filetype . " -f " .expand('%:p:h'). "/.tags " . expand('%:p') . " &> /dev/null"
@@ -366,6 +386,7 @@ command! CtagsRecursive call CtagsUpdate('recursive')
 map <Leader>ctd :CtagsDirectory<CR>
 map <Leader>ctf :CtagsFile<CR>
 map <Leader>ctr :CtagsRecursive<CR>
+map <Leader>ctu :CtagsUpdate<CR>
 
 " preserve cursor et al and indent the whole buffer
 if !exists("*IndentBuffer")
@@ -416,6 +437,17 @@ if !exists("*Reconfigure")
     command! Reconfigure call Reconfigure()
     map <Leader>s :call Reconfigure()<CR>
 endif
+
+" show highlight under cursor
+function! SynStack ()
+    for i1 in synstack(line("."), col("."))
+        let i2 = synIDtrans(i1)
+        let n1 = synIDattr(i1, "name")
+        let n2 = synIDattr(i2, "name")
+        echo n1 "->" n2
+    endfor
+endfunction
+map <Leader>h :call SynStack()<CR>
 
 if !exists("*ToggleClipboard")
     function! ToggleClipboard()
@@ -481,6 +513,26 @@ endif
 " preferences
 "
 
+" customize colors (before loading colorscheme)
+func! s:customize_colors() abort
+    " https://vim.fandom.com/wiki/Xterm256_color_names_for_console_Vim
+    hi ALEError ctermbg=52
+    hi Comment ctermfg=8
+    hi Constant ctermfg=4
+    hi ErrorMsg ctermfg=white
+    hi Identifier ctermfg=83
+    hi Operator ctermfg=15
+    hi Pmenu ctermfg=white ctermbg=18
+    hi Special ctermfg=46
+    "hi PmenuSel guibg=#b7c7b7 gui=NONE
+    "hi PmenuSbar guibg=#bcbcbc
+    "hi PmenuThumb guibg=#585858
+endfunc
+
+augroup customize_colorscheme | au!
+    au ColorScheme * call s:customize_colors()
+augroup END
+
 " color preferences
 silent! colorscheme elflord
 set background=dark
@@ -499,6 +551,7 @@ noremap <silent> <F3> <Esc>:call ToggleSpell()<CR>
 noremap <silent> <F4> <Esc>:call TogglePaste()<CR>
 " <F5> is conditionally mapped to IndentBuffer() (above)
 noremap <F6> <Esc>:syntax sync fromstart<CR>
+noremap <F12> <Esc>:Explore<CR>
 noremap <silent> <F9> <Esc>:call ToggleListchars()<CR>
 nnoremap qb :silent! normal mpea}<Esc>bi{<Esc>`pl " put {} (braces) around a word
 map <Leader>jcf :%!python -m json.tool<CR>   " format/indent json better
@@ -511,7 +564,7 @@ set autoread                                " automatically re-read files that h
 set backspace=indent,eol,start              " allow backspace in insert mode
 set clipboard=unnamedplus                   " Set default clipboard name ;
 set complete-=i                             " do not complete for included files; .=current buffer, w=buffers in other windows, b=other loaded buffers, u=unloaded buffers, t=tags, i=include files
-set directory=/var/tmp                      " where to store swap files
+set directory=~/.config/tmp                 " where to store swap files
 set noerrorbells                            " turn off error bells
 set expandtab                               " use spaces for tabs, not <Tab>
 set exrc                                    " source .exrc in the current directory (use .exrc for both vim/nvim compatibility, not .vimrc or .nvimrc)
@@ -551,3 +604,9 @@ set updatetime=300                          " diagnostic messages
 set wildmenu                                " enhanced command-line completion
 set wrap                                    " turn on word wrapping
 set wrapmargin=0                            " number of characters from the right window border where wrapping starts
+
+" source .vimrc.last (override anything)
+if filereadable(".vimrc.last")
+    source .vimrc.last
+    echom "sourced .vimrc.last"
+endif

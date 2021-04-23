@@ -1,4 +1,4 @@
-# exculde everyting
+# exclude everyting
 /*
 
 # except .ansible.cfg
@@ -71,14 +71,20 @@
 /bin/*
 !/bin/ff
 !/bin/fif
+!/bin/heic
+!/bin/groupdir
 !/bin/mysql-cp
 !/bin/mysql-kill
 !/bin/onedrive-sync
 !/bin/passwd.master
+!/bin/rif
+!/bin/rpmnew
 !/bin/snmpwalk*
 !/bin/scpmv
 !/bin/src-dotfiles-rsync
 !/bin/test-loop
+!/bin/vif
+!/bin/windows
 
 # except specific files in the etc/profile.d directory
 !/etc/

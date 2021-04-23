@@ -1,6 +1,6 @@
 # .bashrc
 
-Bashrc_Version="20200311, joseph.tingiris@gmail.com"
+Bashrc_Version="20210314, joseph.tingiris@gmail.com"
 
 ##
 ### returns to avoid interactive shell enhancements
@@ -51,6 +51,12 @@ if [ -r /etc/os-release ]; then
     if [ ${#Os_Id} -eq 0 ]; then
         Os_Id=$(sed -nEe 's#"##g;s#^ID=(.*)$#\1#p' /etc/os-release)
     fi
+    if [ ${#Os_Name} -eq 0 ]; then
+        Os_Name=$(sed -nEe 's#"##g;s#^NAME=(.*)$#\1#p' /etc/os-release)
+    fi
+    if [ ${#Os_Pretty_Name} -eq 0 ]; then
+        Os_Pretty_Name=$(sed -nEe 's#"##g;s#^PRETTY_NAME=(.*)$#\1#p' /etc/os-release)
+    fi
     if [ ${#Os_Version_Id} -eq 0 ]; then
         Os_Version_Id=$(sed -nEe 's#"##g;s#^VERSION_ID=(.*)$#\1#p' /etc/os-release)
     fi
@@ -85,11 +91,15 @@ if [ "$EUID" == "0" ]; then
     USER="root"
 fi
 
-if type -P logname &> /dev/null; then
-    export User_Name=$(logname 2> /dev/null)
+if [ -f ~/.User_Name ]; then
+    export User_Name=$(cat ~/.User_Name)
 else
-    if type -P who &> /dev/null; then
-        export User_Name=$(who -m 2> /dev/null)
+    if type -P logname &> /dev/null; then
+        export User_Name=$(logname 2> /dev/null)
+    else
+        if type -P who &> /dev/null; then
+            export User_Name=$(who -m 2> /dev/null)
+        fi
     fi
 fi
 if [ ${#User_Name} -eq 0 ] && [ ${#SUDO_USER} -ne 0 ]; then export User_Name=${SUDO_USER}; fi
@@ -233,6 +243,18 @@ done
 ### functions
 ##
 
+# update bash files in other homes
+function bashrc() {
+    if [ -d /home ]; then
+        while read bashrc; do
+            local bashrc_dir=${bashrc%/*}
+            for bash_file in ~/.bash*; do
+                sudo cp ${bash_file} ${bashrc_dir} 2> /dev/null
+            done
+        done <<< $(sudo find /home -name .bashrc | sudo xargs -r grep -l Bashrc_Version | grep -v src/dotfiles)
+    fi
+}
+
 # override dmesg
 function dmesg() {
     local dmesg="$(type -P dmesg)"
@@ -256,6 +278,9 @@ function gitConfig() {
 
     local git_config_globals=()
     git_config_globals+=("alias.b branch")
+    git_config_globals+=("alias.d diff")
+    git_config_globals+=("alias.di diff")
+    git_config_globals+=("alias.dif diff")
     git_config_globals+=("alias.info 'remote -v'")
     git_config_globals+=("alias.ls ls-files")
     git_config_globals+=("alias.restore 'checkout --'")
@@ -270,6 +295,8 @@ function gitConfig() {
     git_config_globals+=("color.status auto")
 
     git_config_globals+=("core.filemode false")
+
+    git_config_globals+=("pull.rebase false")
 
     git_config_globals+=("user.email ${USER}@${HOSTNAME}")
     git_config_globals+=("user.name ${USER}@${HOSTNAME}")
@@ -332,6 +359,11 @@ function githubDotfiles() {
     fi
 
     cd "${cwd}"
+}
+
+# ls version sort
+function llv() {
+    ls -lFha $@ | sort -k 9 -V
 }
 
 # colorize make output
@@ -442,7 +474,7 @@ function sshAgent() {
         if [ -r "${Ssh_Dir}/.ssh" ] && [ -d "${Ssh_Dir}/.ssh" ]; then
             while read Ssh_Key_File; do
                 Ssh_Key_Files+=(${Ssh_Key_File})
-            done <<< "$(find "${Ssh_Dir}/.ssh/" -name "*id_dsa" -o -name "*id_rsa" -o -name "*ecdsa_key" -o -name "*id_ed25519" 2> /dev/null)"
+            done <<< "$(find "${Ssh_Dir}/.ssh/" -user ${User_Name} -name "*id_dsa" -o -name "*id_rsa" -o -name "*ecdsa_key" -o -name "*id_ed25519" 2> /dev/null)"
         fi
     done
     unset -v Ssh_Add_Rc Ssh_Dir
@@ -713,7 +745,7 @@ function sshAgentInit() {
             unset -v Rm_Rc
         fi
         verbose "ALERT: ssh_agent_socket_command = ${ssh_agent_socket_command} (pid=${ssh_agent_socket_pid})${ssh_agent_socket_identifier} [OK?]" # should be dead code
-    done <<<"$(find /tmp/ssh* -type s -wholename "*/ssh*agent*" 2> /dev/null)"
+    done <<<"$(find /tmp/ssh* -type s -user ${User_Name} -wholename "*/ssh*agent*" 2> /dev/null)"
 
     unset -v ssh_agent_socket ssh_agent_socket_pid ssh_agent_socket_command ssh_auth_sock
 
@@ -1089,7 +1121,13 @@ export -f verbose
 ### set history control
 ##
 
-export HISTCONTROL=ignoredups
+shopt -s histappend
+if [ "${USER}" == "root" ]; then
+    export HISTCONTROL=ignoreboth
+else
+    export HISTCONTROL=ignoreboth:erasedups
+fi
+export HISTTIMEFORMAT="[%Y-%m-%d %H:%M:%S] "
 
 ##
 ### set default timezone
@@ -1101,32 +1139,38 @@ export TZ='America/New_York'
 ### static alias definitions
 ##
 
+alias alert='notify-send --urgency=low -i "$([ $? = 0 ] && echo terminal || echo error)" "$(history|tail -n1|sed -e '\''s/^\s*[0-9]\+\s*//;s/[;&|]\s*alert$//'\'')"'
 alias cl='cd;clear'
 alias cp='cp -i'
-alias duh='export HISTSIZE=0; unset HISTSIZE'
+alias duh='export HISTSIZE=0; unset HISTSIZE; history -c'
 alias forget=duh
+alias egrep='egrep --color=auto'
+alias egerp=egrep
+alias egpre=egrep
+alias egrpe=egrep
+alias fgrep='fgrep --color=auto'
+alias fgerp=fgrep
+alias fgpre=fgrep
+alias fgrpe=fgrep
+alias gerp=grep
+alias grep='grep --color=auto'
+alias gpre=grep
+alias grpe=grep
 alias h='history'
 alias hs='export HISTSIZE=0'
 alias jc=journalctl
 alias l='ls -lFhart'
-alias ls='ls --color=tty'
+alias ll='ls -lFha'
+alias ls='ls --color=auto'
 alias mv='mv -i'
+alias noduh=nohistcontrol
+alias nohistcontrol='unset HISTCONTROL'
 alias nouser="find . -nouser 2> /dev/null"
 alias rm='rm -i'
 alias sal='ps -ef | grep ssh-agent; echo && env | grep -i ssh | sort -V; echo; ssh-add -l'
 alias sc=systemctl
 alias vil=viLocate
 alias viw=viLocate
-
-##
-### global key bindings
-##
-
-set -o vi
-
-# showkey -a
-bind '"\x18\x40\x73\x6c":"'${User_Name}'"' # Super+l
-bind '"\x18\x40\x73\x75":"'${USER}'"' # Super+u
 
 ##
 ### tmux info
@@ -1252,12 +1296,17 @@ case "${TERM}" in
 esac
 
 PS="[\u@\H \w]"
-if [ "${USER}" == "root" ]; then
-    PS+="# "
-    PS1="\[${TPUT_BOLD}${TPUT_SETAF_3}\]${PS}\[${TPUT_SGR0}\]" # bold yellow
-else
+if [ "${USER}" == "jjt" ] || [ "${USER}" == "jtingiris" ]; then
     PS+="$ "
-    PS1="\[${TPUT_BOLD}${TPUT_SETAF_6}\]${PS}\[${TPUT_SGR0}\]" # bold cyan
+    PS1="\[${TPUT_BOLD}${TPUT_SETAF_2}\]${PS}\[${TPUT_SGR0}\]" # bold green
+else
+    if [ "${USER}" == "root" ]; then
+        PS+="# "
+        PS1="\[${TPUT_BOLD}${TPUT_SETAF_3}\]${PS}\[${TPUT_SGR0}\]" # bold yellow
+    else
+        PS+="$ "
+        PS1="\[${TPUT_BOLD}${TPUT_SETAF_8}\]${PS}\[${TPUT_SGR0}\]" # bold grey
+    fi
 fi
 if [ ${#TPUT_BOLD} -eq 0 ]; then
     PS1=$PS
@@ -1270,6 +1319,20 @@ unset -v PS
 
 if [ ! -f ${HOME}/.inputrc ]; then
     printf "set bell-style none\n" > ${HOME}/.inputrc
+fi
+
+##
+### if needed then create ${HOME}/.config/tmp
+##
+
+if [ ! -d "${HOME}/.config/tmp" ]; then
+    mkdir -p "${HOME}/.config/tmp"
+    Mkdir_Rc=$?
+    if [ ${Mkdir_Rc} -ne 0 ]; then
+        verbose "EMERGENCY: failed to 'mkdir -p ${HOME}/.config/tmp', Mkdir_Rc=${Mkdir_Rc}"
+        return 1
+    fi
+    unset -v Mkdir_Rc
 fi
 
 ##
@@ -1298,6 +1361,14 @@ fi
 
 if type -P ctags &> /dev/null; then
     alias ctags="ctags --fields=+l --c-kinds=+p --c++-kinds=+p -f .tags"
+fi
+
+##
+### set docker (podman)
+##
+
+if type -P podman &> /dev/null; then
+    alias docker=podman
 fi
 
 ##
@@ -1396,6 +1467,10 @@ else
     alias s="source ${HOME}/.bashrc"
 fi
 
+if type -P google-chrome &> /dev/null; then
+    alias chrome="google-chrome 2> /dev/null &"
+fi
+
 alias authsock=sshAgentInit
 alias scpo='scp -o IdentitiesOnly=yes'
 alias ssho='ssh -o IdentitiesOnly=yes'
@@ -1412,12 +1487,32 @@ if [ ${#Sudo} -gt 0 ]; then
     alias root="${Sudo} SSH_AUTH_SOCK=${SSH_AUTH_SOCK} -u root /bin/bash --init-file ${User_Dir}/.bashrc"
     alias suroot="${Sudo} su -"
 else
-    alias root="su - root -c '/bin/bash --init-file /home/jtingiris/.bashrc'"
+    alias root="su - root -c '/bin/bash --init-file ${User_Dir}/.bashrc'"
     alias suroot='su -'
 fi
 
 if type -P screen &> /dev/null; then
     alias sd='screen -S $(basename $(pwd))'
+fi
+
+##
+### user alias definitions (allow overriding; after all embedded aliases)
+##
+
+if [ -f ~/.bash_aliases ]; then
+    . ~/.bash_aliases
+fi
+
+##
+### bash completion
+##
+
+if ! shopt -oq posix; then
+    if [ -f /usr/share/bash-completion/bash_completion ]; then
+        . /usr/share/bash-completion/bash_completion
+    elif [ -f /etc/bash_completion ]; then
+        . /etc/bash_completion
+    fi
 fi
 
 ##
@@ -1450,8 +1545,89 @@ if [ "${USER}" != "${Who}" ]; then
                 verbose "DEBUG: ${User_Dir}/.Xauthority file not found readable" 22
             fi
         fi
+    else
+        export DISPLAY=:0
     fi
 fi
+
+##
+### additional exports
+##
+
+export S_COLORS=${S_COLORS:-"auto"} # color output for systat (et al)
+
+##
+### global key bindings
+##
+
+# bind -p # prints key bindings
+# showkey -a # shows typed key codes
+
+set editing-mode vi
+set keymap vi
+
+set -o vi
+
+# emacs bindings; re-bind some of the default emacs keys set -o vi leaves as 'not bound'
+bind '"\C-g": abort'
+bind '"\C-x\C-?": backward-kill-line'
+bind '"\e\C-h": backward-kill-word'
+bind '"\e\C-?": backward-kill-word'
+bind '"\e<": beginning-of-history'
+bind '"\C-xe": call-last-kbd-macro'
+bind '"\ec": capitalize-word'
+bind '"\C-]": character-search'
+bind '"\e\C-]": character-search-backward'
+bind '"\C-l": clear-screen'
+bind '"\e!": complete-command'
+bind '"\e/": complete-filename'
+bind '"\e@": complete-hostname'
+bind '"\e{": complete-into-braces'
+bind '"\e~": complete-username'
+bind '"\e$": complete-variable'
+bind '"\e\\": delete-horizontal-space'
+bind '"\e\C-i": dynamic-complete-history'
+bind '"\C-x\C-e": edit-and-execute-command'
+bind '"\C-x\C-x": exchange-point-and-mark'
+bind '"\eg": glob-complete-word'
+bind '"\C-x*": glob-expand-word'
+bind '"\C-xg": glob-list-expansions'
+bind '"\e^": history-expand-line'
+bind '"\e#": insert-comment'
+bind '"\e*": insert-completions'
+bind '"\e.": insert-last-argument'
+bind '"\e_": insert-last-argument'
+bind '"\en": non-incremental-forward-search-history'
+bind '"\ep": non-incremental-reverse-search-history'
+bind '"\C-o": operate-and-get-next'
+bind '"\C-x!": possible-command-completions'
+bind '"\e=": possible-completions'
+bind '"\e?": possible-completions'
+bind '"\C-x/": possible-filename-completions'
+bind '"\C-x@": possible-hostname-completions'
+bind '"\C-x~": possible-username-completions'
+bind '"\C-x$": possible-variable-completions'
+bind '"\C-x\C-r": re-read-init-file'
+bind '"\e\C-r": revert-line'
+bind '"\C-@": set-mark'
+bind '"\e ": set-mark'
+bind '"\e\C-e": shell-expand-line'
+bind '"\C-x(": start-kbd-macro'
+bind '"\e&": tilde-expand'
+bind '"\et": transpose-words'
+bind '"\C-x\C-u": undo'
+bind '"\C-w": unix-word-rubout'
+bind '"\eu": upcase-word'
+bind '"\e.": yank-last-arg'
+bind '"\e_": yank-last-arg'
+bind '"\e\C-y": yank-nth-arg'
+bind '"\ey": yank-pop'
+
+# custom bindings
+bind '"\x18\x40\x73\x6e": "'${User_Name}'"' # Super+n prints ${User_Name}
+bind '"\x18\x40\x73\x75": "'${USER}'"' # Super+u prints ${USER}
+
+
 
 ##
 ### display some useful information
@@ -1466,6 +1642,11 @@ if [ -r /etc/redhat-release ]; then
     printf "\n"
     cat /etc/redhat-release
     printf "\n"
+else
+    printf "\n"
+    if [ ${#Os_Pretty_Name} -gt 0 ]; then
+        printf "${Os_Pretty_Name}\n\n"
+    fi
 fi
 
 printf "${User_Dir}/.bashrc ${Bashrc_Version}\n\n"

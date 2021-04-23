@@ -53,7 +53,7 @@ else
 fi
 
 if [ ${Find_File} -eq 0 ]; then
-    LC_ALL=C find ${Find_Flags} $(readlink -e "${From}")/ ${Find_Exclude_Args} -and -name "*${String}*" 2> /dev/null
+    LC_ALL=C find ${Find_Flags} "$(readlink -e "${From}")"/ ${Find_Exclude_Args} -and -name "*${String}*" #2> /dev/null
 else
-    LC_ALL=C find ${Find_Flags} $(readlink -e "${From}")/ ${Find_Exclude_Args} -type f -print0  2> /dev/null | xargs -0 -r --max-args=64 --max-procs=16 grep -Fl "${String}" 2> /dev/null
+    LC_ALL=C find ${Find_Flags} "$(readlink -e "${From}")"/ ${Find_Exclude_Args} -type f -print0  2> /dev/null | xargs -0 -r --max-args=64 --max-procs=16 grep -Fl "${String}" 2> /dev/null
 fi

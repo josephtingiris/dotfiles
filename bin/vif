@@ -1,0 +1,29 @@
+#!/bin/bash
+
+# edit in files
+
+function usage() {
+    echo
+    echo "$0 <expression>"
+    echo
+    exit 1
+}
+
+if [ "$1" == "" ]; then
+    usage
+fi
+
+EXPRESSION="$1"
+
+TMPFILE="/tmp/vif.tmp"
+
+>"${TMPFILE}"
+while read FILE; do
+    if [ "${FILE}" == "" ]; then continue; fi
+    echo "${EDITOR} \"${FILE}\"" >> "${TMPFILE}"
+done <<< "$(find . -type f ! -wholename "*.git*" -and ! -wholename "*.svn*" -print0 | xargs -0 -r grep -l ${EXPRESSION})"
+
+if [ -s /tmp/vif.tmp ]; then
+    source "${TMPFILE}"
+fi
+rm -f "${TMPFILE}" &> /dev/null
