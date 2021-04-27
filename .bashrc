@@ -1,6 +1,6 @@
 # .bashrc
 
-Bashrc_Version="20210314, joseph.tingiris@gmail.com"
+Bashrc_Version="20210427, joseph.tingiris@gmail.com"
 
 ##
 ### returns to avoid interactive shell enhancements
@@ -1325,11 +1325,11 @@ fi
 ### if needed then create ${HOME}/.config/tmp
 ##
 
-if [ ! -d "${HOME}/.config/tmp" ]; then
-    mkdir -p "${HOME}/.config/tmp"
+if [ ! -d "${HOME}/.config/tmp/$HOSTNAME" ]; then
+    mkdir -p "${HOME}/.config/tmp/$HOSTNAME"
     Mkdir_Rc=$?
     if [ ${Mkdir_Rc} -ne 0 ]; then
-        verbose "EMERGENCY: failed to 'mkdir -p ${HOME}/.config/tmp', Mkdir_Rc=${Mkdir_Rc}"
+        verbose "EMERGENCY: failed to 'mkdir -p ${HOME}/.config/tmp/$HOSTNAME', Mkdir_Rc=${Mkdir_Rc}"
         return 1
     fi
     unset -v Mkdir_Rc
