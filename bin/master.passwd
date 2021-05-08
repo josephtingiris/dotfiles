@@ -651,7 +651,9 @@ function updatePGM() {
                             Queue_Commands+=("mkdir -p \"${master_homedir}\"")
                             Queue_Commands+=("chown ${master_uid}:${master_gid} \"${master_homedir}\"")
                         else
-                            pprint "${master_passwd} ${master_username}:x:${master_uid}:${master_gid} missing home '${master_homedir}' directory" "WARNING"
+                            if [ ${Report_Flag} -eq 0 ]; then
+                                pprint "${master_passwd} ${master_username}:x:${master_uid}:${master_gid} missing home '${master_homedir}' directory" "WARNING"
+                            fi
                         fi
                     fi
                 fi
