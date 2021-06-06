@@ -1,6 +1,6 @@
 # .bashrc
 
-Bashrc_Version="20210427, joseph.tingiris@gmail.com"
+Bashrc_Version="20210606, joseph.tingiris@gmail.com"
 
 ##
 ### returns to avoid interactive shell enhancements
@@ -69,6 +69,13 @@ if [ ${#Os_Id} -eq 0 ]; then
     fi
 fi
 
+if [ ${#Os_Id} -eq 0 ]; then
+    if uname -s | grep -q Darwin; then
+        Os_Id=macos
+        Os_Version_Id=$(/usr/bin/sw_vers -productVersion 2> /dev/null)
+    fi
+fi
+
 Os_Version_Major=${Os_Version_Id%.*}
 
 export Os_Id Os_Version_Id Os_Version_Major
@@ -112,13 +119,18 @@ if [ ${#Who} -eq 0 ]; then
     export Who=UNKNOWN
     export User_Dir="/tmp"
 else
+    unset User_Dir
     if type -P getent &> /dev/null; then
         export User_Dir=$(getent passwd ${Who} 2> /dev/null | awk -F: '{print $6}')
     fi
 fi
 
 if [ ${#User_Dir} -eq 0 ]; then
-    export User_Dir="~"
+    if [ ${#HOME} -gt 0 ]; then
+        export User_Dir="${HOME}"
+    else
+        export User_Dir="~"
+    fi
 else
     if [ ${#User_Name} -gt 0 ]; then
         if [ -f "${User_Dir}/.bashrc" ]; then
@@ -383,6 +395,9 @@ function sshAgent() {
         return 1
     fi
 
+    verbose "DEBUG: Ssh_Agent_Home=${Ssh_Agent_Home}" 18
+    verbose "DEBUG: Ssh_Agent_State=${Ssh_Agent_State}" 18
+
     if [ ${#Ssh_Agent_Home} -gt 0 ]; then
 
         if [ ! -r "${Ssh_Agent_Home}" ]; then
@@ -609,6 +624,8 @@ function sshAgent() {
 
 function sshAgentInit() {
 
+    alias authsock=sshAgentInit
+
     if [[ ! ${Ssh_Agent_Clean_Counter} =~ ^[0-9]+$ ]]; then
         Ssh_Agent_Clean_Counter=0
     fi
@@ -757,7 +774,13 @@ function sshAgentInit() {
     fi
 
     if [ ${#Ssh_Agent} -gt 0 ]; then
-        for ssh_agent_pid in $(pgrep -u "${USER}" -f ${Ssh_Agent} -P 1 2> /dev/null); do
+        if [ "${Os_Id}" == "macos" ]; then
+            ssh_agent_pids=$(ps auxwww | grep "${USER}" | grep ${Ssh_Agent} | grep -v grep | awk '{print $2}')
+        else
+            ssh_agent_pids=$(pgrep -u "${USER}" -f ${Ssh_Agent} -P 1 2> /dev/null)
+        fi
+
+        for ssh_agent_pid in ${ssh_agent_pids}; do
             if [ ${#SSH_AGENT_PID} -gt 0 ]; then
                 if [ "${ssh_agent_pid}" == "${SSH_AGENT_PID}" ]; then
                     # don't kill a running agent
@@ -797,15 +820,17 @@ function sshAgentInit() {
             printf "SSH_AGENT_PID=%s; export SSH_AGENT_PID;\n" "${SSH_AGENT_PID}" >> "${Ssh_Agent_State}"
             printf "echo Agent pid %s\n" "${SSH_AGENT_PID}" >> "${Ssh_Agent_State}"
         else
-            verbose "DEBUG: no SSH_AGENT_PID or SSH_AUTH_SOCK" 15
-            if [ -f "${Ssh_Agent_State}" ]; then
-                verbose "DEBUG: removing ${Ssh_Agent_State}"
-                rm -f "${Ssh_Agent_State}" &> /dev/null
-                Rm_Rc=$?
-                if [ ${Rm_Rc} -ne 0 ]; then
-                    verbose "ALERT: failed to 'rm -f ${Ssh_Agent_State}', Rm_Rc=${Rm_Rc}"
+            if [ ${#SSH_AUTH_SOCK} -eq 0 ]; then
+                verbose "DEBUG: no SSH_AGENT_PID or SSH_AUTH_SOCK" 15
+                if [ -f "${Ssh_Agent_State}" ]; then
+                    verbose "DEBUG: removing ${Ssh_Agent_State}"
+                    rm -f "${Ssh_Agent_State}" &> /dev/null
+                    Rm_Rc=$?
+                    if [ ${Rm_Rc} -ne 0 ]; then
+                        verbose "ALERT: failed to 'rm -f ${Ssh_Agent_State}', Rm_Rc=${Rm_Rc}"
+                    fi
+                    unset -v Rm_Rc
                 fi
-                unset -v Rm_Rc
             fi
         fi
     fi
@@ -1161,7 +1186,7 @@ alias hs='export HISTSIZE=0'
 alias jc=journalctl
 alias l='ls -lFhart'
 alias ll='ls -lFha'
-alias ls='ls --color=auto'
+if ls --color=auto &> /dev/null; then alias ls='ls --color=auto'; fi
 alias mv='mv -i'
 alias noduh=nohistcontrol
 alias nohistcontrol='unset HISTCONTROL'
@@ -1471,7 +1496,6 @@ if type -P google-chrome &> /dev/null; then
     alias chrome="google-chrome 2> /dev/null &"
 fi
 
-alias authsock=sshAgentInit
 alias scpo='scp -o IdentitiesOnly=yes'
 alias ssho='ssh -o IdentitiesOnly=yes'
 
@@ -1521,10 +1545,12 @@ fi
 
 Ssh_Agent_Clean_Counter=0
 
-# try twice
-if ! sshAgent; then
-    verbose "ALERT: sshAgent failed, retrying ...\n"
-    sshAgent
+if [ "${Os_Id}" != "macos" ]; then
+    # try twice
+    if ! sshAgent; then
+        verbose "ALERT: sshAgent failed, retrying ...\n"
+        sshAgent
+    fi
 fi
 
 ##
@@ -1635,8 +1661,6 @@ bind '"\x18\x40\x73\x75": "'${USER}'"' # Super+u prints ${USER}
 
 verbose "DEBUG: Who=${Who}" 18
 verbose "DEBUG: User_Dir=${User_Dir}" 18
-verbose "DEBUG: Ssh_Agent_Home=${Ssh_Agent_Home}" 18
-verbose "DEBUG: Ssh_Agent_State=${Ssh_Agent_State}" 18
 
 if [ -r /etc/redhat-release ]; then
     printf "\n"
