@@ -43,10 +43,13 @@ set-option -g status-right-length 50
 set-option -g status-right " #[fg=colour9]#{pane_current_command}#[fg=white] « #[fg=colour11][#{cursor_x},#{cursor_y}]#[fg=white] « #[fg=colour10]%Y-%m-%d · %H:%M:%S#[fg=white] "
 
 # Window status
+dynamic_sync_color="#{?pane_synchronized,yellow,colour8}"
+
 # inactive windows
-set-option -g window-status-format " i·#{window_index}·#{window_flags}·#{window_name} "
+set-option -g window-status-format "#[fg=black,bg=${dynamic_sync_color}]i·#{window_index}·#{window_flags}·#{window_name} "
+
 # active window
-set-option -g window-status-current-format " a·#{window_index}·#{window_flags}·#{window_name} "
+set-option -g window-status-current-format "#[fg=${dynamic_sync_color},bg=black]a·#{window_index}·#{window_flags}·#{window_name} "
 
 # Current/active window status
 set-option -g window-status-style bg=blue,fg=white
