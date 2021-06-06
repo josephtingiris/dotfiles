@@ -1201,7 +1201,7 @@ alias viw=viLocate
 ### tmux info
 ##
 
-if [ ${#TMUX} -gt 0 ]; then
+if [ ${#TMUX} -gt 0 ] && [ "${Os_Id}" != "macos" ]; then
     # already in a tmux
     #export Tmux_Bin=$(ps -ho command -p $(env | grep ^TMUX= | head -1 | awk -F, '{print $2}') | awk '{print $1}')
     export Tmux_Bin=$(ps -ho cmd -p $(ps -ho ppid -p $$ 2> /dev/null) 2> /dev/null | awk '{print $1}')
