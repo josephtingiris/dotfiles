@@ -1232,7 +1232,7 @@ if [ "${TERM}" != "linux" ] && [[ "${TERM}" != *"screen"* ]] && [[ "${TERM}" != 
 fi
 
 if [[ "${TERM}" == *"screen"* ]]; then
-    if [ -r /usr/share/terminfo/s/screen-256color ]; then
+    if [ -r /usr/share/terminfo/s/screen-256color ] || [ -r /usr/share/terminfo/73/screen-256color ]; then
         export TERM=screen-256color
     else
         if [ -r /usr/share/terminfo/s/screen ]; then
