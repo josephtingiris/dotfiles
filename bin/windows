@@ -37,7 +37,42 @@ fi
 
 #export LIBVIRT_DEFAULT_URI="qemu:///system"
 
-function windowsVirtSetup() {
+function usage() {
+    echo
+    echo "$0 [start|status|stop|undefine] [vm disk]"
+    echo
+    if [ "$@" != "" ]; then
+        echo "NOTE: $@"
+        echo
+    fi
+    exit 1
+}
+
+function windowsVirtRemote() {
+    local debug_level=10
+
+    local virt_remote="$1"
+    if [ ! -r "${virt_remote}" ]; then
+        aborting "${virt_remote} file not found readable"
+    fi
+    debugValue virt_remote $debug_level
+
+    local virt_remote_uri="$(cat "${virt_remote}" | egrep -e '^spice://|^vnc://' | head -1)"
+    if [ ${#virt_remote_uri} -eq 0 ]; then
+        aborting "invalid virt_remote_uri '${virt_remote_uri}'"
+    fi
+    debugValue virt_remote_uri $debug_level
+
+    local remote_viewer=$(which remote-viewer 2> /dev/null)
+    if [ ! -x "$remote_viewer" ]; then
+        aborting "remote-viewer executable not found" 3
+    fi
+    debugValue remote_viewer $debug_level
+
+    ${remote_viewer} -t ${virt_remote} ${virt_remote_uri} &
+}
+
+function windowsVirtLocal() {
     local debug_level=10
 
     local virt_disk="$1"
@@ -381,11 +416,34 @@ if [ -r "$1" ]; then
     Virt_Action="$2"
 else
     Virt_Action="$1"
-    Virt_Disk=$(find ~/VM/ -name "*win*qcow2" | sort | head -1)
+    if [ "$2" == "" ]; then
+        Virt_Disk=$(find ~/VM/ -name "*win*qcow2" | sort | head -1)
+    else
+        Virt_Disk="$2"
+    fi
+fi
+
+Virt_Remote=0
+
+if [ ! -r "${Virt_Disk}" ]; then
+    usage "${Virt_Disk} file not found readable"
+else
+    if [ -r "${Virt_Disk}.remote" ]; then
+        Virt_Remote=1 # true
+    fi
 fi
 
 if [ "${Virt_Action}" == "" ]; then
     Virt_Action=start
 fi
 
-windowsVirtSetup ${Virt_Disk} uefi ${Virt_Action}
+debugValue Virt_Action 10
+debugValue Virt_Disk 10
+debugValue Virt_Remote 10
+
+if [ ${Virt_Remote} -eq 1 ]; then
+    windowsVirtRemote ${Virt_Disk}.remote uefi ${Virt_Action}
+else
+    windowsVirtLocal ${Virt_Disk} uefi ${Virt_Action}
+fi
+
