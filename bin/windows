@@ -428,6 +428,7 @@ Virt_Remote=0
 if [ ! -r "${Virt_Disk}" ]; then
     usage "${Virt_Disk} file not found readable"
 else
+    # the content of this file should contain the remote-viewer URI, i.e. spice://j0:5900
     if [ -r "${Virt_Disk}.remote" ]; then
         Virt_Remote=1 # true
     fi
