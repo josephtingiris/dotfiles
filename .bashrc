@@ -46,6 +46,11 @@ fi
 Os_Id=""
 Os_Version_Id=""
 Os_Version_Major=""
+Os_Wsl=0
+
+if uname -r | grep -q Microsoft; then
+    Os_Wsl=1
+fi
 
 if [ -r /etc/os-release ]; then
     if [ ${#Os_Id} -eq 0 ]; then
@@ -56,7 +61,7 @@ if [ -r /etc/os-release ]; then
     fi
     if [ ${#Os_Pretty_Name} -eq 0 ]; then
         Os_Pretty_Name=$(sed -nEe 's#"##g;s#^PRETTY_NAME=(.*)$#\1#p' /etc/os-release)
-        if [ ${#WSL_DISTRO_NAME} -gt 0 ]; then
+        if [ ${Os_Wsl} -eq 1 ]; then
             Os_Pretty_Name+=" (WSL)"
         fi
     fi
@@ -1150,6 +1155,7 @@ export -f verbose
 ##
 
 shopt -s histappend
+
 if [ "${USER}" == "root" ]; then
     export HISTCONTROL=ignoreboth
 else
@@ -1266,6 +1272,9 @@ if [ "${TERM}" != "${TPUT_TERM}" ] || [ ${#TPUT_TERM} -eq 0 ]; then
         fi
     fi
 fi
+
+# check the window size after each command and, if necessary, update the values of LINES and COLUMNS.
+shopt -s checkwinsize
 
 ##
 ### set Verbose variables
