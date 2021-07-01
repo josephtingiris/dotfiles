@@ -38,3 +38,7 @@ if [ ${Bash_Logins} -lt 2 ] && [ "${USER}" == "${Who}" ]; then
 fi
 
 export Bash_Logout=0
+
+if [ "$SHLVL" = 1 ]; then
+    [ -x /usr/bin/clear_console ] && /usr/bin/clear_console -q
+fi
