@@ -1,6 +1,6 @@
 # .bashrc
 
-Bashrc_Version="20210606, joseph.tingiris@gmail.com"
+Bashrc_Version="20210701, joseph.tingiris@gmail.com"
 
 ##
 ### returns to avoid interactive shell enhancements
@@ -56,6 +56,9 @@ if [ -r /etc/os-release ]; then
     fi
     if [ ${#Os_Pretty_Name} -eq 0 ]; then
         Os_Pretty_Name=$(sed -nEe 's#"##g;s#^PRETTY_NAME=(.*)$#\1#p' /etc/os-release)
+        if [ ${#WSL_DISTRO_NAME} -gt 0 ]; then
+            Os_Pretty_Name+=" (WSL)"
+        fi
     fi
     if [ ${#Os_Version_Id} -eq 0 ]; then
         Os_Version_Id=$(sed -nEe 's#"##g;s#^VERSION_ID=(.*)$#\1#p' /etc/os-release)
@@ -1227,12 +1230,12 @@ if [ "${TERM}" != "linux" ] && [[ "${TERM}" != *"screen"* ]] && [[ "${TERM}" != 
     if [ ${#KONSOLE_DBUS_WINDOW} -gt 0 ] && [ -r /usr/share/terminfo/k/konsole-256color ]; then
         export TERM=konsole-256color # if it's a konsole dbus window then use konsole-256color
     else
-        export TERM=screen-256color
+        export TERM=xterm-256color
     fi
 fi
 
 if [[ "${TERM}" == *"screen"* ]]; then
-    if [ -r /usr/share/terminfo/s/screen-256color ] || [ -r /usr/share/terminfo/73/screen-256color ]; then
+    if [ -r /usr/share/terminfo/s/screen-256color ] || [ -r /usr/share/terminfo/73/screen-256color ] || [ -r /usr/lib/terminfo/s/screen-256color ]; then
         export TERM=screen-256color
     else
         if [ -r /usr/share/terminfo/s/screen ]; then
