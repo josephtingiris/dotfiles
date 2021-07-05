@@ -1,6 +1,6 @@
 # .bashrc
 
-Bashrc_Version="20210701, joseph.tingiris@gmail.com"
+Bashrc_Version="20210705, joseph.tingiris@gmail.com"
 
 ##
 ### returns to avoid interactive shell enhancements
@@ -86,7 +86,7 @@ fi
 
 Os_Version_Major=${Os_Version_Id%.*}
 
-export Os_Id Os_Version_Id Os_Version_Major
+export Os_Id Os_Version_Id Os_Version_Major Os_Wsl
 
 if [ ${#Os_Id} -gt 0 ]; then
     if [ ${#Os_Version_Major} -gt 0 ]; then
@@ -1674,14 +1674,13 @@ bind '"\x18\x40\x73\x75": "'${USER}'"' # Super+u prints ${USER}
 verbose "DEBUG: Who=${Who}" 18
 verbose "DEBUG: User_Dir=${User_Dir}" 18
 
-if [ -r /etc/redhat-release ]; then
-    printf "\n"
-    cat /etc/redhat-release
-    printf "\n"
+printf "\n"
+if [ ${#Os_Pretty_Name} -gt 0 ]; then
+    printf "${Os_Pretty_Name}\n\n"
 else
-    printf "\n"
-    if [ ${#Os_Pretty_Name} -gt 0 ]; then
-        printf "${Os_Pretty_Name}\n\n"
+    if [ -r /etc/redhat-release ]; then
+        cat /etc/redhat-release
+        printf "\n"
     fi
 fi
 
